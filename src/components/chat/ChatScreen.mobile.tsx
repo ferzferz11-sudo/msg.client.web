@@ -1,8 +1,12 @@
 // ============================================
 // ChatScreen — Mobile (iOS Native Style)
 // ============================================
+// Uses useIOSKeyboard hook for proper keyboard handling.
+// Footer (input) stays fixed above the iOS keyboard.
+// Messages scroll in the remaining space.
+// ============================================
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, forwardRef } from 'react'
 import { Screen } from '@/components/common'
 import { useChatMessages } from '@/hooks/useChatMessages'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
@@ -17,12 +21,11 @@ interface ChatScreenProps {
 export function ChatScreen({ chatId, onBack }: ChatScreenProps) {
   const activeChat = useChatStore((s) => s.getActiveChat())
   const { messages, isLoadingMessages, isSendingMessage, sendMessage } = useChatMessages(chatId)
-  const { isKeyboardOpen } = useIOSKeyboard()
+  const { isKeyboardOpen, keyboardHeight } = useIOSKeyboard()
 
   const [inputText, setInputText] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const messagesContainerRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -31,9 +34,8 @@ export function ChatScreen({ chatId, onBack }: ChatScreenProps) {
     }
   }, [messages.length])
 
-  // Focus input when chat opens
+  // Focus input when chat opens (with delay for animation)
   useEffect(() => {
-    // Small delay to let animation complete
     const timer = setTimeout(() => {
       inputRef.current?.focus()
     }, 300)
@@ -72,11 +74,12 @@ export function ChatScreen({ chatId, onBack }: ChatScreenProps) {
           onSend={handleSend}
           isSending={isSendingMessage}
           isKeyboardOpen={isKeyboardOpen}
+          keyboardHeight={keyboardHeight}
         />
       }
     >
+      {/* Messages area — takes remaining space */}
       <div
-        ref={messagesContainerRef}
         className="scrollable"
         style={{
           flex: 1,
@@ -154,35 +157,24 @@ function ChatHeader({ chat, onBack }: ChatHeaderProps) {
         Назад
       </button>
 
-      {/* Chat info */}
+      {/* Chat info — centered */}
       <div
         style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          marginRight: 52, /* Balance with back button */
+          marginRight: 52, /* Balance with back button width */
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {chatIcon && <span style={{ fontSize: 16 }}>{chatIcon}</span>}
-          <span
-            style={{
-              fontSize: 17,
-              fontWeight: 600,
-              color: '#fff',
-            }}
-          >
+          <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>
             {chat.name}
           </span>
         </div>
         {chat.isOnline !== undefined && (
-          <span
-            style={{
-              fontSize: 12,
-              color: chat.isOnline ? '#4caf50' : '#888',
-            }}
-          >
+          <span style={{ fontSize: 12, color: chat.isOnline ? '#4caf50' : '#888' }}>
             {chat.isOnline ? 'в сети' : 'не в сети'}
           </span>
         )}
@@ -222,19 +214,11 @@ function MessageBubble({ message }: MessageBubbleProps) {
           fontSize: 16,
           lineHeight: 1.35,
           wordBreak: 'break-word',
-          position: 'relative',
         }}
       >
         {/* Sender name for incoming group messages */}
         {!isOutgoing && message.senderName && (
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: '#6b5ce7',
-              marginBottom: 2,
-            }}
-          >
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#6b5ce7', marginBottom: 2 }}>
             {message.senderName}
           </div>
         )}
@@ -264,8 +248,6 @@ function MessageBubble({ message }: MessageBubbleProps) {
 
 // --- Message Input (iOS style) ---
 
-import { forwardRef } from 'react'
-
 interface MessageInputProps {
   value: string
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
@@ -273,10 +255,11 @@ interface MessageInputProps {
   onSend: () => void
   isSending: boolean
   isKeyboardOpen: boolean
+  keyboardHeight: number
 }
 
 const MessageInput = forwardRef<HTMLInputElement, MessageInputProps>(
-  ({ value, onChange, onKeyDown, onSend, isSending, isKeyboardOpen }, ref) => {
+  ({ value, onChange, onKeyDown, onSend, isSending, isKeyboardOpen, keyboardHeight }, ref) => {
     return (
       <div
         className="safe-bottom"
@@ -286,16 +269,17 @@ const MessageInput = forwardRef<HTMLInputElement, MessageInputProps>(
           WebkitBackdropFilter: 'blur(20px)',
           borderTop: '1px solid rgba(255,255,255,0.08)',
           padding: '8px 12px',
-          paddingBottom: isKeyboardOpen ? 8 : undefined,
+          /* When keyboard is open, add extra padding at the bottom
+             so the input isn't hidden behind the keyboard.
+             keyboardHeight already accounts for safe-area-inset-bottom. */
+          paddingBottom: isKeyboardOpen
+            ? `calc(8px + ${keyboardHeight}px - env(safe-area-inset-bottom, 0px))`
+            : undefined,
+          /* Smooth transition when keyboard opens/closes */
+          transition: 'padding-bottom 0.2s ease-out',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Input field */}
           <div
             style={{

@@ -82,6 +82,34 @@ class GrpcClient {
     }
   }
 
+  /**
+   * Get messages that arrived after `since` timestamp.
+   * Used when reconnecting from background to catch up on missed messages.
+   */
+  async getMissingMessages(chatId: string, since: string): Promise<Message[]> {
+    // Mock: return 0-2 random messages with timestamps after `since`
+    const sinceTime = new Date(since).getTime()
+    const now = Date.now()
+    const count = Math.floor(Math.random() * 3) // 0, 1, or 2 missed messages
+
+    const messages: Message[] = []
+    for (let i = 0; i < count; i++) {
+      const msgTime = sinceTime + Math.random() * (now - sinceTime)
+      messages.push({
+        id: `msg-missing-${now}-${i}`,
+        chatId,
+        senderId: 'other-user',
+        senderName: getChatSenderName(chatId),
+        content: getRandomIncomingMessage(),
+        createdAt: new Date(msgTime).toISOString(),
+        isOutgoing: false,
+        isRead: false,
+      })
+    }
+
+    return messages
+  }
+
   // --- Server-Side Streaming ---
 
   streamChatMessages(chatId: string, callback: StreamCallback): () => void {

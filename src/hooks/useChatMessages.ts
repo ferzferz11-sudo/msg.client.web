@@ -2,7 +2,10 @@
 // useChatMessages — Chat Messages Hook
 // ============================================
 // Loads message history and subscribes to
-// real-time stream. Handles iOS lifecycle.
+// real-time stream. Handles iOS lifecycle:
+// - Fetches missed messages on foreground
+// - Tracks last message timestamp
+// - Delegates stream lifecycle to useGrpcStream
 // ============================================
 
 import { useEffect, useCallback, useRef } from 'react'
@@ -67,10 +70,24 @@ export function useChatMessages(chatId: string | null) {
     [addMessage]
   )
 
-  // Subscribe to real-time stream
+  // Handle missed messages (from background reconnect)
+  const handleMissedMessages = useCallback(
+    (missedMessages: Message[]) => {
+      // Only add if we're still on this chat
+      if (chatIdRef.current !== chatId) return
+
+      for (const msg of missedMessages) {
+        addMessage(msg)
+      }
+    },
+    [addMessage, chatId]
+  )
+
+  // Subscribe to real-time stream with lifecycle management
   useGrpcStream({
     chatId: chatId || '',
     onEvent: handleStreamEvent,
+    onMissedMessages: handleMissedMessages,
     enabled: !!chatId,
   })
 

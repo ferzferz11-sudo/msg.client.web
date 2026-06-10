@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { ChatListScreen } from '@/components/chatList/ChatListScreen'
 import { ChatScreen } from '@/components/chat/ChatScreen'
 import { grpcClient } from '@/shared/api/grpcClient'
+import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
 import '@/styles/global.css'
 
 type Screen = 'chatList' | 'chat'
@@ -13,6 +14,10 @@ type Screen = 'chatList' | 'chat'
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('chatList')
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
+
+  // Initialize iOS keyboard/viewport tracking at root level
+  // This sets CSS variables used by all child components
+  useIOSKeyboard()
 
   // Connect to gRPC on mount
   useEffect(() => {
@@ -37,7 +42,7 @@ export default function App() {
     <div
       style={{
         width: '100%',
-        height: '100dvh',
+        height: 'var(--viewport-available-height, 100dvh)',
         overflow: 'hidden',
         background: '#1a1a2e',
       }}

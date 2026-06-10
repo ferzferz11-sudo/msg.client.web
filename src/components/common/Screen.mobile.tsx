@@ -1,13 +1,17 @@
 // ============================================
 // Screen — Base Screen Container (Mobile)
 // ============================================
+// Uses --viewport-available-height CSS variable
+// set by useIOSKeyboard hook for proper iOS
+// keyboard handling.
+// ============================================
 
-import React from 'react'
+import type { ReactNode } from 'react'
 
 interface ScreenProps {
-  children: React.ReactNode
-  header?: React.ReactNode
-  footer?: React.ReactNode
+  children: ReactNode
+  header?: ReactNode
+  footer?: ReactNode
 }
 
 export function Screen({ children, header, footer }: ScreenProps) {
@@ -16,11 +20,15 @@ export function Screen({ children, header, footer }: ScreenProps) {
       style={{
         display: 'flex',
         flexDirection: 'column',
-        height: '100dvh',
+        /* Use CSS variable set by useIOSKeyboard hook.
+           Falls back to 100dvh for browsers without VisualViewport API. */
+        height: 'var(--viewport-available-height, 100dvh)',
         width: '100%',
         overflow: 'hidden',
         background: '#1a1a2e',
-        position: 'relative',
+        position: 'fixed',
+        top: 0,
+        left: 0,
       }}
     >
       {header && (

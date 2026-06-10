@@ -18,14 +18,24 @@ html {
   position: fixed;
   width: 100%;
   height: 100%;
+
   /* iOS safe area CSS variables */
   --sat: env(safe-area-inset-top, 0px);
   --sar: env(safe-area-inset-right, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
-  /* Dynamic viewport height — updates when iOS keyboard opens */
-  --vh: 1vh;
-  --dvh: 1dvh;
+
+  /* Viewport variables — updated by useIOSKeyboard hook */
+  /* These are set via JS, defaults here for SSR/initial render */
+  --vv-height: 100vh;
+  --vv-width: 100vw;
+  --vv-offset-top: 0px;
+  --keyboard-height: 0px;
+  --viewport-available-height: 100vh;
+
+  /* Combined: available height minus safe areas */
+  /* Used by Screen component for layout */
+  --screen-height: calc(var(--viewport-available-height) - var(--sat) - var(--sab));
 }
 
 body {
@@ -37,12 +47,15 @@ body {
   position: fixed;
   width: 100%;
   height: 100%;
+
   /* Prevent iOS bounce */
   overscroll-behavior: none;
   -webkit-overflow-scrolling: auto;
+
   /* Prevent text selection (native app feel) */
   -webkit-user-select: none;
   user-select: none;
+
   /* Prevent callout menu on long press */
   -webkit-touch-callout: none;
 }
@@ -53,13 +66,15 @@ body {
   overflow: hidden;
 }
 
-/* Scrollable containers — native momentum scroll */
+/* ============================================
+   Scrollable containers — native momentum scroll
+   ============================================ */
 .scrollable {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-  /* Hide scrollbar on iOS */
+  /* Hide scrollbar */
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -67,7 +82,9 @@ body {
   display: none;
 }
 
-/* Safe area padding helpers */
+/* ============================================
+   Safe area padding helpers
+   ============================================ */
 .safe-top {
   padding-top: var(--sat);
 }
@@ -81,12 +98,22 @@ body {
   padding-right: var(--sar);
 }
 
-/* Dynamic height using dvh (falls back to vh) */
-.h-screen-safe {
-  height: calc(100 * var(--dvh, 1vh));
+/* ============================================
+   Dynamic viewport height
+   Uses --viewport-available-height from JS hook
+   Falls back to 100dvh for browsers that support it
+   ============================================ */
+.h-viewport {
+  height: var(--viewport-available-height, 100dvh);
 }
 
-/* Input styles — prevent iOS zoom on focus */
+.h-screen {
+  height: var(--screen-height, 100dvh);
+}
+
+/* ============================================
+   Input styles — prevent iOS zoom on focus
+   ============================================ */
 input,
 textarea,
 select {
@@ -98,7 +125,7 @@ select {
   border-radius: 0;
 }
 
-/* Prevent iOS zoom on input focus */
+/* Prevent iOS zoom on input focus — double safeguard */
 @supports (-webkit-touch-callout: none) {
   input:focus,
   textarea:focus {
@@ -106,7 +133,11 @@ select {
   }
 }
 
-/* Smooth transitions for screen changes */
+/* ============================================
+   Animations
+   ============================================ */
+
+/* Screen transitions */
 .screen-enter {
   animation: slideInFromRight 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
 }
@@ -115,33 +146,19 @@ select {
 }
 
 @keyframes slideInFromRight {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
 }
 
 @keyframes slideOutToLeft {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-30%);
-  }
+  from { transform: translateX(0); }
+  to   { transform: translateX(-30%); }
 }
 
-/* Typing indicator dots animation */
+/* Typing indicator dots */
 @keyframes typingDot {
-  0%, 60%, 100% {
-    transform: translateY(0);
-    opacity: 0.4;
-  }
-  30% {
-    transform: translateY(-4px);
-    opacity: 1;
-  }
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%           { transform: translateY(-4px); opacity: 1; }
 }
 .typing-dot-1 { animation: typingDot 1.4s infinite 0s; }
 .typing-dot-2 { animation: typingDot 1.4s infinite 0.2s; }
@@ -149,14 +166,8 @@ select {
 
 /* Message bubble appear */
 @keyframes messageAppear {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .message-appear {
   animation: messageAppear 0.2s ease-out both;
