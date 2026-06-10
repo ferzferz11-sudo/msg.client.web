@@ -6,131 +6,128 @@
 
 ---
 
+## iOS Safari
+
+### Клавиатура перекрывает input
+
+**Проблема:** на iOS при открытии клавиатуры `window.innerHeight` не меняется, но `visualViewport.height` уменьшается.
+
+**Решение:** `useIOSKeyboard` hook использует `window.visualViewport` API. CSS переменная `--keyboard-height` обновляется автоматически.
+
+**Pitfall:** `visualViewport` не поддерживается в Safari < 13. Graceful degradation — используем `window.innerHeight` как fallback.
+
+### Зум на input focus
+
+**Проблема:** Safari зумит страницу если `font-size < 16px` на input.
+
+**Решение:** `font-size: 16px !important` на всех input/textarea/select. Двойная страховка через `@supports (-webkit-touch-callout: none)`.
+
+### Bounce scroll
+
+**Проблема:** при скролле за пределы контента — "отскок" (bounce). Выглядит не как нативное приложение.
+
+**Решение:** `overflow: hidden; position: fixed` на html и body. `overscroll-behavior: none`.
+
+**Pitfall:** внутри `.scrollable` контейнеров bounce разрешён через `-webkit-overflow-scrolling: touch`.
+
+### Background streams убивают батарею
+
+**Проблема:** когда Safari в бэкграунде, gRPC стримы продолжают работать.
+
+**Решение:** `useGrpcStream` слушает `visibilitychange`, `pagehide`, `pageshow`. При уходе в бэкграунд — `AbortController.abort()`.
+
+**Pitfall:** `setTimeout` в бэкграунде замедляется iOS. Нельзя полагаться на таймеры для критичной логики.
+
+### 300ms delay на tap
+
+**Проблема:** на старых iOS был 300ms delay перед click для определения double-tap.
+
+**Решение:** `width=device-width` в viewport meta убирает этот delay. Актуально для iOS < 13.
+
+---
+
 ## gRPC и сеть
 
 ### grpc-web ограничения
-- grpc-web НЕ поддерживает bidirectional streaming в браузере (только server streaming)
-- Для `SubscribeChat` (server streaming) — работает
-- Для bidirectional — нужен WebSocket fallback или Envoy proxy
-- **Решение:** использовать grpc-web с Envoy proxy для unary + server streaming
+
+**Проблема:** grpc-web НЕ поддерживает bidirectional streaming в браузере.
+
+**Решение:** используем server streaming + unary calls. Для bidirectional нужен WebSocket fallback.
 
 ### CORS
-- Сервер Lavender не настроен для CORS из коробки
-- **Нужно:** добавить CORS headers на сервере или использовать reverse proxy (Nginx)
 
-### Credentials в браузере
-- Нельзя хранить секреты в браузере надёжно
-- localStorage доступен любому JS на странице (XSS)
-- **Решение:** использовать HttpOnly cookies для токенов, localStorage только для нечувствительных данных
-- Ключ шифрования E2EE — в памяти, не сохранять
+**Проблема:** сервер Lavender не настроен для CORS из коробки.
 
----
-
-## Аутентификация
-
-### Нет Firebase Auth
-- Android использует свою систему (credential store)
-- Веб-клиент должен реализовать аналогичную систему
-- Серверный адрес + ключ → localStorage
-
-### Сессии
-- Нет аналога Android SessionManager
-- **Решение:** JWT токен или долгоживущий credential в HttpOnly cookie
-
----
-
-## E2EE
-
-### WebCrypto API
-- ECDH (secp256r1) — поддерживается в WebCrypto
-- AES-256-GCM — поддерживается
-- **НО:** ключи нужно хранить в памяти, не в localStorage
-- При закрытии вкладки — ключи теряются (нужна пере-аутентификация)
-
-### Protobuf в браузере
-- protobuf-js или google-protobuf для JS
-- Типы генерируются из .proto файлов
-- **Pitfall:** номера полей proto должны совпадать с сервером
-- Никогда не менять номера полей — ломает обратную совместимость
-
----
-
-## Производительность
-
-### Virtual scrolling
-- Список чатов и сообщений может быть большим
-- **Нужно:** виртуализация списков (react-window / vue-virtual-scroller)
-- Без виртуализации — лаг при 1000+ элементах
-
-### Streaming AI ответов
-- grpc-web server streaming работает через HTTP/1.1 chunked encoding
-- **Pitfall:** некоторые прокси/балансировщики буферизируют chunked responses
-- **Решение:** Nginx с `proxy_buffering off` для streaming endpoints
-
-### Re-renders
-- React: избегать лишних re-renders при стриминге (каждый чанк = обновление state)
-- **Решение:** debounce UI updates или batch updates
-
----
-
-## Безопасность
-
-### XSS
-- Сообщения от пользователей — всегда экранировать
-- React экранирует по умолчанию, но `dangerouslySetInnerHTML` — никогда для user content
-- Markdown в AI ответах — использовать sanitized markdown renderer
-
-### CSRF
-- gRPC через grpc-web — каждый запрос должен включать credential
-- **Решение:** CSRF token или SameSite cookies
-
-### Content Security Policy
-- Нужно настроить CSP headers
-- Запрет inline scripts, eval, etc.
-
----
-
-## Совместимость с сервером
+**Решение:** Nginx reverse proxy с CORS headers или Envoy proxy с `cors` filter.
 
 ### Proto field numbers
-- **КРИТИЧНО:** номера полей proto на клиенте должны совпадать с сервером
-- Сервер: `/root/msg/messenger.proto`
-- При изменении proto на сервере — нужно перегенерировать клиентские типы
 
-### Deprecated RPC
-- `ChatWithOWL`, `ChatWithOrchestrator` — deprecated, но работают
-- Веб-клиент должен использовать `ChatWithAI` (единый RPC)
-- Старые RPC могут быть удалены в будущих версиях
+**Проблема:** номера полей proto на клиенте должны совпадать с сервером.
 
-### Rate limiting
-- Сервер считает запросы по user_id
-- Веб-клиент должен показывать remaining/limit пользователю
-- При исчерпании — блокировать отправку с сообщением
+**Решение:** использовать один `.proto` файл для генерации клиентского и серверного кода.
+
+**Pitfall:** никогда не менять номера полей — ломает обратную совместимость.
 
 ---
 
-## Темы и стили
+## React и State
 
-### CSS переменные
-- Использовать CSS custom properties для тем
-- Переключение темы = смена набора переменных
-- **Pitflash:** `color-scheme` влияет на нативные элементы (scrollbars, inputs)
+### Лишние re-renders при стриминге
 
-### Material Design 3
-- Material Web Components (MWC) — могут быть тяжёлыми
-- Альтернатива: собственная реализация на CSS + минимальный JS
-- **Решение:** начать с простых компонентов, при необходимости — MWC
+**Проблема:** каждый чанк AI ответа = обновление state = re-render.
+
+**Решение:** Zustand store обновляется по сообщениям (не по чанкам). Debounce UI updates если нужно.
+
+### Гонка данных при быстром переключении чатов
+
+**Проблема:** при быстром переключении чатов, ответ от старого чата может прийти после открытия нового.
+
+**Решение:** `chatIdRef` в `useChatMessages` — проверка актуальности перед обновлением store.
+
+### Normalized store — ручная синхронизация
+
+**Проблема:** при нормализованном store нужно вручную синхронизировать `messages` и `chatMessages`.
+
+**Решение:** все обновления через store actions (`addMessage`, `setMessages`), никогда напрямую.
 
 ---
 
 ## Сборка и деплой
 
-### Vite
-- Dev server с HMR для быстрой разработки
-- Production build — статические файлы
-- **Деплой:** скопировать dist/ на сервер в /var/www/ или аналогичный путь
+### Vite + Node.js версия
+
+**Проблема:** Vite 5.4+ требует Node.js 18+. На сервере Node 22 — OK.
+
+**Pitfall:** `@vitejs/plugin-react` может конфликтовать с версией Vite. Использовать совместимые версии.
 
 ### Environment variables
-- Vite использует `import.meta.env.VITE_*` для env vars
-- НЕ хранить секреты в env vars — они попадают в бандл
-- Серверный адрес — через env var (меняется при деплое)
+
+**Проблема:** Vite использует `import.meta.env.VITE_*` — значения попадают в бандл.
+
+**Решение:** НЕ хранить секреты в env vars. Серверный адрес — через env var (меняется при деплое).
+
+### Path aliases
+
+**Проблема:** `@/` работает в Vite, но TypeScript не резолвит без `tsconfig.json` paths.
+
+**Решение:** дублировать paths в `tsconfig.json` и `vite.config.ts`.
+
+---
+
+## Безопасность
+
+### XSS через сообщения
+
+**Проблема:** React экранирует по умолчанию, но `dangerouslySetInnerHTML` — опасен.
+
+**Решение:** никогда не использовать `dangerouslySetInnerHTML` для user content. Markdown в AI ответах — через sanitized renderer.
+
+### Credentials в браузере
+
+**Проблема:** localStorage доступен любому JS на странице (XSS).
+
+**Решение:** ключ шифрования E2EE — только в памяти, не сохранять. Credentials — в HttpOnly cookies.
+
+### Content Security Policy
+
+**Нужно:** настроить CSP headers. Запрет inline scripts, eval, etc.

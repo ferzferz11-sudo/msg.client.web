@@ -3,6 +3,7 @@
 Документация по интеграции веб-клиента с сервером Lavender Messenger.
 
 **Дата:** 2026-06-10
+**Статус:** mock-реализация, интеграция в планах
 
 ---
 
@@ -24,40 +25,28 @@
 
 | RPC | Тип | Описание |
 |-----|-----|----------|
-| `GetChats` | Unary | Список чатов пользователя (обычные + AI) |
+| `GetChats` | Unary | Список чатов (обычные + AI) |
 | `SendMessage` | Unary | Отправка сообщения |
-| `GetMessages` | Unary | История сообщений чата |
+| `GetMessages` | Unary | История сообщений |
 | `CreateChat` | Unary | Создание чата |
-| `DeleteChat` | Unary | Удаление чата (с каскадом) |
-| `SubscribeChat` | Server streaming | Real-time подписка на сообщения |
+| `DeleteChat` | Unary | Удаление (с каскадом) |
+| `SubscribeChat` | Server streaming | Real-time подписка |
 
 ### AI Chat (единый, v1.1.2.3+)
 
 | RPC | Тип | Описание |
 |-----|-----|----------|
-| `ChatWithAI` | Server streaming | Стриминг AI ответа (OWL или Hermes) |
+| `ChatWithAI` | Server streaming | Стриминг AI ответа |
 | `GetAIChatHistory` | Unary | История AI чата |
-| `GetAIChatSettings` | Unary | Настройки (API key, model) |
+| `GetAIChatSettings` | Unary | Настройки (API key, model, rate limit) |
 | `UpdateAIChatSettings` | Unary | Сохранение настроек |
 
-### AI Chat (deprecated, работает)
+### AI Chat (deprecated)
 
 | RPC | Тип | Описание |
 |-----|-----|----------|
-| `ChatWithOWL` | Server streaming | OWL AI стриминг |
-| `ChatWithOrchestrator` | Server streaming | Hermes оркестратор |
-| `GetOwlHistory` | Unary | История OWL |
-| `GetOrchestratorHistory` | Unary | История Hermes |
-
-### Hermes Orchestrator
-
-| RPC | Тип | Описание |
-|-----|-----|----------|
-| `ListAgents` | Unary | Список агентов |
-| `ListAgentPresets` | Unary | Пресеты агентов |
-| `CreateAgent` | Unary | Создание агента |
-| `UpdateAgent` | Unary | Обновление агента |
-| `DeleteAgent` | Unary | Удаление агента |
+| `ChatWithOWL` | Server streaming | OWL AI (deprecated) |
+| `ChatWithOrchestrator` | Server streaming | Hermes (deprecated) |
 
 ---
 
@@ -65,28 +54,29 @@
 
 ### ChatInfo
 ```
-id              string  // уникальный ID
-name            string  // имя чата
-type            string  // 'regular' | 'owl' | 'hermes'
-creator_id      string  // UUID создателя
-participants    string  // JSON массив UUID
+id              string
+name            string
+type            'regular' | 'owl' | 'hermes'
+creator_id      string        // UUID
+participants    string        // JSON массив UUID
 last_message_text   string
 last_message_time   timestamp
 ```
 
-### AIChatRequest
+### AIChatRequest / AIChatResponse
 ```
-user_id     string  // UUID пользователя
-session_id  string  // пусто = новый чат
-message     string  // текст сообщения
-agent_id    string  // опционально: конкретный агент
-```
+AIChatRequest {
+  user_id     string
+  session_id  string   // пусто = новый чат
+  message     string
+  agent_id    string   // опционально
+}
 
-### AIChatResponse
-```
-token       string  // чанк ответа
-finished    bool    // конец стрима
-error       string  // ошибка (если есть)
+AIChatResponse {
+  token       string   // чанк ответа
+  finished    bool
+  error       string
+}
 ```
 
 ---
@@ -94,61 +84,31 @@ error       string  // ошибка (если есть)
 ## Аутентификация
 
 Клиент использует существующую систему Lavender:
-- При первом входе: ввод адреса сервера + ключа
-- CredentialStore → в браузере: localStorage или IndexedDB
+- При первом входе: адрес сервера + ключ
+- CredentialStore → localStorage/IndexedDB
 - Каждый gRPC запрос включает credentials
-
----
-
-## WebSocket / Real-time
-
-Для real-time сообщений сервер поддерживает:
-- `SubscribeChat` — server-side streaming через gRPC
-- Альтернатива: WebSocket endpoint на HTTP порте
-
-Для веб-клиента через grpc-web:
-- Unary calls работают напрямую
-- Server streaming через grpc-web streaming (поддерживается)
 
 ---
 
 ## Структура таблиц БД (справочно)
 
 ### chats
-Единая таблица для всех чатов:
 - `id` — уникальный (`owl-<uuid>`, `hermes-<uuid>`, `<uuid>`)
 - `type` — `'regular'`, `'owl'`, `'hermes'`
 - `creator_id` — UUID владельца
 - `participants` — JSON массив UUID
 
-### ai_chat_sessions
-Единая таблица AI сессий (v1.1.2.3+):
+### ai_chat_sessions (v1.1.2.3+)
 - `id` → `chats.id` (FK, CASCADE)
-- `user_id` — UUID владельца
-- `agent_type` — `'owl'` | `'hermes'`
-- `model`, `system_prompt`, `active_agent_id`, `agent_mode`
+- `user_id`, `agent_type`, `model`, `system_prompt`, `active_agent_id`, `agent_mode`
 
 ### ai_chat_messages
-Единая таблица AI сообщений:
 - `session_id` → `ai_chat_sessions.id` (FK, CASCADE)
-- `role` — `'user'`, `'assistant'`, `'system'`, `'agent'`
-- `content`, `agent_id`
+- `role`, `content`, `agent_id`
 
 ### ai_chat_settings
-Per-chat настройки:
 - `session_id` → `ai_chat_sessions.id` (FK, CASCADE)
 - `user_api_key`, `model_override`
-
----
-
-## Proto файлы
-
-Серверные proto: `/root/msg/messenger.proto`
-Сгенерированные Go: `/root/msg/gen/`
-
-Для веб-клиента нужно:
-1. Скопировать `messenger.proto`
-2. Сгенерировать TypeScript типы через `protoc-gen-grpc-web`
 
 ---
 
@@ -165,3 +125,13 @@ Per-chat настройки:
 1. **Hermes история** — после v1.1.2.3 использует `ai_chat_messages`, старые таблицы дропнуты
 2. **Rate limiter** — cancel() при ошибках добавлен в v1.1.2.4
 3. **DeleteChat** — каскадное удаление AI данных работает с v1.1.2.2
+
+---
+
+## Production интеграция (план)
+
+1. Скопировать `messenger.proto` в `src/proto/`
+2. Генерация TS: `protoc --grpc-web_out=... messenger.proto`
+3. Заменить mock `grpcClient` на реальный grpc-web клиент
+4. Настроить Envoy proxy для grpc-web → gRPC
+5. Настроить CORS на сервере
