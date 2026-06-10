@@ -1,0 +1,163 @@
+/* ============================================
+   Lavender Messenger — Global iOS Styles
+   ============================================ */
+
+/* CSS Reset + iOS specifics */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  /* Prevent bounce scroll on body (iOS) */
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  /* iOS safe area CSS variables */
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  /* Dynamic viewport height — updates when iOS keyboard opens */
+  --vh: 1vh;
+  --dvh: 1dvh;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
+    'Helvetica Neue', Arial, sans-serif;
+  background: #1a1a2e;
+  color: #ffffff;
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  /* Prevent iOS bounce */
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
+  /* Prevent text selection (native app feel) */
+  -webkit-user-select: none;
+  user-select: none;
+  /* Prevent callout menu on long press */
+  -webkit-touch-callout: none;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Scrollable containers — native momentum scroll */
+.scrollable {
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  /* Hide scrollbar on iOS */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollable::-webkit-scrollbar {
+  display: none;
+}
+
+/* Safe area padding helpers */
+.safe-top {
+  padding-top: var(--sat);
+}
+.safe-bottom {
+  padding-bottom: var(--sab);
+}
+.safe-left {
+  padding-left: var(--sal);
+}
+.safe-right {
+  padding-right: var(--sar);
+}
+
+/* Dynamic height using dvh (falls back to vh) */
+.h-screen-safe {
+  height: calc(100 * var(--dvh, 1vh));
+}
+
+/* Input styles — prevent iOS zoom on focus */
+input,
+textarea,
+select {
+  font-size: 16px !important; /* Prevents iOS zoom */
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0;
+}
+
+/* Prevent iOS zoom on input focus */
+@supports (-webkit-touch-callout: none) {
+  input:focus,
+  textarea:focus {
+    font-size: 16px !important;
+  }
+}
+
+/* Smooth transitions for screen changes */
+.screen-enter {
+  animation: slideInFromRight 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+.screen-exit {
+  animation: slideOutToLeft 0.2s cubic-bezier(0.55, 0.085, 0.68, 0.53) both;
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutToLeft {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-30%);
+  }
+}
+
+/* Typing indicator dots animation */
+@keyframes typingDot {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+.typing-dot-1 { animation: typingDot 1.4s infinite 0s; }
+.typing-dot-2 { animation: typingDot 1.4s infinite 0.2s; }
+.typing-dot-3 { animation: typingDot 1.4s infinite 0.4s; }
+
+/* Message bubble appear */
+@keyframes messageAppear {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.message-appear {
+  animation: messageAppear 0.2s ease-out both;
+}
