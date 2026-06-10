@@ -3,6 +3,7 @@
 // ============================================
 
 import type { Chat } from '@/shared/types'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 interface ChatListProps {
   chats: Chat[]
@@ -28,28 +29,18 @@ function formatTime(dateStr: string): string {
 
 function getChatIcon(type: Chat['type']): string {
   switch (type) {
-    case 'owl':
-      return '🦉'
-    case 'hermes':
-      return '🤖'
-    default:
-      return ''
+    case 'owl': return '🦉'
+    case 'hermes': return '🤖'
+    default: return ''
   }
 }
 
 export function ChatList({ chats, isLoading, onChatClick }: ChatListProps) {
+  const { showBanner, isSubscribing, subscribeUser, dismissBanner } = usePushNotifications()
+
   if (isLoading) {
     return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          height: '100%',
-          color: '#888',
-          fontSize: 14,
-        }}
-      >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#888', fontSize: 14 }}>
         Загрузка...
       </div>
     )
@@ -57,13 +48,120 @@ export function ChatList({ chats, isLoading, onChatClick }: ChatListProps) {
 
   return (
     <div className="scrollable" style={{ height: '100%' }}>
-      {chats.map((chat) => (
-        <ChatListItem
-          key={chat.id}
-          chat={chat}
-          onChatClick={onChatClick}
+      {/* Push notification enable banner */}
+      {showBanner && (
+        <PushNotificationBanner
+          isSubscribing={isSubscribing}
+          onEnable={subscribeUser}
+          onDismiss={dismissBanner}
         />
+      )}
+
+      {chats.map((chat) => (
+        <ChatListItem key={chat.id} chat={chat} onChatClick={onChatClick} />
       ))}
+    </div>
+  )
+}
+
+// --- Push Notification Banner ---
+
+interface PushNotificationBannerProps {
+  isSubscribing: boolean
+  onEnable: () => Promise<boolean>
+  onDismiss: () => void
+}
+
+function PushNotificationBanner({ isSubscribing, onEnable, onDismiss }: PushNotificationBannerProps) {
+  return (
+    <div
+      style={{
+        margin: '12px 16px',
+        padding: '14px 16px',
+        background: 'linear-gradient(135deg, rgba(107, 92, 231, 0.15), rgba(139, 124, 247, 0.1))',
+        borderRadius: 14,
+        border: '1px solid rgba(107, 92, 231, 0.3)',
+        backdropFilter: 'blur(10px)',
+      }}
+    >
+      {/* Icon + Title row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            background: 'linear-gradient(135deg, #6b5ce7, #8b7cf7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 18,
+            flexShrink: 0,
+          }}
+        >
+          🔔
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', lineHeight: 1.2 }}>
+            Уведомления
+          </div>
+          <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
+            Не пропустите новые сообщения
+          </div>
+        </div>
+      </div>
+
+      {/* Description */}
+      <p style={{
+        fontSize: 13,
+        color: 'rgba(255,255,255,0.65)',
+        lineHeight: 1.4,
+        marginBottom: 12,
+        marginLeft: 46,
+      }}>
+        Включите уведомления, чтобы получать мгновенные оповещения о новых сообщениях даже когда приложение закрыто.
+      </p>
+
+      {/* Action buttons */}
+      <div style={{ display: 'flex', gap: 8, marginLeft: 46 }}>
+        <button
+          onClick={onEnable}
+          disabled={isSubscribing}
+          style={{
+            flex: 1,
+            height: 36,
+            borderRadius: 10,
+            background: isSubscribing ? 'rgba(107, 92, 231, 0.5)' : 'linear-gradient(135deg, #6b5ce7, #8b7cf7)',
+            border: 'none',
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: isSubscribing ? 'default' : 'pointer',
+            opacity: isSubscribing ? 0.7 : 1,
+            transition: 'opacity 0.15s',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          {isSubscribing ? 'Подключение...' : 'Включить'}
+        </button>
+        <button
+          onClick={onDismiss}
+          style={{
+            height: 36,
+            padding: '0 14px',
+            borderRadius: 10,
+            background: 'rgba(255,255,255,0.08)',
+            border: 'none',
+            color: 'rgba(255,255,255,0.5)',
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          Позже
+        </button>
+      </div>
     </div>
   )
 }
@@ -122,71 +220,24 @@ function ChatListItem({ chat, onChatClick }: ChatListItemProps) {
 
       {/* Content */}
       <div style={{ flex: 1, marginLeft: 12, minWidth: 0 }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 4,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 16,
-              fontWeight: 600,
-              color: '#fff',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <span style={{ fontSize: 16, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {chat.name}
           </span>
-          <span
-            style={{
-              fontSize: 12,
-              color: chat.unreadCount > 0 ? '#6b5ce7' : '#888',
-              flexShrink: 0,
-              marginLeft: 8,
-            }}
-          >
+          <span style={{ fontSize: 12, color: chat.unreadCount > 0 ? '#6b5ce7' : '#888', flexShrink: 0, marginLeft: 8 }}>
             {formatTime(chat.lastMessageTime)}
           </span>
         </div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <span
-            style={{
-              fontSize: 14,
-              color: '#888',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              flex: 1,
-            }}
-          >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 14, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
             {chat.lastMessageText || 'Нет сообщений'}
           </span>
           {chat.unreadCount > 0 && (
-            <span
-              style={{
-                background: '#6b5ce7',
-                color: '#fff',
-                fontSize: 11,
-                fontWeight: 700,
-                borderRadius: 10,
-                padding: '2px 7px',
-                minWidth: 20,
-                textAlign: 'center',
-                flexShrink: 0,
-                marginLeft: 8,
-              }}
-            >
+            <span style={{
+              background: '#6b5ce7', color: '#fff', fontSize: 11, fontWeight: 700,
+              borderRadius: 10, padding: '2px 7px', minWidth: 20, textAlign: 'center',
+              flexShrink: 0, marginLeft: 8,
+            }}>
               {chat.unreadCount}
             </span>
           )}

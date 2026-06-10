@@ -26,7 +26,6 @@ class GrpcClient {
   }
 
   connect(_address: string): Promise<void> {
-    // address stored for reconnection; mock ignores it
     this.connected = true
     this.startMockIncomingMessages()
     return Promise.resolve()
@@ -35,7 +34,6 @@ class GrpcClient {
   disconnect(): void {
     this.connected = false
     this.stopMockIncomingMessages()
-    // Close all active streams
     this.activeStreams.forEach((controller) => controller.abort())
     this.activeStreams.clear()
   }
@@ -47,7 +45,6 @@ class GrpcClient {
   // --- Unary calls ---
 
   async getChats(userId: string): Promise<Chat[]> {
-    // Mock: return sample chats
     return getMockChats(userId)
   }
 
@@ -56,7 +53,7 @@ class GrpcClient {
   }
 
   async sendMessage(chatId: string, content: string, senderId: string): Promise<Message> {
-    const msg: Message = {
+    return {
       id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       chatId,
       senderId,
@@ -66,7 +63,6 @@ class GrpcClient {
       isOutgoing: true,
       isRead: false,
     }
-    return msg
   }
 
   async createChat(participants: string[], name?: string, type: Chat['type'] = 'regular'): Promise<Chat> {
@@ -82,16 +78,10 @@ class GrpcClient {
     }
   }
 
-  /**
-   * Get messages that arrived after `since` timestamp.
-   * Used when reconnecting from background to catch up on missed messages.
-   */
   async getMissingMessages(chatId: string, since: string): Promise<Message[]> {
-    // Mock: return 0-2 random messages with timestamps after `since`
     const sinceTime = new Date(since).getTime()
     const now = Date.now()
-    const count = Math.floor(Math.random() * 3) // 0, 1, or 2 missed messages
-
+    const count = Math.floor(Math.random() * 3)
     const messages: Message[] = []
     for (let i = 0; i < count; i++) {
       const msgTime = sinceTime + Math.random() * (now - sinceTime)
@@ -106,8 +96,21 @@ class GrpcClient {
         isRead: false,
       })
     }
-
     return messages
+  }
+
+  async registerPushToken(params: {
+    endpoint: string
+    p256dh: string
+    auth: string
+    platform: string
+    userAgent: string
+  }): Promise<{ success: boolean }> {
+    console.log('[Mock] registerPushToken:', {
+      endpoint: params.endpoint.slice(0, 50) + '...',
+      platform: params.platform,
+    })
+    return { success: true }
   }
 
   // --- Server-Side Streaming ---
@@ -116,44 +119,37 @@ class GrpcClient {
     const streamId = `stream-${chatId}-${Date.now()}`
     const controller = new AbortController()
     this.activeStreams.set(streamId, controller)
-
     const signal = controller.signal
 
-    // Simulate incoming messages every 15-30 seconds
     const scheduleNext = () => {
       if (signal.aborted) return
-
       const delay = 15000 + Math.random() * 15000
       const timeoutId = setTimeout(() => {
         if (signal.aborted) return
-
-        const mockMsg: Message = {
-          id: `msg-incoming-${Date.now()}`,
-          chatId,
-          senderId: 'other-user',
-          senderName: getChatSenderName(chatId),
-          content: getRandomIncomingMessage(),
-          createdAt: new Date().toISOString(),
-          isOutgoing: false,
-          isRead: false,
-        }
-
-        callback({ type: 'message', message: mockMsg })
+        callback({
+          type: 'message',
+          message: {
+            id: `msg-incoming-${Date.now()}`,
+            chatId,
+            senderId: 'other-user',
+            senderName: getChatSenderName(chatId),
+            content: getRandomIncomingMessage(),
+            createdAt: new Date().toISOString(),
+            isOutgoing: false,
+            isRead: false,
+          },
+        })
         scheduleNext()
       }, delay)
-
-      // Store timeout ID for cleanup
       signal.addEventListener('abort', () => clearTimeout(timeoutId), { once: true })
     }
 
-    // Start after 3 seconds
     const initialTimeout = setTimeout(() => {
       if (signal.aborted) return
       scheduleNext()
     }, 3000)
     signal.addEventListener('abort', () => clearTimeout(initialTimeout), { once: true })
 
-    // Return cleanup function
     return () => {
       controller.abort()
       this.activeStreams.delete(streamId)
@@ -164,10 +160,8 @@ class GrpcClient {
     const streamId = `stream-all-${Date.now()}`
     const controller = new AbortController()
     this.activeStreams.set(streamId, controller)
-
     const signal = controller.signal
 
-    // Simulate presence updates
     const presenceInterval = setInterval(() => {
       if (signal.aborted) return
       callback({
@@ -176,7 +170,6 @@ class GrpcClient {
         isOnline: Math.random() > 0.3,
       })
     }, 20000)
-
     signal.addEventListener('abort', () => clearInterval(presenceInterval), { once: true })
 
     return () => {
@@ -188,9 +181,8 @@ class GrpcClient {
   // --- Mock helpers ---
 
   private startMockIncomingMessages(): void {
-    // Global mock: simulate typing indicators
     this.mockInterval = setInterval(() => {
-      // This would be handled by streamAllMessages in real usage
+      // Global mock: simulate typing indicators
     }, 10000)
   }
 
@@ -253,107 +245,60 @@ const MOCK_CHATS: Record<string, Chat> = {
 const MOCK_MESSAGES: Record<string, Message[]> = {
   'chat-1': [
     {
-      id: 'm1',
-      chatId: 'chat-1',
-      senderId: 'user-2',
-      senderName: 'Алексей',
-      content: 'Привет! Как дела?',
-      createdAt: new Date(Date.now() - 120000).toISOString(),
-      isOutgoing: false,
-      isRead: true,
+      id: 'm1', chatId: 'chat-1', senderId: 'user-2', senderName: 'Алексей',
+      content: 'Привет! Как дела?', createdAt: new Date(Date.now() - 120000).toISOString(),
+      isOutgoing: false, isRead: true,
     },
     {
-      id: 'm2',
-      chatId: 'chat-1',
-      senderId: 'user-1',
-      senderName: 'You',
-      content: 'Привет! Всё отлично, спасибо!',
-      createdAt: new Date(Date.now() - 90000).toISOString(),
-      isOutgoing: true,
-      isRead: true,
+      id: 'm2', chatId: 'chat-1', senderId: 'user-1', senderName: 'You',
+      content: 'Привет! Всё отлично, спасибо!', createdAt: new Date(Date.now() - 90000).toISOString(),
+      isOutgoing: true, isRead: true,
     },
     {
-      id: 'm3',
-      chatId: 'chat-1',
-      senderId: 'user-2',
-      senderName: 'Алексей',
-      content: 'Отлично! Могу ли я задать вопрос по проекту?',
-      createdAt: new Date(Date.now() - 60000).toISOString(),
-      isOutgoing: false,
-      isRead: false,
+      id: 'm3', chatId: 'chat-1', senderId: 'user-2', senderName: 'Алексей',
+      content: 'Отлично! Могу ли я задать вопрос по проекту?', createdAt: new Date(Date.now() - 60000).toISOString(),
+      isOutgoing: false, isRead: false,
     },
   ],
   'chat-2': [
     {
-      id: 'm4',
-      chatId: 'chat-2',
-      senderId: 'user-3',
-      senderName: 'Мария',
-      content: 'Отправил отчёт',
-      createdAt: new Date(Date.now() - 3600000).toISOString(),
-      isOutgoing: false,
-      isRead: true,
+      id: 'm4', chatId: 'chat-2', senderId: 'user-3', senderName: 'Мария',
+      content: 'Отправил отчёт', createdAt: new Date(Date.now() - 3600000).toISOString(),
+      isOutgoing: false, isRead: true,
     },
   ],
   'chat-3': [
     {
-      id: 'm5',
-      chatId: 'chat-3',
-      senderId: 'user-1',
-      senderName: 'You',
-      content: 'Привет, OWL! Расскажи о себе',
-      createdAt: new Date(Date.now() - 7200000).toISOString(),
-      isOutgoing: true,
-      isRead: true,
+      id: 'm5', chatId: 'chat-3', senderId: 'user-1', senderName: 'You',
+      content: 'Привет, OWL! Расскажи о себе', createdAt: new Date(Date.now() - 7200000).toISOString(),
+      isOutgoing: true, isRead: true,
     },
     {
-      id: 'm6',
-      chatId: 'chat-3',
-      senderId: 'owl-ai',
-      senderName: 'OWL AI',
-      content: 'Конечно, помогу! Я — AI-ассистент Lavender. Могу отвечать на вопросы, помогать с кодом и многое другое.',
+      id: 'm6', chatId: 'chat-3', senderId: 'owl-ai', senderName: 'OWL AI',
+      content: 'Конечно, помогу! Я — AI-ассистент Lavender.',
       createdAt: new Date(Date.now() - 7199000).toISOString(),
-      isOutgoing: false,
-      isRead: true,
-      agentId: 'owl-ai',
+      isOutgoing: false, isRead: true, agentId: 'owl-ai',
     },
   ],
   'chat-4': [
     {
-      id: 'm7',
-      chatId: 'chat-4',
-      senderId: 'user-1',
-      senderName: 'You',
-      content: 'Проверь код на ошибки',
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-      isOutgoing: true,
-      isRead: true,
+      id: 'm7', chatId: 'chat-4', senderId: 'user-1', senderName: 'You',
+      content: 'Проверь код на ошибки', createdAt: new Date(Date.now() - 86400000).toISOString(),
+      isOutgoing: true, isRead: true,
     },
     {
-      id: 'm8',
-      chatId: 'chat-4',
-      senderId: 'hermes-dev',
-      senderName: 'Hermes Developer',
+      id: 'm8', chatId: 'chat-4', senderId: 'hermes-dev', senderName: 'Hermes Developer',
       content: 'Задача выполнена. Проверил код — ошибок не найдено.',
       createdAt: new Date(Date.now() - 86399000).toISOString(),
-      isOutgoing: false,
-      isRead: false,
-      agentId: 'hermes-developer',
+      isOutgoing: false, isRead: false, agentId: 'hermes-developer',
     },
   ],
 }
 
 const INCOMING_MESSAGES = [
-  'Хорошо, понял!',
-  'Интересно, расскажи подробнее',
-  'Согласен',
-  'Давай обсудим завтра',
-  'Отличная идея! 👍',
-  'Сейчас посмотрю',
-  'Готово!',
-  'Нужно подумать...',
-  'Можешь скинуть файл?',
-  'Ок, сделаю',
+  'Хорошо, понял!', 'Интересно, расскажи подробнее', 'Согласен',
+  'Давай обсудим завтра', 'Отличная идея! 👍', 'Сейчас посмотрю',
+  'Готово!', 'Нужно подумать...', 'Можешь скинуть файл?', 'Ок, сделаю',
 ]
 
 function getMockChats(_userId: string): Chat[] {
@@ -361,19 +306,16 @@ function getMockChats(_userId: string): Chat[] {
 }
 
 function getMockMessages(chatId: string, limit: number): Message[] {
-  const messages = MOCK_MESSAGES[chatId] || []
-  return messages.slice(-limit)
+  return (MOCK_MESSAGES[chatId] || []).slice(-limit)
 }
 
 function getChatSenderName(chatId: string): string {
-  const chat = MOCK_CHATS[chatId]
-  return chat?.name || 'Unknown'
+  return MOCK_CHATS[chatId]?.name || 'Unknown'
 }
 
 function getRandomIncomingMessage(): string {
   return INCOMING_MESSAGES[Math.floor(Math.random() * INCOMING_MESSAGES.length)]
 }
 
-// Export singleton
 export const grpcClient = GrpcClient.getInstance()
 export default grpcClient
