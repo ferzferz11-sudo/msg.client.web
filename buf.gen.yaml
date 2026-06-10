@@ -1,0 +1,31 @@
+# ============================================
+# Buf — Protobuf code generation config
+# ============================================
+# Generates TypeScript + grpc-web code from .proto files
+#
+# Prerequisites:
+#   - buf CLI: https://buf.build/docs/installation
+#   - protoc-gen-es: npm install -D @bufbuild/protoc-gen-es
+#   - protoc-gen-connect-es: npm install -D @bufbuild/protoc-gen-connect-es
+#   - protoc-gen-grpc-web: npm install -D grpc-web
+#
+# Usage:
+#   buf generate                    # Generate from buf.gen.yaml
+#   buf generate --template buf.gen.yaml --path proto/messenger.proto
+# ============================================
+
+version: v1
+plugins:
+  # Generate TypeScript messages/enums
+  - plugin: es
+    out: src/gen
+    opt:
+      - target=ts
+      - import_extension=none
+
+  # Generate Connect-ES service clients (works with grpc-web proxy)
+  - plugin: connect-es
+    out: src/gen
+    opt:
+      - target=ts
+      - import_extension=none

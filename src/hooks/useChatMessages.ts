@@ -1,14 +1,15 @@
 // ============================================
 // useChatMessages — Chat Messages Hook
 // ============================================
-// Loads message history and subscribes to
-// real-time stream. Handles iOS lifecycle:
-// - Fetches missed messages on foreground
-// - Tracks last message timestamp
-// - Delegates stream lifecycle to useGrpcStream
+// Loads message history + real-time streaming + pagination.
+// Features:
+// - Loads initial history on mount
+// - Subscribes to real-time stream via useGrpcStream
+// - Fetches missed messages on foreground reconnect
+// - Supports pagination (load more on scroll to top)
 // ============================================
 
-import { useEffect, useCallback, useRef } from 'react'
+import { useEffect, useCallback, useRef, useState } from 'react'
 import { useChatStore } from '@/store/chatStore'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useGrpcStream } from '@/hooks/useGrpcStream'
@@ -20,9 +21,15 @@ export function useChatMessages(chatId: string | null) {
   const isSendingMessage = useChatStore((s) => s.isSendingMessage)
   const setMessages = useChatStore((s) => s.setMessages)
   const addMessage = useChatStore((s) => s.addMessage)
+  const prependMessages = useChatStore((s) => s.prependMessages)
   const setLoadingMessages = useChatStore((s) => s.setLoadingMessages)
   const setSendingMessage = useChatStore((s) => s.setSendingMessage)
   const updateChat = useChatStore((s) => s.updateChat)
+
+  // Pagination state
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const oldestMessageIdRef = useRef<string | null>(null)
 
   const chatIdRef = useRef(chatId)
   chatIdRef.current = chatId
@@ -33,12 +40,19 @@ export function useChatMessages(chatId: string | null) {
 
     let cancelled = false
     setLoadingMessages(true)
+    setHasMore(true)
+    oldestMessageIdRef.current = null
 
     grpcClient
       .getMessages(chatId, 50)
-      .then((msgs) => {
+      .then(({ messages: msgs, hasMore: more }) => {
         if (cancelled || chatIdRef.current !== chatId) return
         setMessages(chatId, msgs)
+        setHasMore(more)
+        // Track oldest message for pagination
+        if (msgs.length > 0) {
+          oldestMessageIdRef.current = msgs[0].id
+        }
       })
       .catch((err) => {
         console.error('Failed to load messages:', err)
@@ -61,7 +75,6 @@ export function useChatMessages(chatId: string | null) {
   const handleStreamEvent = useCallback(
     (event: { type: string; message?: Message }) => {
       if (event.type === 'message' && event.message) {
-        // Only add if we're still on this chat
         if (chatIdRef.current === event.message.chatId) {
           addMessage(event.message)
         }
@@ -73,9 +86,7 @@ export function useChatMessages(chatId: string | null) {
   // Handle missed messages (from background reconnect)
   const handleMissedMessages = useCallback(
     (missedMessages: Message[]) => {
-      // Only add if we're still on this chat
       if (chatIdRef.current !== chatId) return
-
       for (const msg of missedMessages) {
         addMessage(msg)
       }
@@ -83,13 +94,39 @@ export function useChatMessages(chatId: string | null) {
     [addMessage, chatId]
   )
 
-  // Subscribe to real-time stream with lifecycle management
+  // Subscribe to real-time stream
   useGrpcStream({
     chatId: chatId || '',
     onEvent: handleStreamEvent,
     onMissedMessages: handleMissedMessages,
     enabled: !!chatId,
   })
+
+  // Load more messages (pagination)
+  const loadMore = useCallback(async () => {
+    if (!chatId || isLoadingMore || !hasMore) return
+
+    setIsLoadingMore(true)
+
+    try {
+      const { messages: olderMsgs, hasMore: more } = await grpcClient.getMessages(
+        chatId,
+        50,
+        oldestMessageIdRef.current || undefined
+      )
+
+      if (olderMsgs.length > 0) {
+        prependMessages(chatId, olderMsgs)
+        oldestMessageIdRef.current = olderMsgs[0].id
+      }
+
+      setHasMore(more)
+    } catch (err) {
+      console.error('Failed to load more messages:', err)
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }, [chatId, isLoadingMore, hasMore, prependMessages])
 
   // Send message
   const sendMessage = useCallback(
@@ -113,6 +150,9 @@ export function useChatMessages(chatId: string | null) {
     messages,
     isLoadingMessages,
     isSendingMessage,
+    isLoadingMore,
+    hasMore,
     sendMessage,
+    loadMore,
   }
 }

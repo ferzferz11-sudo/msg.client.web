@@ -1,19 +1,38 @@
 // ============================================
-// gRPC-web Client Singleton (Mock)
+// gRPC-web Client — Real Backend Integration
 // ============================================
-// In production, this would use generated grpc-web
-// client code from messenger.proto. For now, we
-// mock the server behavior for development.
+// Uses @connectrpc/connect-web for gRPC-web transport.
+// Works through Envoy/Nginx proxy (grpc-web filter).
+//
+// Environment:
+//   VITE_API_URL — backend URL (default: http://localhost:8080)
+//   VITE_VAPID_PUBLIC_KEY — VAPID key for Web Push
+//
+// Generated code from proto/messenger.proto:
+//   npm run proto:generate  (runs buf generate)
+//
+// The generated services are in src/gen/ and provide
+// type-safe clients for ChatService and PushService.
 // ============================================
 
+/// <reference types="vite/client" />
+
+import { createPromiseClient, type PromiseClient, type Transport } from '@connectrpc/connect'
+import { createGrpcWebTransport } from '@connectrpc/connect-web'
 import type { Chat, Message, StreamCallback } from '@/shared/types'
+
+// Import generated services (will exist after buf generate)
+// For now, we use the placeholder in src/gen/messenger_connect.ts
+import { ChatService, PushService } from '@/gen'
 
 // --- Singleton ---
 
 class GrpcClient {
   private static instance: GrpcClient
+  private transport: Transport | null = null
+  private chatClient: PromiseClient<typeof ChatService> | null = null
+  private pushClient: PromiseClient<typeof PushService> | null = null
   private connected: boolean = false
-  private mockInterval: ReturnType<typeof setInterval> | null = null
   private activeStreams: Map<string, AbortController> = new Map()
 
   private constructor() {}
@@ -25,17 +44,34 @@ class GrpcClient {
     return GrpcClient.instance
   }
 
-  connect(_address: string): Promise<void> {
+  // --- Connection ---
+
+  connect(address?: string): Promise<void> {
+    const baseUrl = address
+      || import.meta.env.VITE_API_URL
+      || 'http://localhost:8080'
+
+    this.transport = createGrpcWebTransport({
+      baseUrl,
+      // Credentials for CORS
+      credentials: 'include',
+    })
+
+    // Create typed clients from generated service definitions
+    this.chatClient = createPromiseClient(ChatService as any, this.transport)
+    this.pushClient = createPromiseClient(PushService as any, this.transport)
+
     this.connected = true
-    this.startMockIncomingMessages()
     return Promise.resolve()
   }
 
   disconnect(): void {
     this.connected = false
-    this.stopMockIncomingMessages()
     this.activeStreams.forEach((controller) => controller.abort())
     this.activeStreams.clear()
+    this.chatClient = null
+    this.pushClient = null
+    this.transport = null
   }
 
   isConnected(): boolean {
@@ -45,72 +81,42 @@ class GrpcClient {
   // --- Unary calls ---
 
   async getChats(userId: string): Promise<Chat[]> {
-    return getMockChats(userId)
+    if (!this.chatClient) throw new Error('Not connected')
+    const response = await (this.chatClient as any).getChats({ userId })
+    return response.chats.map(protoToChat)
   }
 
-  async getMessages(chatId: string, limit = 50): Promise<Message[]> {
-    return getMockMessages(chatId, limit)
-  }
-
-  async sendMessage(chatId: string, content: string, senderId: string): Promise<Message> {
+  async getMessages(chatId: string, limit = 50, beforeId?: string): Promise<{ messages: Message[]; hasMore: boolean }> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const response = await (this.chatClient as any).getMessages({ chatId, limit, beforeId })
     return {
-      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      chatId,
-      senderId,
-      senderName: 'You',
-      content,
-      createdAt: new Date().toISOString(),
-      isOutgoing: true,
-      isRead: false,
+      messages: response.messages.map(protoToMessage),
+      hasMore: response.hasMore,
     }
   }
 
-  async createChat(participants: string[], name?: string, type: Chat['type'] = 'regular'): Promise<Chat> {
-    return {
-      id: `chat-${Date.now()}`,
-      name: name || 'New Chat',
-      type,
-      creatorId: 'self',
-      participants,
-      lastMessageText: '',
-      lastMessageTime: new Date().toISOString(),
-      unreadCount: 0,
-    }
+  async sendMessage(chatId: string, content: string, senderId: string, replyToId?: string): Promise<Message> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const response = await (this.chatClient as any).sendMessage({ chatId, content, senderId, replyToId })
+    return protoToMessage(response.message!)
+  }
+
+  async createChat(participants: string[], name?: string, type: string = 'regular'): Promise<Chat> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const response = await (this.chatClient as any).createChat({ participants, name, type })
+    return protoToChat(response.chat!)
+  }
+
+  async deleteChat(chatId: string, userId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const response = await (this.chatClient as any).deleteChat({ chatId, userId })
+    return response.success
   }
 
   async getMissingMessages(chatId: string, since: string): Promise<Message[]> {
-    const sinceTime = new Date(since).getTime()
-    const now = Date.now()
-    const count = Math.floor(Math.random() * 3)
-    const messages: Message[] = []
-    for (let i = 0; i < count; i++) {
-      const msgTime = sinceTime + Math.random() * (now - sinceTime)
-      messages.push({
-        id: `msg-missing-${now}-${i}`,
-        chatId,
-        senderId: 'other-user',
-        senderName: getChatSenderName(chatId),
-        content: getRandomIncomingMessage(),
-        createdAt: new Date(msgTime).toISOString(),
-        isOutgoing: false,
-        isRead: false,
-      })
-    }
-    return messages
-  }
-
-  async registerPushToken(params: {
-    endpoint: string
-    p256dh: string
-    auth: string
-    platform: string
-    userAgent: string
-  }): Promise<{ success: boolean }> {
-    console.log('[Mock] registerPushToken:', {
-      endpoint: params.endpoint.slice(0, 50) + '...',
-      platform: params.platform,
-    })
-    return { success: true }
+    if (!this.chatClient) throw new Error('Not connected')
+    const response = await (this.chatClient as any).getMissingMessages({ chatId, since })
+    return response.messages.map(protoToMessage)
   }
 
   // --- Server-Side Streaming ---
@@ -121,34 +127,25 @@ class GrpcClient {
     this.activeStreams.set(streamId, controller)
     const signal = controller.signal
 
-    const scheduleNext = () => {
-      if (signal.aborted) return
-      const delay = 15000 + Math.random() * 15000
-      const timeoutId = setTimeout(() => {
-        if (signal.aborted) return
-        callback({
-          type: 'message',
-          message: {
-            id: `msg-incoming-${Date.now()}`,
-            chatId,
-            senderId: 'other-user',
-            senderName: getChatSenderName(chatId),
-            content: getRandomIncomingMessage(),
-            createdAt: new Date().toISOString(),
-            isOutgoing: false,
-            isRead: false,
-          },
-        })
-        scheduleNext()
-      }, delay)
-      signal.addEventListener('abort', () => clearTimeout(timeoutId), { once: true })
-    }
+    // Use the streaming RPC from generated client
+    const stream = (this.chatClient as any).subscribeChat(
+      { chatId, userId: 'user-1' },
+      { signal }
+    )
 
-    const initialTimeout = setTimeout(() => {
-      if (signal.aborted) return
-      scheduleNext()
-    }, 3000)
-    signal.addEventListener('abort', () => clearTimeout(initialTimeout), { once: true })
+    // Process the stream
+    ;(async () => {
+      try {
+        for await (const event of stream) {
+          if (signal.aborted) break
+          handleStreamEvent(event, callback)
+        }
+      } catch (err) {
+        if (!signal.aborted) {
+          callback({ type: 'error', error: String(err) })
+        }
+      }
+    })()
 
     return () => {
       controller.abort()
@@ -156,166 +153,80 @@ class GrpcClient {
     }
   }
 
-  streamAllMessages(callback: StreamCallback): () => void {
-    const streamId = `stream-all-${Date.now()}`
-    const controller = new AbortController()
-    this.activeStreams.set(streamId, controller)
-    const signal = controller.signal
+  // --- Push Notifications ---
 
-    const presenceInterval = setInterval(() => {
-      if (signal.aborted) return
-      callback({
-        type: 'presence',
-        userId: 'other-user',
-        isOnline: Math.random() > 0.3,
-      })
-    }, 20000)
-    signal.addEventListener('abort', () => clearInterval(presenceInterval), { once: true })
-
-    return () => {
-      controller.abort()
-      this.activeStreams.delete(streamId)
-    }
+  async registerPushToken(params: {
+    endpoint: string
+    p256dh: string
+    auth: string
+    platform: string
+    userAgent: string
+  }): Promise<{ success: boolean }> {
+    if (!this.pushClient) throw new Error('Not connected')
+    const response = await (this.pushClient as any).registerPushToken({
+      userId: 'user-1',
+      endpoint: params.endpoint,
+      p256dh: params.p256dh,
+      auth: params.auth,
+      platform: params.platform,
+      userAgent: params.userAgent,
+    })
+    return { success: response.success }
   }
 
-  // --- Mock helpers ---
-
-  private startMockIncomingMessages(): void {
-    this.mockInterval = setInterval(() => {
-      // Global mock: simulate typing indicators
-    }, 10000)
-  }
-
-  private stopMockIncomingMessages(): void {
-    if (this.mockInterval) {
-      clearInterval(this.mockInterval)
-      this.mockInterval = null
-    }
+  async unregisterPushToken(endpoint: string): Promise<boolean> {
+    if (!this.pushClient) throw new Error('Not connected')
+    const response = await (this.pushClient as any).unregisterPushToken({ endpoint })
+    return response.success
   }
 }
 
-// --- Mock Data ---
+// --- Proto → TypeScript converters ---
 
-const MOCK_CHATS: Record<string, Chat> = {
-  'chat-1': {
-    id: 'chat-1',
-    name: 'Алексей',
-    type: 'regular',
-    creatorId: 'user-1',
-    participants: ['user-1', 'user-2'],
-    lastMessageText: 'Привет! Как дела?',
-    lastMessageTime: new Date(Date.now() - 60000).toISOString(),
-    unreadCount: 2,
-    isOnline: true,
-  },
-  'chat-2': {
-    id: 'chat-2',
-    name: 'Работа',
-    type: 'regular',
-    creatorId: 'user-1',
-    participants: ['user-1', 'user-3', 'user-4'],
-    lastMessageText: 'Отправил отчёт',
-    lastMessageTime: new Date(Date.now() - 3600000).toISOString(),
-    unreadCount: 0,
-  },
-  'chat-3': {
-    id: 'chat-3',
-    name: 'OWL AI',
-    type: 'owl',
-    creatorId: 'user-1',
-    participants: ['user-1'],
-    lastMessageText: 'Конечно, помогу!',
-    lastMessageTime: new Date(Date.now() - 7200000).toISOString(),
-    unreadCount: 0,
-  },
-  'chat-4': {
-    id: 'chat-4',
-    name: 'Hermes',
-    type: 'hermes',
-    creatorId: 'user-1',
-    participants: ['user-1'],
-    lastMessageText: 'Задача выполнена',
-    lastMessageTime: new Date(Date.now() - 86400000).toISOString(),
-    unreadCount: 1,
-    activeAgentId: 'hermes-developer',
-    agentMode: 'single',
-  },
+function protoToChat(chat: any): Chat {
+  return {
+    id: chat.id,
+    name: chat.name,
+    type: chat.type as Chat['type'],
+    creatorId: chat.creatorId,
+    participants: chat.participants,
+    lastMessageText: chat.lastMessageText,
+    lastMessageTime: chat.lastMessageTime,
+    unreadCount: chat.unreadCount,
+    avatarUrl: chat.avatarUrl,
+    isOnline: chat.isOnline,
+    activeAgentId: chat.activeAgentId,
+    agentMode: chat.agentMode as Chat['agentMode'],
+  }
 }
 
-const MOCK_MESSAGES: Record<string, Message[]> = {
-  'chat-1': [
-    {
-      id: 'm1', chatId: 'chat-1', senderId: 'user-2', senderName: 'Алексей',
-      content: 'Привет! Как дела?', createdAt: new Date(Date.now() - 120000).toISOString(),
-      isOutgoing: false, isRead: true,
-    },
-    {
-      id: 'm2', chatId: 'chat-1', senderId: 'user-1', senderName: 'You',
-      content: 'Привет! Всё отлично, спасибо!', createdAt: new Date(Date.now() - 90000).toISOString(),
-      isOutgoing: true, isRead: true,
-    },
-    {
-      id: 'm3', chatId: 'chat-1', senderId: 'user-2', senderName: 'Алексей',
-      content: 'Отлично! Могу ли я задать вопрос по проекту?', createdAt: new Date(Date.now() - 60000).toISOString(),
-      isOutgoing: false, isRead: false,
-    },
-  ],
-  'chat-2': [
-    {
-      id: 'm4', chatId: 'chat-2', senderId: 'user-3', senderName: 'Мария',
-      content: 'Отправил отчёт', createdAt: new Date(Date.now() - 3600000).toISOString(),
-      isOutgoing: false, isRead: true,
-    },
-  ],
-  'chat-3': [
-    {
-      id: 'm5', chatId: 'chat-3', senderId: 'user-1', senderName: 'You',
-      content: 'Привет, OWL! Расскажи о себе', createdAt: new Date(Date.now() - 7200000).toISOString(),
-      isOutgoing: true, isRead: true,
-    },
-    {
-      id: 'm6', chatId: 'chat-3', senderId: 'owl-ai', senderName: 'OWL AI',
-      content: 'Конечно, помогу! Я — AI-ассистент Lavender.',
-      createdAt: new Date(Date.now() - 7199000).toISOString(),
-      isOutgoing: false, isRead: true, agentId: 'owl-ai',
-    },
-  ],
-  'chat-4': [
-    {
-      id: 'm7', chatId: 'chat-4', senderId: 'user-1', senderName: 'You',
-      content: 'Проверь код на ошибки', createdAt: new Date(Date.now() - 86400000).toISOString(),
-      isOutgoing: true, isRead: true,
-    },
-    {
-      id: 'm8', chatId: 'chat-4', senderId: 'hermes-dev', senderName: 'Hermes Developer',
-      content: 'Задача выполнена. Проверил код — ошибок не найдено.',
-      createdAt: new Date(Date.now() - 86399000).toISOString(),
-      isOutgoing: false, isRead: false, agentId: 'hermes-developer',
-    },
-  ],
+function protoToMessage(msg: any): Message {
+  return {
+    id: msg.id,
+    chatId: msg.chatId,
+    senderId: msg.senderId,
+    senderName: msg.senderName,
+    content: msg.content,
+    createdAt: msg.createdAt,
+    isOutgoing: msg.isOutgoing,
+    isRead: msg.isRead,
+    replyToId: msg.replyToId,
+    agentId: msg.agentId,
+  }
 }
 
-const INCOMING_MESSAGES = [
-  'Хорошо, понял!', 'Интересно, расскажи подробнее', 'Согласен',
-  'Давай обсудим завтра', 'Отличная идея! 👍', 'Сейчас посмотрю',
-  'Готово!', 'Нужно подумать...', 'Можешь скинуть файл?', 'Ок, сделаю',
-]
-
-function getMockChats(_userId: string): Chat[] {
-  return Object.values(MOCK_CHATS)
+function handleStreamEvent(event: any, callback: StreamCallback): void {
+  if (event.message) {
+    callback({ type: 'message', message: protoToMessage(event.message) })
+  } else if (event.typing) {
+    callback({ type: 'typing', chatId: event.typing.chatId, userId: event.typing.userId, isTyping: event.typing.isTyping })
+  } else if (event.presence) {
+    callback({ type: 'presence', userId: event.presence.userId, isOnline: event.presence.isOnline })
+  } else if (event.error) {
+    callback({ type: 'error', error: event.error.error })
+  }
 }
 
-function getMockMessages(chatId: string, limit: number): Message[] {
-  return (MOCK_MESSAGES[chatId] || []).slice(-limit)
-}
-
-function getChatSenderName(chatId: string): string {
-  return MOCK_CHATS[chatId]?.name || 'Unknown'
-}
-
-function getRandomIncomingMessage(): string {
-  return INCOMING_MESSAGES[Math.floor(Math.random() * INCOMING_MESSAGES.length)]
-}
-
+// Export singleton
 export const grpcClient = GrpcClient.getInstance()
 export default grpcClient

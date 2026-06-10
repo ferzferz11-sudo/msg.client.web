@@ -8,7 +8,7 @@
 // 1. Check if running as PWA (standalone mode)
 // 2. Check current permission status
 // 3. If not decided → show banner
-// 4. On user action → request permission → subscribe → register token
+// 4. On user action → request permission → subscribe → register token via gRPC
 // ============================================
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -27,28 +27,17 @@ export interface PushSubscriptionInfo {
 }
 
 interface UsePushNotificationsReturn {
-  /** Current permission status */
   permission: PushPermission
-  /** Whether the app is running as PWA (standalone) */
   isPWA: boolean
-  /** Whether push notifications are supported */
   isSupported: boolean
-  /** Whether to show the enable banner */
   showBanner: boolean
-  /** Whether currently subscribing */
   isSubscribing: boolean
-  /** Subscribe the user to push notifications */
   subscribeUser: () => Promise<boolean>
-  /** Dismiss the banner (don't ask again this session) */
   dismissBanner: () => void
 }
 
 // --- Helpers ---
 
-/**
- * Check if the app is running as a PWA (standalone mode).
- * On iOS Safari, this returns true when launched from Home Screen.
- */
 function isRunningAsPWA(): boolean {
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
@@ -56,10 +45,6 @@ function isRunningAsPWA(): boolean {
   )
 }
 
-/**
- * Check if Web Push is supported by the browser.
- * Requires: serviceWorker, PushManager, and Notification APIs.
- */
 function isPushSupported(): boolean {
   return (
     'serviceWorker' in navigator &&
@@ -68,10 +53,6 @@ function isPushSupported(): boolean {
   )
 }
 
-/**
- * Convert a base64 URL-safe string to a Uint8Array.
- * Used for VAPID key conversion.
- */
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
@@ -93,7 +74,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const registrationRef = useRef<ServiceWorkerRegistration | null>(null)
 
-  // --- Initialize: check PWA mode, support, and permission ---
+  // Initialize: check PWA mode, support, and permission
   useEffect(() => {
     const pwa = isRunningAsPWA()
     const supported = isPushSupported()
@@ -102,10 +83,8 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     setIsSupported(supported)
 
     if (supported) {
-      // Get current permission
       setPermission(Notification.permission as PushPermission)
 
-      // Get existing service worker registration
       navigator.serviceWorker.ready.then((registration) => {
         registrationRef.current = registration
 
@@ -113,8 +92,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         if (pwa && Notification.permission === 'granted') {
           registration.pushManager.getSubscription().then((subscription) => {
             if (!subscription) {
-              // Permission granted but no subscription — re-subscribe
-              // This can happen if the subscription expired
+              // Permission granted but no subscription — needs re-subscribe
             }
           })
         }
@@ -124,7 +102,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     }
   }, [])
 
-  // --- Subscribe user to push notifications ---
+  // Subscribe user to push notifications
   const subscribeUser = useCallback(async (): Promise<boolean> => {
     if (!isSupported || !registrationRef.current) {
       console.warn('Push notifications not supported')
@@ -134,7 +112,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     setIsSubscribing(true)
 
     try {
-      // Step 1: Request permission
+      // Step 1: Request permission from user
       const result = await Notification.requestPermission()
 
       if (result !== 'granted') {
@@ -145,13 +123,14 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
       setPermission('granted')
 
-      // Step 2: Subscribe to push
-      const registration = registrationRef.current
-
-      // Mock VAPID public key (in production, this comes from the server)
-      // This is a dummy key for development — replace with real VAPID key
+      // Step 2: Get VAPID public key from backend (or use env var)
+      // In production, fetch this from your API
       const vapidPublicKey =
+        import.meta.env.VITE_VAPID_PUBLIC_KEY ||
         'BEl62iUYgUIV49q5CHWvA465W5K2lC0k8Qf7l6n8v9X3m2v8Qf7l6n8v9X3m2v8Qf7l6n8v9X3m2v8Qf7l6n8v9X3m2v8Qf7l6n8v9X3m2v8Qf7l6n8v9X3m2v8Qf7l6n8v9X3m2v8Qf7l6n8v9X3m2v8Qf7l6n8v9X3m2v8Qf7l6n8v9X3m2v8Qf7l6n8v9X3m2v8'
+
+      // Step 3: Subscribe to push
+      const registration = registrationRef.current
 
       let subscription = await registration.pushManager.getSubscription()
 
@@ -162,7 +141,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         })
       }
 
-      // Step 3: Extract subscription info
+      // Step 4: Extract subscription keys
       const p256dhKey = subscription.getKey('p256dh')
       const authKey = subscription.getKey('auth')
 
@@ -178,7 +157,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
         },
       }
 
-      // Step 4: Register token with backend
+      // Step 5: Register token with backend via gRPC
       await grpcClient.registerPushToken({
         endpoint: subscriptionInfo.endpoint,
         p256dh: subscriptionInfo.keys.p256dh,
@@ -196,17 +175,11 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     }
   }, [isSupported])
 
-  // --- Dismiss banner ---
   const dismissBanner = useCallback(() => {
     setBannerDismissed(true)
   }, [])
 
-  // --- Show banner logic ---
-  // Show banner ONLY if:
-  // 1. Running as PWA
-  // 2. Push is supported
-  // 3. Permission is 'default' (not yet decided)
-  // 4. Banner hasn't been dismissed this session
+  // Show banner ONLY if: PWA + supported + permission not decided + not dismissed
   const showBanner =
     isPWA &&
     isSupported &&

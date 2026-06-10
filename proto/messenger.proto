@@ -1,0 +1,192 @@
+// ============================================
+// Lavender Messenger — Protocol Buffers
+// ============================================
+// This file defines the gRPC API contract between
+// the web client and the backend server.
+//
+// Generate TypeScript code:
+//   buf generate --template buf.gen.yaml
+//
+// Or with protoc directly:
+//   protoc --ts_out=src/gen --ts_opt=target=ts messenger.proto
+// ============================================
+
+syntax = "proto3";
+
+package msg.v1;
+
+option go_package = "github.com/ferzferz11-sudo/msg/gen;gen";
+
+// ============================================
+// Common Types
+// ============================================
+
+message Chat {
+  string id = 1;
+  string name = 2;
+  string type = 3; // 'regular' | 'owl' | 'hermes'
+  string creator_id = 4;
+  repeated string participants = 5;
+  string last_message_text = 6;
+  string last_message_time = 7;
+  int32 unread_count = 8;
+  string avatar_url = 9;
+  bool is_online = 10;
+  string active_agent_id = 11;
+  string agent_mode = 12; // 'single' | 'parallel' | 'pipeline'
+}
+
+message Message {
+  string id = 1;
+  string chat_id = 2;
+  string sender_id = 3;
+  string sender_name = 4;
+  string content = 5;
+  string created_at = 6;
+  bool is_outgoing = 7;
+  bool is_read = 8;
+  string reply_to_id = 9;
+  string agent_id = 10;
+}
+
+// ============================================
+// Chat Service — Unary RPCs
+// ============================================
+
+message GetChatsRequest {
+  string user_id = 1;
+}
+
+message GetChatsResponse {
+  repeated Chat chats = 1;
+}
+
+message GetMessagesRequest {
+  string chat_id = 1;
+  int32 limit = 2;      // default: 50
+  string before_id = 3;  // pagination: messages before this ID
+}
+
+message GetMessagesResponse {
+  repeated Message messages = 1;
+  bool has_more = 2;
+}
+
+message SendMessageRequest {
+  string chat_id = 1;
+  string content = 2;
+  string sender_id = 3;
+  string reply_to_id = 4;
+}
+
+message SendMessageResponse {
+  Message message = 1;
+}
+
+message CreateChatRequest {
+  repeated string participants = 1;
+  string name = 2;
+  string type = 3;
+}
+
+message CreateChatResponse {
+  Chat chat = 1;
+}
+
+message GetMissingMessagesRequest {
+  string chat_id = 1;
+  string since = 2; // ISO timestamp
+}
+
+message GetMissingMessagesResponse {
+  repeated Message messages = 1;
+}
+
+message DeleteChatRequest {
+  string chat_id = 1;
+  string user_id = 2;
+}
+
+message DeleteChatResponse {
+  bool success = 1;
+}
+
+// ============================================
+// Chat Service — Server Streaming
+// ============================================
+
+message SubscribeChatRequest {
+  string chat_id = 1;
+  string user_id = 2;
+}
+
+message StreamEvent {
+  oneof event {
+    Message message = 1;
+    TypingEvent typing = 2;
+    PresenceEvent presence = 3;
+    ErrorEvent error = 4;
+  }
+}
+
+message TypingEvent {
+  string chat_id = 1;
+  string user_id = 2;
+  bool is_typing = 3;
+}
+
+message PresenceEvent {
+  string user_id = 1;
+  bool is_online = 2;
+}
+
+message ErrorEvent {
+  string error = 1;
+}
+
+// ============================================
+// Push Notification Service
+// ============================================
+
+message RegisterPushTokenRequest {
+  string user_id = 1;
+  string endpoint = 2;
+  string p256dh = 3;
+  string auth = 4;
+  string platform = 5; // 'web' | 'android' | 'ios'
+  string user_agent = 6;
+}
+
+message RegisterPushTokenResponse {
+  bool success = 1;
+}
+
+message UnregisterPushTokenRequest {
+  string endpoint = 1;
+}
+
+message UnregisterPushTokenResponse {
+  bool success = 1;
+}
+
+// ============================================
+// Services
+// ============================================
+
+service ChatService {
+  // Unary
+  rpc GetChats(GetChatsRequest) returns (GetChatsResponse);
+  rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  rpc CreateChat(CreateChatRequest) returns (CreateChatResponse);
+  rpc DeleteChat(DeleteChatRequest) returns (DeleteChatResponse);
+  rpc GetMissingMessages(GetMissingMessagesRequest) returns (GetMissingMessagesResponse);
+
+  // Server Streaming
+  rpc SubscribeChat(SubscribeChatRequest) returns (stream StreamEvent);
+}
+
+service PushService {
+  rpc RegisterPushToken(RegisterPushTokenRequest) returns (RegisterPushTokenResponse);
+  rpc UnregisterPushToken(UnregisterPushTokenRequest) returns (UnregisterPushTokenResponse);
+}

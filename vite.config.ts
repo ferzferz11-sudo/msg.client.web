@@ -19,8 +19,12 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
+          virtuoso: ['react-virtuoso'],
+          protobuf: ['@bufbuild/protobuf', '@connectrpc/connect', '@connectrpc/connect-web'],
         },
       },
     },
   },
+  // Environment variables available in the app via import.meta.env.VITE_*
+  envPrefix: 'VITE_',
 })

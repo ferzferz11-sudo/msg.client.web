@@ -1,12 +1,13 @@
 // ============================================
 // ChatScreen — Mobile (iOS Native Style)
 // ============================================
-// Uses useIOSKeyboard hook for proper keyboard handling.
-// Footer (input) stays fixed above the iOS keyboard.
-// Messages scroll in the remaining space.
+// Uses react-virtuoso for virtual scrolling.
+// Supports pagination (load more on scroll to top).
+// Uses useIOSKeyboard for proper keyboard handling.
 // ============================================
 
 import { useState, useRef, useEffect, useCallback, forwardRef } from 'react'
+import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import { Screen } from '@/components/common'
 import { useChatMessages } from '@/hooks/useChatMessages'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
@@ -20,25 +21,35 @@ interface ChatScreenProps {
 
 export function ChatScreen({ chatId, onBack }: ChatScreenProps) {
   const activeChat = useChatStore((s) => s.getActiveChat())
-  const { messages, isLoadingMessages, isSendingMessage, sendMessage } = useChatMessages(chatId)
+  const {
+    messages,
+    isLoadingMessages,
+    isSendingMessage,
+    isLoadingMore,
+    hasMore,
+    sendMessage,
+    loadMore,
+  } = useChatMessages(chatId)
   const { isKeyboardOpen, keyboardHeight } = useIOSKeyboard()
 
   const [inputText, setInputText] = useState('')
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const virtuosoRef = useRef<VirtuosoHandle>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const shouldFollowOutput = useRef(true)
 
-  // Auto-scroll to bottom on new messages
+  // Follow new messages (auto-scroll to bottom)
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    if (shouldFollowOutput.current && messages.length > 0) {
+      virtuosoRef.current?.scrollToIndex({
+        index: messages.length - 1,
+        behavior: 'smooth',
+      })
     }
   }, [messages.length])
 
-  // Focus input when chat opens (with delay for animation)
+  // Focus input when chat opens
   useEffect(() => {
-    const timer = setTimeout(() => {
-      inputRef.current?.focus()
-    }, 300)
+    const timer = setTimeout(() => inputRef.current?.focus(), 300)
     return () => clearTimeout(timer)
   }, [chatId])
 
@@ -46,6 +57,7 @@ export function ChatScreen({ chatId, onBack }: ChatScreenProps) {
     if (!inputText.trim() || isSendingMessage) return
     sendMessage(inputText)
     setInputText('')
+    shouldFollowOutput.current = true
   }, [inputText, isSendingMessage, sendMessage])
 
   const handleKeyDown = useCallback(
@@ -55,12 +67,19 @@ export function ChatScreen({ chatId, onBack }: ChatScreenProps) {
         handleSend()
       }
     },
-    [handleSend]
+    [handleSend],
   )
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value)
   }, [])
+
+  // Handle scroll to top → load more
+  const handleStartReached = useCallback(() => {
+    if (hasMore && !isLoadingMore) {
+      loadMore()
+    }
+  }, [hasMore, isLoadingMore, loadMore])
 
   return (
     <Screen
@@ -78,30 +97,30 @@ export function ChatScreen({ chatId, onBack }: ChatScreenProps) {
         />
       }
     >
-      {/* Messages area — takes remaining space */}
-      <div
-        className="scrollable"
-        style={{
-          flex: 1,
-          padding: '8px 12px',
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: 0,
-        }}
-      >
-        {isLoadingMessages ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#888' }}>
-            Загрузка сообщений...
-          </div>
-        ) : (
-          <>
-            {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
-            ))}
-            <div ref={messagesEndRef} />
-          </>
-        )}
-      </div>
+      {isLoadingMessages ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#888' }}>
+          Загрузка сообщений...
+        </div>
+      ) : (
+        <div style={{ flex: 1, padding: '8px 0', minHeight: 0 }}>
+          <Virtuoso
+            ref={virtuosoRef}
+            data={messages}
+            firstItemIndex={0}
+            startReached={handleStartReached}
+            itemContent={(index, msg) => (
+              <MessageBubble message={msg} isFirst={index === 0} />
+            )}
+            followOutput="smooth"
+            atBottomThreshold={100}
+            atBottomStateChange={(atBottom) => {
+              shouldFollowOutput.current = atBottom
+            }}
+            style={{ height: '100%' }}
+            className="scrollable"
+          />
+        </div>
+      )}
     </Screen>
   )
 }
@@ -116,8 +135,7 @@ interface ChatHeaderProps {
 function ChatHeader({ chat, onBack }: ChatHeaderProps) {
   if (!chat) return null
 
-  const chatIcon =
-    chat.type === 'owl' ? '🦉' : chat.type === 'hermes' ? '🤖' : null
+  const chatIcon = chat.type === 'owl' ? '🦉' : chat.type === 'hermes' ? '🤖' : null
 
   return (
     <div
@@ -134,20 +152,12 @@ function ChatHeader({ chat, onBack }: ChatHeaderProps) {
         position: 'relative',
       }}
     >
-      {/* Back button */}
       <button
         onClick={onBack}
         style={{
-          background: 'none',
-          border: 'none',
-          color: '#6b5ce7',
-          fontSize: 17,
-          fontWeight: 400,
-          padding: '8px 12px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
+          background: 'none', border: 'none', color: '#6b5ce7',
+          fontSize: 17, fontWeight: 400, padding: '8px 12px',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
           WebkitTapHighlightColor: 'transparent',
         }}
       >
@@ -157,21 +167,10 @@ function ChatHeader({ chat, onBack }: ChatHeaderProps) {
         Назад
       </button>
 
-      {/* Chat info — centered */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          marginRight: 52, /* Balance with back button width */
-        }}
-      >
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', marginRight: 52 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {chatIcon && <span style={{ fontSize: 16 }}>{chatIcon}</span>}
-          <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>
-            {chat.name}
-          </span>
+          <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>{chat.name}</span>
         </div>
         {chat.isOnline !== undefined && (
           <span style={{ fontSize: 12, color: chat.isOnline ? '#4caf50' : '#888' }}>
@@ -187,6 +186,7 @@ function ChatHeader({ chat, onBack }: ChatHeaderProps) {
 
 interface MessageBubbleProps {
   message: Message
+  isFirst?: boolean
 }
 
 function MessageBubble({ message }: MessageBubbleProps) {
@@ -199,7 +199,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
         display: 'flex',
         justifyContent: isOutgoing ? 'flex-end' : 'flex-start',
         marginBottom: 8,
-        padding: '0 4px',
+        padding: '0 12px',
       }}
     >
       <div
@@ -216,7 +216,6 @@ function MessageBubble({ message }: MessageBubbleProps) {
           wordBreak: 'break-word',
         }}
       >
-        {/* Sender name for incoming group messages */}
         {!isOutgoing && message.senderName && (
           <div style={{ fontSize: 12, fontWeight: 600, color: '#6b5ce7', marginBottom: 2 }}>
             {message.senderName}
@@ -269,18 +268,13 @@ const MessageInput = forwardRef<HTMLInputElement, MessageInputProps>(
           WebkitBackdropFilter: 'blur(20px)',
           borderTop: '1px solid rgba(255,255,255,0.08)',
           padding: '8px 12px',
-          /* When keyboard is open, add extra padding at the bottom
-             so the input isn't hidden behind the keyboard.
-             keyboardHeight already accounts for safe-area-inset-bottom. */
           paddingBottom: isKeyboardOpen
             ? `calc(8px + ${keyboardHeight}px - env(safe-area-inset-bottom, 0px))`
             : undefined,
-          /* Smooth transition when keyboard opens/closes */
           transition: 'padding-bottom 0.2s ease-out',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Input field */}
           <div
             style={{
               flex: 1,
@@ -313,7 +307,6 @@ const MessageInput = forwardRef<HTMLInputElement, MessageInputProps>(
             />
           </div>
 
-          {/* Send button */}
           <button
             onClick={onSend}
             disabled={!value.trim() || isSending}
