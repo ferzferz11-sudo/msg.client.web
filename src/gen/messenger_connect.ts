@@ -19,20 +19,20 @@
 export const ChatService = {
   typeName: 'msg.v1.ChatService',
   methods: {
-    getChats: { name: 'GetChats', I: null as any, O: null as any },
-    getMessages: { name: 'GetMessages', I: null as any, O: null as any },
-    sendMessage: { name: 'SendMessage', I: null as any, O: null as any },
-    createChat: { name: 'CreateChat', I: null as any, O: null as any },
-    deleteChat: { name: 'DeleteChat', I: null as any, O: null as any },
-    getMissingMessages: { name: 'GetMissingMessages', I: null as any, O: null as any },
-    subscribeChat: { name: 'SubscribeChat', I: null as any, O: null as any, streamType: 1 },
+    getChats: { name: 'GetChats', I: null as never, O: null as never },
+    getMessages: { name: 'GetMessages', I: null as never, O: null as never },
+    sendMessage: { name: 'SendMessage', I: null as never, O: null as never },
+    createChat: { name: 'CreateChat', I: null as never, O: null as never },
+    deleteChat: { name: 'DeleteChat', I: null as never, O: null as never },
+    getMissingMessages: { name: 'GetMissingMessages', I: null as never, O: null as never },
+    subscribeChat: { name: 'SubscribeChat', I: null as never, O: null as never, streamType: 1 },
   },
 } as const
 
 export const PushService = {
   typeName: 'msg.v1.PushService',
   methods: {
-    registerPushToken: { name: 'RegisterPushToken', I: null as any, O: null as any },
-    unregisterPushToken: { name: 'UnregisterPushToken', I: null as any, O: null as any },
+    registerPushToken: { name: 'RegisterPushToken', I: null as never, O: null as never },
+    unregisterPushToken: { name: 'UnregisterToken', I: null as never, O: null as never },
   },
 } as const

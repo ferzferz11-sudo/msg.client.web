@@ -1,9 +1,19 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
+import { viteStaticCopy } from 'vite-plugin-static-copy'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    viteStaticCopy({
+      targets: [
+        { src: 'public/manifest.json', dest: '.' },
+        { src: 'public/sw.js', dest: '.' },
+        { src: 'public/icons', dest: 'icons' },
+      ],
+    }),
+  ],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
@@ -25,6 +35,5 @@ export default defineConfig({
       },
     },
   },
-  // Environment variables available in the app via import.meta.env.VITE_*
   envPrefix: 'VITE_',
 })

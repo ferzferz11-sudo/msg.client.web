@@ -2,8 +2,6 @@
 // Screen — Desktop Stub
 // ============================================
 
-import React from 'react'
-
 interface ScreenProps {
   children: React.ReactNode
   header?: React.ReactNode
