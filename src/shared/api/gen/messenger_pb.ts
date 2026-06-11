@@ -90,7 +90,7 @@ function makeMethod(name: string, kind: "unary" | "server_streaming" = "unary"):
   return {
     name,
     kind: kind === "server_streaming" ? "server_streaming" : "unary",
-    service: ChatService as unknown as DescService,
+    service: null,
     I: null,
     O: null,
   }
