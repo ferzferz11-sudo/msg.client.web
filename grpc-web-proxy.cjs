@@ -11,11 +11,11 @@ const protobuf = require('protobufjs');
 const path = require('path');
 
 const GRPC_HOST = process.env.GRPC_HOST || '127.0.0.1';
-const GRPC_PORT = process.env.GRPC_PORT || 50052;
+const GRPC_PORT = process.env.GRPC_PORT || 50051;
 const PROXY_PORT = 9090;
 const PROTO_PATH = path.join(__dirname, 'proto', 'messenger.proto');
 
-// Load proto for encoding/decoding
+// Load proto for encoding/decoding with protobufjs
 const root = protobuf.loadSync(PROTO_PATH);
 const SignInRequest = root.lookupType('messenger.SignInRequest');
 const SignUpRequest = root.lookupType('messenger.SignUpRequest');
@@ -88,7 +88,7 @@ const server = http.createServer((req, res) => {
       const serviceName = urlMatch[1];
       const methodName = urlMatch[2];
 
-      console.log(`gRPC-web: ${serviceName}.${methodName}, body: ${body.length} bytes, msg: ${message.length} bytes`);
+      console.log(`gRPC-web: ${serviceName}.${methodName}`);
 
       if (serviceName === 'AuthService') {
         handleAuthMethod(authClient, methodName, message, res);
@@ -100,112 +100,83 @@ const server = http.createServer((req, res) => {
       }
     } catch (err) {
       console.error('Error processing request:', err);
-      res.writeHead(500);
-      res.end('Internal error: ' + err.message);
+      sendGrpcWebError(res, { code: 13, message: err.message });
     }
   });
 });
 
 function handleAuthMethod(client, method, message, res) {
-  try {
-    let request;
-    switch (method) {
-      case 'SignIn':
-        request = SignInRequest.decode(message);
-        console.log('SignIn request:', JSON.stringify(request));
-        client.signIn(request, (err, response) => {
-          if (err) {
-            console.error('SignIn error:', err);
-            sendGrpcWebError(res, err);
-          } else {
-            console.log('SignIn response:', JSON.stringify(response));
-            sendGrpcWebResponse(res, AuthResponse, response);
-          }
-        });
-        break;
-      case 'SignUp':
-        request = SignUpRequest.decode(message);
-        console.log('SignUp request:', JSON.stringify(request));
-        client.signUp(request, (err, response) => {
-          if (err) {
-            console.error('SignUp error:', err);
-            sendGrpcWebError(res, err);
-          } else {
-            console.log('SignUp response:', JSON.stringify(response));
-            sendGrpcWebResponse(res, AuthResponse, response);
-          }
-        });
-        break;
-      default:
-        res.writeHead(404);
-        res.end(`Unknown method: ${method}`);
-    }
-  } catch (err) {
-    console.error('Error in handleAuthMethod:', err);
-    res.writeHead(500);
-    res.end('Internal error: ' + err.message);
+  let RequestType;
+  switch (method) {
+    case 'SignIn':
+      RequestType = SignInRequest;
+      break;
+    case 'SignUp':
+      RequestType = SignUpRequest;
+      break;
+    default:
+      res.writeHead(404);
+      res.end(`Unknown method: ${method}`);
+      return;
   }
+
+  const request = RequestType.decode(message);
+  console.log(`${method} request:`, JSON.stringify(request));
+
+  client[method.toLowerCase()](request, (err, response) => {
+    if (err) {
+      console.error(`${method} error:`, err);
+      sendGrpcWebError(res, err);
+    } else {
+      console.log(`${method} response:`, JSON.stringify(response));
+      sendGrpcWebResponse(res, AuthResponse, response);
+    }
+  });
 }
 
 function handleChatMethod(client, method, message, res) {
-  try {
-    let request;
-    switch (method) {
-      case 'GetChats':
-        request = GetChatsRequest.decode(message);
-        console.log('GetChats request:', JSON.stringify(request));
-        client.getChats(request, (err, response) => {
-          if (err) {
-            console.error('GetChats error:', err);
-            sendGrpcWebError(res, err);
-          } else {
-            console.log('GetChats response:', JSON.stringify(response));
-            sendGrpcWebResponse(res, GetChatsResponse, response);
-          }
-        });
-        break;
-      case 'GetHistory':
-        request = root.lookupType('messenger.GetHistoryRequest').decode(message);
-        console.log('GetHistory request:', JSON.stringify(request));
-        client.getHistory(request, (err, response) => {
-          if (err) {
-            console.error('GetHistory error:', err);
-            sendGrpcWebError(res, err);
-          } else {
-            console.log('GetHistory response:', JSON.stringify(response));
-            sendGrpcWebResponse(res, root.lookupType('messenger.GetHistoryResponse'), response);
-          }
-        });
-        break;
-      case 'CreateDirectChat':
-        request = root.lookupType('messenger.CreateDirectChatRequest').decode(message);
-        console.log('CreateDirectChat request:', JSON.stringify(request));
-        client.createDirectChat(request, (err, response) => {
-          if (err) {
-            console.error('CreateDirectChat error:', err);
-            sendGrpcWebError(res, err);
-          } else {
-            console.log('CreateDirectChat response:', JSON.stringify(response));
-            sendGrpcWebResponse(res, root.lookupType('messenger.CreateDirectChatResponse'), response);
-          }
-        });
-        break;
-      default:
-        console.log(`ChatService method not implemented: ${method}`);
-        res.writeHead(501);
-        res.end(`Method not implemented: ${method}`);
-    }
-  } catch (err) {
-    console.error('Error in handleChatMethod:', err);
-    res.writeHead(500);
-    res.end('Internal error: ' + err.message);
+  let RequestType;
+  let ResponseType;
+
+  switch (method) {
+    case 'GetChats':
+      RequestType = GetChatsRequest;
+      ResponseType = GetChatsResponse;
+      break;
+    default:
+      res.writeHead(501);
+      res.end(`Method not implemented: ${method}`);
+      return;
   }
+
+  const request = RequestType.decode(message);
+  console.log(`${method} request:`, JSON.stringify(request));
+
+  client[method.toLowerCase()](request, (err, response) => {
+    if (err) {
+      console.error(`${method} error:`, err);
+      sendGrpcWebError(res, err);
+    } else {
+      console.log(`${method} response: chats count = ${response.chats?.length || 0}`);
+      sendGrpcWebResponse(res, ResponseType, response);
+    }
+  });
 }
 
 function sendGrpcWebResponse(res, ResponseType, response) {
-  const encoded = ResponseType.encode(ResponseType.create(response)).finish();
-  
-  // Data frame
+  // Convert response to plain object for protobufjs
+  const plainObject = ResponseType.toObject(response, {
+    longs: String,
+    enums: String,
+    bytes: String,
+    defaults: true,
+  });
+
+  // Encode with protobufjs
+  const message = ResponseType.create(plainObject);
+  const encoded = ResponseType.encode(message).finish();
+
+  // Build gRPC-web data frame
   const dataFrame = Buffer.alloc(5 + encoded.length);
   dataFrame[0] = 0;
   dataFrame.writeUInt32BE(encoded.length, 1);
@@ -224,7 +195,7 @@ function sendGrpcWebResponse(res, ResponseType, response) {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Grpc-Web',
     'Transfer-Encoding': 'chunked',
   });
-  
+
   res.write(dataFrame);
   res.write(trailerFrame);
   res.end();
@@ -234,7 +205,7 @@ function sendGrpcWebError(res, err) {
   const statusCode = err.code || 13;
   const message = err.message || 'Internal error';
   const trailer = `grpc-status: ${statusCode}\r\ngrpc-message: ${message}\r\n`;
-  
+
   const trailerFrame = Buffer.alloc(5 + trailer.length);
   trailerFrame[0] = 0x80;
   trailerFrame.writeUInt32BE(trailer.length, 1);
@@ -245,7 +216,7 @@ function sendGrpcWebError(res, err) {
     'Access-Control-Allow-Origin': '*',
     'Transfer-Encoding': 'chunked',
   });
-  
+
   res.write(trailerFrame);
   res.end();
 }
