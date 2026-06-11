@@ -17,8 +17,10 @@
 Node.js прокси на хосте (не в Docker):
 
 ```
-Браузер → Nginx :80 (/messenger) → Node.js proxy :9090 → gRPC сервер :50052
+Браузер → Nginx :80 (/messenger) → Node.js proxy :9090 → gRPC сервер :50051 (prod)
 ```
+
+**Важно:** Prod сервер на порту 50051, dev — 50052. По умолчанию proxy использует prod.
 
 ### Почему не Envoy?
 
