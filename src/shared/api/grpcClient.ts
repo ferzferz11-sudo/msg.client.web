@@ -43,9 +43,10 @@ class GrpcClient {
   }
 
   connect(address?: string, getToken?: () => string | null): Promise<void> {
+    // Use Nginx gRPC-web proxy on port 80 instead of direct gRPC
     const baseUrl = address
       || import.meta.env.VITE_API_URL
-      || 'http://localhost:8080'
+      || 'http://13.140.25.249'
 
     this.getToken = getToken || null
 

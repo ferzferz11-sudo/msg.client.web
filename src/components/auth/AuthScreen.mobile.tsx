@@ -28,7 +28,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [serverAddress, setServerAddress] = useState(
-    import.meta.env.VITE_API_URL || '13.140.25.249:50051'
+    import.meta.env.VITE_API_URL || '13.140.25.249'
   )
 
   const usernameRef = useRef<HTMLInputElement>(null)
