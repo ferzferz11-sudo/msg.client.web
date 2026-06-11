@@ -1,31 +1,32 @@
 # ============================================
-# Buf — Protobuf code generation config
+# Buf v2 — Protobuf code generation config
 # ============================================
-# Generates TypeScript + grpc-web code from .proto files
+# Uses single @bufbuild/protoc-gen-es plugin with services=true
+# Generates plain TypeScript types + Connect service clients
 #
 # Prerequisites:
-#   - buf CLI: https://buf.build/docs/installation
+#   - buf CLI v1.40+: https://buf.build/docs/installation
 #   - protoc-gen-es: npm install -D @bufbuild/protoc-gen-es
-#   - protoc-gen-connect-es: npm install -D @bufbuild/protoc-gen-connect-es
-#   - protoc-gen-grpc-web: npm install -D grpc-web
 #
 # Usage:
-#   buf generate                    # Generate from buf.gen.yaml
-#   buf generate --template buf.gen.yaml --path proto/messenger.proto
+#   npm run proto:generate  (runs buf generate)
+#
+# Output: src/shared/api/gen/
+#   - messenger_pb.ts       (plain types: Chat, Message, etc.)
+#   - messenger_connect.ts  (Connect service clients)
+#
+# Note: In Connect v2, messages are plain types (not classes).
+# Use create() from @bufbuild/protobuf to instantiate:
+#   import { create } from "@bufbuild/protobuf"
+#   import { MessageSchema } from "./gen/messenger_pb.js"
+#   const msg = create(MessageSchema, { text: "Привет" })
 # ============================================
 
-version: v1
+version: v2
 plugins:
-  # Generate TypeScript messages/enums
-  - plugin: es
-    out: src/gen
+  # Single plugin generates both types AND Connect services
+  - local: protoc-gen-es
+    out: src/shared/api/gen
     opt:
       - target=ts
-      - import_extension=none
-
-  # Generate Connect-ES service clients (works with grpc-web proxy)
-  - plugin: connect-es
-    out: src/gen
-    opt:
-      - target=ts
-      - import_extension=none
+      - services=true

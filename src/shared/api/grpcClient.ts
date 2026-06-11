@@ -17,12 +17,11 @@
 
 /// <reference types="vite/client" />
 
-import { createPromiseClient, type PromiseClient, type Transport } from '@connectrpc/connect'
+import { createClient, type Transport } from '@connectrpc/connect'
 import { createGrpcWebTransport } from '@connectrpc/connect-web'
 import type { Chat, Message, StreamCallback } from '@/shared/types'
 
-// Import generated services (will exist after buf generate)
-// For now, we use the placeholder in src/gen/messenger_connect.ts
+// Import generated services
 import { ChatService, PushService } from '@/gen'
 
 // --- Singleton ---
@@ -30,8 +29,8 @@ import { ChatService, PushService } from '@/gen'
 class GrpcClient {
   private static instance: GrpcClient
   private transport: Transport | null = null
-  private chatClient: PromiseClient<typeof ChatService> | null = null
-  private pushClient: PromiseClient<typeof PushService> | null = null
+  private chatClient: ReturnType<typeof createClient<typeof ChatService>> | null = null
+  private pushClient: ReturnType<typeof createClient<typeof PushService>> | null = null
   private connected: boolean = false
   private activeStreams: Map<string, AbortController> = new Map()
 
@@ -53,13 +52,11 @@ class GrpcClient {
 
     this.transport = createGrpcWebTransport({
       baseUrl,
-      // Credentials for CORS
-      credentials: 'include',
     })
 
     // Create typed clients from generated service definitions
-    this.chatClient = createPromiseClient(ChatService as any, this.transport)
-    this.pushClient = createPromiseClient(PushService as any, this.transport)
+    this.chatClient = createClient(ChatService as any, this.transport)
+    this.pushClient = createClient(PushService as any, this.transport)
 
     this.connected = true
     return Promise.resolve()
