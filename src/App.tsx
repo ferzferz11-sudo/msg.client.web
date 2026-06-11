@@ -1,12 +1,6 @@
 // ============================================
 // App — Root Component with Auth + Routing
 // ============================================
-// Auth flow:
-// 1. Check Zustand authStore for saved credentials (persisted to localStorage)
-// 2. If authenticated -> show chat list
-// 3. If not -> show auth screen
-// 4. After successful auth -> save to store -> show chat list
-// ============================================
 
 import { useState, useEffect, useCallback } from 'react'
 import { ChatListScreen } from '@/components/chatList/ChatListScreen'
@@ -22,13 +16,12 @@ type Screen = 'auth' | 'chatList' | 'chat'
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth')
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Auth state from Zustand store
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const accessToken = useAuthStore((s) => s.accessToken)
   const logout = useAuthStore((s) => s.logout)
+  const setAuth = useAuthStore((s) => s.setAuth)
 
-  // Initialize iOS keyboard/viewport tracking at root level
   useIOSKeyboard()
 
   // Register Service Worker for PWA
@@ -54,13 +47,28 @@ export default function App() {
     }
   }, [])
 
-  // Update gRPC client with current token
+  // Restore session on mount
   useEffect(() => {
-    if (isAuthenticated && accessToken) {
-      const getToken = () => useAuthStore.getState().accessToken
-      grpcClient.connect(undefined, getToken)
+    const token = localStorage.getItem('auth_access_token')
+    const userStr = localStorage.getItem('auth_user')
+    
+    if (token && userStr) {
+      try {
+        const user = JSON.parse(userStr)
+        // Connect gRPC client with saved token
+        const getToken = () => token
+        grpcClient.connect(undefined, getToken)
+        // Mark as authenticated (token will be validated on first API call)
+        setAuth(user, token)
+        setCurrentScreen('chatList')
+      } catch (err) {
+        console.error('Failed to restore session:', err)
+        localStorage.removeItem('auth_access_token')
+        localStorage.removeItem('auth_user')
+      }
     }
-  }, [isAuthenticated, accessToken])
+    setIsLoading(false)
+  }, [setAuth])
 
   const handleAuthSuccess = useCallback(() => {
     setCurrentScreen('chatList')
@@ -81,6 +89,22 @@ export default function App() {
     setCurrentScreen('chatList')
     setActiveChatId(null)
   }, [])
+
+  // Show loading spinner while restoring session
+  if (isLoading) {
+    return (
+      <div style={{
+        width: '100%',
+        height: '100dvh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#1a1a2e',
+      }}>
+        <div style={{ color: '#fff', fontSize: 18 }}>Загрузка...</div>
+      </div>
+    )
+  }
 
   // Show auth screen if not authenticated
   if (!isAuthenticated || currentScreen === 'auth') {
