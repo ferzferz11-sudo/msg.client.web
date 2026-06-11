@@ -1,14 +1,5 @@
 // ============================================
-// gRPC-web Client — Real Backend Integration
-// ============================================
-// Uses @connectrpc/connect-web for gRPC-web transport.
-// Works through Envoy/Nginx proxy (grpc-web filter).
-//
-// Environment:
-//   VITE_API_URL — backend URL (default: http://localhost:8080)
-//
-// Real proto: proto/messenger.proto (copied from /root/msg/messenger.proto)
-// Services: ChatService (all methods), ServerService
+// gRPC-web Client — Real Backend + Auth Interceptor
 // ============================================
 
 /// <reference types="vite/client" />
@@ -16,18 +7,31 @@
 import { createClient, type Transport } from '@connectrpc/connect'
 import { createGrpcWebTransport } from '@connectrpc/connect-web'
 import type { Chat, Message, StreamCallback } from '@/shared/types'
+import type { AuthResponse } from '@/shared/api/gen/messenger_pb'
+import { AuthService, ChatService } from '@/shared/api/gen/messenger_pb'
 
-// Import generated service definitions
-import { ChatService } from './gen/messenger_pb'
+// --- Auth Interceptor ---
+
+function createAuthInterceptor(getToken: () => string | null) {
+  return (next: any) => async (req: any) => {
+    const token = getToken()
+    if (token) {
+      req.header.set('Authorization', `Bearer ${token}`)
+    }
+    return next(req)
+  }
+}
 
 // --- Singleton ---
 
 class GrpcClient {
   private static instance: GrpcClient
-  private transport: Transport | null = null
+  private baseTransport: Transport | null = null
+  private authClient: any = null
   private chatClient: any = null
   private connected: boolean = false
   private activeStreams: Map<string, AbortController> = new Map()
+  private getToken: (() => string | null) | null = null
 
   private constructor() {}
 
@@ -38,67 +42,80 @@ class GrpcClient {
     return GrpcClient.instance
   }
 
-  connect(address?: string): Promise<void> {
+  connect(address?: string, getToken?: () => string | null): Promise<void> {
     const baseUrl = address
       || import.meta.env.VITE_API_URL
       || 'http://localhost:8080'
 
-    this.transport = createGrpcWebTransport({ baseUrl })
-    this.chatClient = createClient(ChatService as any, this.transport)
+    this.getToken = getToken || null
+
+    const interceptor = createAuthInterceptor(() => this.getToken?.() || null)
+    this.baseTransport = createGrpcWebTransport({
+      baseUrl,
+      interceptors: [interceptor],
+    })
+
+    this.authClient = createClient(AuthService as any, this.baseTransport)
+    this.chatClient = createClient(ChatService as any, this.baseTransport)
+
     this.connected = true
     return Promise.resolve()
-  }
-
-  // --- Authentication ---
-
-  async startChat(
-    username: string,
-    password: string,
-    joinMessage = '',
-    register = false,
-    email = '',
-    deviceId = '',
-    deviceName = ''
-  ): Promise<{ success: boolean; userId?: string; error?: string }> {
-    if (!this.chatClient) throw new Error('Not connected')
-    try {
-      const response = await (this.chatClient as any).startChat({
-        user: username,
-        password,
-        joinMessage,
-        register,
-        email,
-        deviceId,
-        deviceName,
-      })
-      return { success: true, userId: response.userId }
-    } catch (err) {
-      return { success: false, error: String(err) }
-    }
-  }
-
-  async login(
-    username: string,
-    password: string,
-    register = false,
-    email = ''
-  ): Promise<{ success: boolean; userId?: string; error?: string }> {
-    return this.startChat(username, password, '', register, email, 'web-device', 'Web Browser')
   }
 
   disconnect(): void {
     this.connected = false
     this.activeStreams.forEach((controller) => controller.abort())
     this.activeStreams.clear()
+    this.authClient = null
     this.chatClient = null
-    this.transport = null
+    this.baseTransport = null
   }
 
   isConnected(): boolean {
     return this.connected
   }
 
-  // --- Unary calls ---
+  // --- Auth Methods ---
+
+  async signIn(username: string, password: string): Promise<AuthResponse> {
+    if (!this.authClient) throw new Error('Not connected')
+    return this.authClient.signIn({
+      username,
+      password,
+      deviceId: 'web-device',
+      deviceName: 'Web Browser',
+    })
+  }
+
+  async signUp(username: string, password: string, email?: string, displayName?: string): Promise<AuthResponse> {
+    if (!this.authClient) throw new Error('Not connected')
+    return this.authClient.signUp({
+      username,
+      password,
+      email: email || '',
+      displayName: displayName || username,
+    })
+  }
+
+  async refreshToken(refreshToken: string): Promise<AuthResponse> {
+    if (!this.authClient) throw new Error('Not connected')
+    return this.authClient.refreshToken({ refreshToken })
+  }
+
+  async logout(): Promise<boolean> {
+    if (!this.authClient) return false
+    try {
+      const token = this.getToken?.()
+      if (token) {
+        await this.authClient.logout({ accessToken: token })
+      }
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  // --- Chat Methods ---
 
   async getChats(userId: string): Promise<Chat[]> {
     if (!this.chatClient) throw new Error('Not connected')
@@ -106,9 +123,9 @@ class GrpcClient {
     return (response.chats || []).map(protoToChat)
   }
 
-  async getHistory(chatId: string, limit = 50): Promise<{ messages: Message[]; hasMore: boolean }> {
+  async getHistory(roomId: string, limit = 50): Promise<{ messages: Message[]; hasMore: boolean }> {
     if (!this.chatClient) throw new Error('Not connected')
-    const response = await this.chatClient.getHistory({ room: chatId, limit })
+    const response = await this.chatClient.getHistory({ room: roomId, limit })
     const messages = (response.messages || []).map(protoToMessage)
     return { messages, hasMore: messages.length === limit }
   }
@@ -125,7 +142,7 @@ class GrpcClient {
     return {
       id: response.chatId || '',
       name: user2,
-      type: 'regular' as string,
+      type: 'regular',
       creatorId: user1Id,
       participants: JSON.stringify([user1, user2]),
       lastMessageText: '',
@@ -141,7 +158,7 @@ class GrpcClient {
     return {
       id: response.chatId || '',
       name,
-      type: 'group' as string,
+      type: 'group',
       creatorId,
       participants: JSON.stringify(participants),
       lastMessageText: '',
@@ -171,13 +188,13 @@ class GrpcClient {
 
   // --- Server-Side Streaming ---
 
-  streamChatMessages(chatId: string, callback: StreamCallback): () => void {
-    const streamId = `stream-${chatId}-${Date.now()}`
+  streamChatMessages(roomId: string, callback: StreamCallback): () => void {
+    const streamId = `stream-${roomId}-${Date.now()}`
     const controller = new AbortController()
     this.activeStreams.set(streamId, controller)
     const signal = controller.signal
 
-    const stream = this.chatClient.chat({ roomId: chatId }, { signal })
+    const stream = this.chatClient.chat({ roomId }, { signal })
 
     ;(async () => {
       try {
@@ -221,14 +238,15 @@ function protoToChat(chat: any): Chat {
 function protoToMessage(msg: any): Message {
   return {
     id: msg.id || '',
-    chatId: msg.roomId || '',
-    senderId: msg.user || msg.userId || '',
-    senderName: msg.user || '',
-    content: msg.text || '',
+    roomId: msg.roomId || msg.chatId || '',
+    user: msg.user || '',
+    text: msg.text || '',
     createdAt: msg.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-    isOutgoing: msg.userId === 'user-1',
+    isOutgoing: false,
     isRead: msg.isRead || false,
-    replyToId: msg.repliedToMessageId || '',
+    repliedToMessageId: msg.repliedToMessageId || '',
+    repliedToUser: msg.repliedToUser || '',
+    repliedToText: msg.repliedToText || '',
     agentId: msg.agentId || '',
   }
 }

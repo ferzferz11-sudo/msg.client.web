@@ -141,19 +141,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       // Add to chat's message ID list
-      const existingIds = state.chatMessages[message.chatId] || []
+      const existingIds = state.chatMessages[message.roomId] || []
       const newIds = existingIds.includes(message.id)
         ? existingIds
         : [...existingIds, message.id]
 
       // Update chat's last message
-      const chat = state.chats[message.chatId]
+      const chat = state.chats[message.roomId]
       const newChats = chat
         ? {
             ...state.chats,
-            [message.chatId]: {
+            [message.roomId]: {
               ...chat,
-              lastMessageText: message.content,
+              lastMessageText: message.text,
               lastMessageTime: message.createdAt,
               unreadCount: message.isOutgoing
                 ? chat.unreadCount
@@ -166,7 +166,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: newMessages,
         chatMessages: {
           ...state.chatMessages,
-          [message.chatId]: newIds,
+          [message.roomId]: newIds,
         },
         chats: newChats,
       }

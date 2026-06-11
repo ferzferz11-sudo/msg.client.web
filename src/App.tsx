@@ -2,28 +2,31 @@
 // App — Root Component with Auth + Routing
 // ============================================
 // Auth flow:
-// 1. Check localStorage for saved credentials
-// 2. If exists -> auto-login -> show chat list
-// 3. If not -> show login screen
-// 4. After successful login -> save credentials -> show chat list
+// 1. Check Zustand authStore for saved credentials (persisted to localStorage)
+// 2. If authenticated -> show chat list
+// 3. If not -> show auth screen
+// 4. After successful auth -> save to store -> show chat list
 // ============================================
 
 import { useState, useEffect, useCallback } from 'react'
 import { ChatListScreen } from '@/components/chatList/ChatListScreen'
 import { ChatScreen } from '@/components/chat/ChatScreen'
-import { LoginScreen } from '@/components/auth/LoginScreen'
+import { AuthScreen } from '@/components/auth/AuthScreen'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
+import { useAuthStore } from '@/store/authStore'
 import '@/styles/global.css'
 
-type Screen = 'login' | 'chatList' | 'chat'
-type AuthState = 'checking' | 'authenticated' | 'unauthenticated'
+type Screen = 'auth' | 'chatList' | 'chat'
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('login')
+  const [currentScreen, setCurrentScreen] = useState<Screen>('auth')
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
-  const [authState, setAuthState] = useState<AuthState>('checking')
-  const [, setUsername] = useState<string>('')
+
+  // Auth state from Zustand store
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
+  const accessToken = useAuthStore((s) => s.accessToken)
+  const logout = useAuthStore((s) => s.logout)
 
   // Initialize iOS keyboard/viewport tracking at root level
   useIOSKeyboard()
@@ -51,51 +54,23 @@ export default function App() {
     }
   }, [])
 
-  // Check for saved credentials and auto-login
+  // Update gRPC client with current token
   useEffect(() => {
-    const savedUsername = localStorage.getItem('lavender_username')
-    const savedPassword = localStorage.getItem('lavender_password')
-    const savedServer = localStorage.getItem('lavender_server')
-
-    if (savedUsername && savedPassword && savedServer) {
-      // Auto-login with saved credentials
-      autoLogin(savedUsername, savedPassword, savedServer)
-    } else {
-      setAuthState('unauthenticated')
-      setCurrentScreen('login')
+    if (isAuthenticated && accessToken) {
+      const getToken = () => useAuthStore.getState().accessToken
+      grpcClient.connect(undefined, getToken)
     }
-  }, [])
+  }, [isAuthenticated, accessToken])
 
-  const autoLogin = async (user: string, pass: string, server: string) => {
-    try {
-      const baseUrl = server.startsWith('http') ? server : `http://${server}`
-      await grpcClient.connect(baseUrl)
-      const result = await grpcClient.login(user, pass)
-
-      if (result.success) {
-        setUsername(user)
-        setAuthState('authenticated')
-        setCurrentScreen('chatList')
-      } else {
-        // Clear invalid credentials
-        localStorage.removeItem('lavender_username')
-        localStorage.removeItem('lavender_password')
-        localStorage.removeItem('lavender_server')
-        setAuthState('unauthenticated')
-        setCurrentScreen('login')
-      }
-    } catch (err) {
-      console.error('Auto-login failed:', err)
-      setAuthState('unauthenticated')
-      setCurrentScreen('login')
-    }
-  }
-
-  const handleLoginSuccess = useCallback((user: string, _userId: string) => {
-    setUsername(user)
-    setAuthState('authenticated')
+  const handleAuthSuccess = useCallback(() => {
     setCurrentScreen('chatList')
   }, [])
+
+  const handleLogout = useCallback(async () => {
+    await grpcClient.logout()
+    logout()
+    setCurrentScreen('auth')
+  }, [logout])
 
   const handleChatSelect = useCallback((chatId: string) => {
     setActiveChatId(chatId)
@@ -107,27 +82,9 @@ export default function App() {
     setActiveChatId(null)
   }, [])
 
-  // Show loading while checking auth
-  if (authState === 'checking') {
-    return (
-      <div style={{
-        width: '100%',
-        height: 'var(--viewport-available-height, 100dvh)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#1a1a2e',
-        color: '#888',
-        fontSize: 14,
-      }}>
-        Подключение...
-      </div>
-    )
-  }
-
-  // Show login screen if not authenticated
-  if (authState === 'unauthenticated' || currentScreen === 'login') {
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />
+  // Show auth screen if not authenticated
+  if (!isAuthenticated || currentScreen === 'auth') {
+    return <AuthScreen onAuthSuccess={handleAuthSuccess} />
   }
 
   return (
@@ -141,7 +98,7 @@ export default function App() {
     >
       {currentScreen === 'chatList' && (
         <div key="list" className="screen-enter" style={{ width: '100%', height: '100%' }}>
-          <ChatListScreen onChatSelect={handleChatSelect} />
+          <ChatListScreen onChatSelect={handleChatSelect} onLogout={handleLogout} />
         </div>
       )}
 

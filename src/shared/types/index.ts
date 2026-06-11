@@ -22,14 +22,15 @@ export interface Chat {
 
 export interface Message {
   id: string
-  chatId: string  // roomId in proto
-  senderId: string  // user in proto
-  senderName: string
-  content: string  // text in proto
+  roomId: string  // room_id in proto
+  user: string  // user in proto
+  text: string  // text in proto
   createdAt: string
   isOutgoing: boolean
   isRead: boolean
-  replyToId?: string
+  repliedToMessageId?: string
+  repliedToUser?: string
+  repliedToText?: string
   agentId?: string
 }
 

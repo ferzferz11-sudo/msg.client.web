@@ -216,12 +216,12 @@ function MessageBubble({ message }: MessageBubbleProps) {
           wordBreak: 'break-word',
         }}
       >
-        {!isOutgoing && message.senderName && (
+        {!isOutgoing && message.user && (
           <div style={{ fontSize: 12, fontWeight: 600, color: '#6b5ce7', marginBottom: 2 }}>
-            {message.senderName}
+            {message.user}
           </div>
         )}
-        <div>{message.content}</div>
+        <div>{message.text}</div>
         <div
           style={{
             fontSize: 11,

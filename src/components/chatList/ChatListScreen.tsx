@@ -10,6 +10,7 @@ function isMobile(): boolean {
 
 interface ChatListScreenProps {
   onChatSelect: (chatId: string) => void
+  onLogout?: () => void
 }
 
 function createLazyLoader(

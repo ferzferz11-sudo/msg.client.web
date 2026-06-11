@@ -75,7 +75,7 @@ export function useChatMessages(chatId: string | null) {
   const handleStreamEvent = useCallback(
     (event: { type: string; message?: Message }) => {
       if (event.type === 'message' && event.message) {
-        if (chatIdRef.current === event.message.chatId) {
+        if (chatIdRef.current === event.message.roomId) {
           addMessage(event.message)
         }
       }
