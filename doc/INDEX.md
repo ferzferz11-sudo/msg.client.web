@@ -25,7 +25,8 @@
 | `IOS.md` | iOS Safari: SafeArea, bounce, клавиатура, stream lifecycle | **При iOS-разработке** |
 | `STATE.md` | Zustand store: нормализация, actions, selectors | **При работе с state** |
 | `GRPC.md` | gRPC клиент: singleton, mock, streaming, lifecycle | **При работе с API** |
-| `SERVER_INTEGRATION.md` | gRPC API сервера, протоколы, таблицы БД | **При интеграции с сервером** |
+|| `SERVER_INTEGRATION.md` | gRPC API сервера, gRPC-web proxy, Nginx | **При интеграции с сервером** |
+| `GRPC_WEB_PROXY.md` | gRPC-web proxy: архитектура, настройка, отладка | **При проблемах с gRPC** |
 | `ANDROID_PARITY.md` | Соответствие Android-клиенту | При реализации UI |
 | `PITFALLS.md` | Подводные камни | **Перед началом работы** |
 
