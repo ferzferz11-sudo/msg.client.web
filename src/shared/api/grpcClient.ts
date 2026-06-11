@@ -49,6 +49,43 @@ class GrpcClient {
     return Promise.resolve()
   }
 
+  // --- Authentication ---
+
+  async startChat(
+    username: string,
+    password: string,
+    joinMessage = '',
+    register = false,
+    email = '',
+    deviceId = '',
+    deviceName = ''
+  ): Promise<{ success: boolean; userId?: string; error?: string }> {
+    if (!this.chatClient) throw new Error('Not connected')
+    try {
+      const response = await (this.chatClient as any).startChat({
+        user: username,
+        password,
+        joinMessage,
+        register,
+        email,
+        deviceId,
+        deviceName,
+      })
+      return { success: true, userId: response.userId }
+    } catch (err) {
+      return { success: false, error: String(err) }
+    }
+  }
+
+  async login(
+    username: string,
+    password: string,
+    register = false,
+    email = ''
+  ): Promise<{ success: boolean; userId?: string; error?: string }> {
+    return this.startChat(username, password, '', register, email, 'web-device', 'Web Browser')
+  }
+
   disconnect(): void {
     this.connected = false
     this.activeStreams.forEach((controller) => controller.abort())
