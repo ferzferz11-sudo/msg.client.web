@@ -4,6 +4,7 @@
 
 import { useEffect, useCallback } from 'react'
 import { useChatStore } from '@/store/chatStore'
+import { useAuthStore } from '@/store/authStore'
 import { grpcClient } from '@/shared/api/grpcClient'
 
 export function useChats() {
@@ -13,14 +14,18 @@ export function useChats() {
   const setLoadingChats = useChatStore((s) => s.setLoadingChats)
   const addChat = useChatStore((s) => s.addChat)
   const setActiveChatId = useChatStore((s) => s.setActiveChatId)
+  const user = useAuthStore((s) => s.user)
 
   // Load chats on mount
   useEffect(() => {
-    let cancelled = false
+    let cancelled = true
     setLoadingChats(true)
 
+    const userId = user?.id || ''
+    const username = user?.username || ''
+
     grpcClient
-      .getChats('user-1')
+      .getChats(userId, username)
       .then((chats) => {
         if (cancelled) return
         setChats(chats)
@@ -35,7 +40,7 @@ export function useChats() {
     return () => {
       cancelled = true
     }
-  }, [setChats, setLoadingChats])
+  }, [setChats, setLoadingChats, user])
 
   const openChat = useCallback(
     (chatId: string) => {
@@ -46,11 +51,12 @@ export function useChats() {
 
   const createNewChat = useCallback(
     async (participants: string[], _name?: string) => {
-      const chat = await grpcClient.createDirectChat('user-1', participants[0], 'user-1-id', 'user-2-id')
+      if (!user) return
+      const chat = await grpcClient.createDirectChat(user.username, participants[0], user.id, 'user-2-id')
       addChat(chat)
       setActiveChatId(chat.id)
     },
-    [addChat, setActiveChatId]
+    [addChat, setActiveChatId, user]
   )
 
   return {

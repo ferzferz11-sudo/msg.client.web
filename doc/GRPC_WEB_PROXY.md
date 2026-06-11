@@ -26,115 +26,90 @@ Envoy в Docker контейнере не мог подключиться к gRP
 
 ---
 
+## Поддерживаемые методы
+
+### AuthService
+- `SignIn` — вход (username, password) → AuthResponse
+- `SignUp` — регистрация (username, password, email) → AuthResponse
+
+### ChatService
+- `GetChats` — список чатов (GetChatsRequest: username, user_id) → GetChatsResponse
+- `GetHistory` — история сообщений (GetHistoryRequest: room, limit) → GetHistoryResponse
+- `CreateDirectChat` — создание чата (CreateDirectChatRequest) → CreateDirectChatResponse
+
+---
+
+## gRPC-web framing
+
+```
+[compressed flag (1 byte)] [message length (4 bytes)] [message]
+```
+
+Trailer frame (в конце ответа):
+```
+[0x80 (trailer flag)] [length (4 bytes)] ["grpc-status: 0\r\ngrpc-message: OK\r\n"]
+```
+
+**Важно:** Браузерный gRPC-web клиент ожидает trailer с `grpc-status`. Без него ошибка "missing trailer".
+
+---
+
+## Proto
+
+Используется `protobufjs` для ручного декодирования/кодирования:
+```javascript
+const root = protobuf.loadSync(PROTO_PATH);
+const SignInRequest = root.lookupType('messenger.SignInRequest');
+const request = SignInRequest.decode(message);
+```
+
+**Важно:** `@grpc/proto-loader` и `@bufbuild/protobuf` — разные библиотеки. Для ручного декодирования использовать `protobufjs`.
+
+---
+
 ## Управление
 
 ```bash
 # Статус
 sudo systemctl status grpc-web-proxy
 
-# Запуск / остановка / перезапуск
-sudo systemctl start grpc-web-proxy
-sudo systemctl stop grpc-web-proxy
+# Перезапуск
 sudo systemctl restart grpc-web-proxy
 
 # Логи
 sudo journalctl -u grpc-web-proxy -f
-
-# Автозапуск
-sudo systemctl enable grpc-web-proxy
 ```
 
 ---
 
-## Конфигурация
+## Известные проблемы и решения
 
-```javascript
-// grpc-web-proxy.cjs
-const GRPC_HOST = '127.0.0.1';
-const GRPC_PORT = 50052;  // dev сервер
-const PROXY_PORT = 9090;
-```
+### "missing trailer"
+**Причина:** Proxy не отправлял trailer с `grpc-status`.
+**Решение:** Добавлен trailer frame в конец каждого ответа.
 
----
+### "user not found" при входе
+**Причина:** Пользователь не зарегистрирован в БД.
+**Решение:** Сначала зарегистрировать через SignUp.
 
-## Зависимости
+### GetChats возвращает пустой список
+**Причина:** GetChats ищет чаты по `username` в поле `participants` (JSON массив username), а не по `user_id`.
+**Решение:** Передавать `username` из authStore в `useChats.ts`.
 
-```bash
-npm install @grpc/grpc-js @grpc/proto-loader --legacy-peer-deps
-```
-
----
-
-## Отладка
-
-### Проверка что proxy работает
-
-```bash
-curl -X POST http://127.0.0.1:9090/messenger.AuthService/SignIn \
-  -H "Content-Type: application/grpc-web+proto"
-```
-
-Ожидаемый ответ: 400 (пустой body) или 200 (с данными).
-
-### Проверка что Nginx проксирует
-
-```bash
-curl -X POST http://127.0.0.1/messenger/messenger.AuthService/SignIn \
-  -H "Content-Type: application/grpc-web+proto"
-```
-
-### Логи proxy
-
-```bash
-sudo journalctl -u grpc-web-proxy --no-pager -n 50
-```
+### systemd сервис не запускался
+**Причина:** Путь `/usr/bin/node` не найден.
+**Решение:** Node.js в `/root/.local/bin/node`.
 
 ---
 
-## Типичные ошибки
+## Nginx configuration
 
-| Ошибка | Причина | Решение |
-|--------|---------|---------|
-| 426 Upgrade Required | Nginx проксирует на Envoy, а не на Node.js proxy | Проверить `proxy_pass` в Nginx |
-| 502 Bad Gateway | Proxy не запущен | `sudo systemctl start grpc-web-proxy` |
-| 400 Bad Request | Неправильный gRPC-web framing | Проверить что браузер отправляет правильный запрос |
-| missing trailer | gRPC-web framing не конвертируется | Проверить версию proxy |
-
----
-
-## Схема потока данных
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ Браузер                                                        │
-│  gRPC-web клиент (@connectrpc/connect-web)                      │
-│  HTTP/1.1 POST /messenger/messenger.AuthService/SignIn          │
-│  Content-Type: application/grpc-web+proto                       │
-│  Body: [5-byte framing] + protobuf message                     │
-└─────────────────────────────┬───────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ Nginx :80                                                       │
-│  location /messenger {                                          │
-│    rewrite ^/messenger(/.*)$ $1 break;                          │
-│    proxy_pass http://127.0.0.1:9090;                            │
-│  }                                                              │
-└─────────────────────────────┬───────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ Node.js gRPC-web Proxy :9090                                    │
-│  1. Парсит gRPC-web framing (5-byte header + message)           │
-│  2. Декодирует protobuf через @grpc/proto-loader                │
-│  3. Вызывает gRPC метод через @grpc/grpc-js                     │
-│  4. Кодирует ответ обратно в gRPC-web framing                   │
-└─────────────────────────────┬───────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│ gRPC Сервер :50052                                              │
-│  AuthService.SignIn / AuthService.SignUp                        │
-│  HTTP/2 + protobuf                                              │
-└─────────────────────────────────────────────────────────────────┘
+```nginx
+location /messenger {
+    rewrite ^/messenger(/.*)$ $1 break;
+    proxy_pass http://127.0.0.1:9090;
+    proxy_http_version 1.1;
+    proxy_read_timeout 300s;
+    # CORS headers...
+}
 ```

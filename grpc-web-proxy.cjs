@@ -20,6 +20,8 @@ const root = protobuf.loadSync(PROTO_PATH);
 const SignInRequest = root.lookupType('messenger.SignInRequest');
 const SignUpRequest = root.lookupType('messenger.SignUpRequest');
 const AuthResponse = root.lookupType('messenger.AuthResponse');
+const GetChatsRequest = root.lookupType('messenger.GetChatsRequest');
+const GetChatsResponse = root.lookupType('messenger.GetChatsResponse');
 
 // Load proto for gRPC client
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
@@ -31,15 +33,18 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 });
 const proto = grpc.loadPackageDefinition(packageDefinition).messenger;
 
-// Create gRPC client
-const grpcClient = new proto.AuthService(
+// Create gRPC clients
+const authClient = new proto.AuthService(
+  `${GRPC_HOST}:${GRPC_PORT}`,
+  grpc.credentials.createInsecure()
+);
+const chatClient = new proto.ChatService(
   `${GRPC_HOST}:${GRPC_PORT}`,
   grpc.credentials.createInsecure()
 );
 
 // HTTP server for gRPC-web
 const server = http.createServer((req, res) => {
-  // CORS preflight
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
@@ -57,16 +62,13 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Read request body
   const chunks = [];
   req.on('data', chunk => chunks.push(chunk));
   req.on('end', () => {
     try {
       const body = Buffer.concat(chunks);
 
-      // Parse gRPC-web framing: [compressed(1)] [length(4)] [message]
       if (body.length < 5) {
-        console.log('Body too short:', body.length);
         res.writeHead(400);
         res.end('Invalid gRPC-web message');
         return;
@@ -76,10 +78,8 @@ const server = http.createServer((req, res) => {
       const messageLength = body.readUInt32BE(1);
       const message = body.slice(5, 5 + messageLength);
 
-      // Parse URL: /messenger.ServiceName/MethodName
       const urlMatch = req.url.match(/\/messenger\.(\w+)\/(\w+)/);
       if (!urlMatch) {
-        console.log('Invalid URL:', req.url);
         res.writeHead(400);
         res.end('Invalid URL format');
         return;
@@ -91,10 +91,9 @@ const server = http.createServer((req, res) => {
       console.log(`gRPC-web: ${serviceName}.${methodName}, body: ${body.length} bytes, msg: ${message.length} bytes`);
 
       if (serviceName === 'AuthService') {
-        handleAuthMethod(grpcClient, methodName, message, res);
+        handleAuthMethod(authClient, methodName, message, res);
       } else if (serviceName === 'ChatService') {
-        res.writeHead(501);
-        res.end('ChatService not yet implemented');
+        handleChatMethod(chatClient, methodName, message, res);
       } else {
         res.writeHead(404);
         res.end(`Unknown service: ${serviceName}`);
@@ -120,7 +119,7 @@ function handleAuthMethod(client, method, message, res) {
             sendGrpcWebError(res, err);
           } else {
             console.log('SignIn response:', JSON.stringify(response));
-            sendGrpcWebResponse(res, response);
+            sendGrpcWebResponse(res, AuthResponse, response);
           }
         });
         break;
@@ -133,7 +132,7 @@ function handleAuthMethod(client, method, message, res) {
             sendGrpcWebError(res, err);
           } else {
             console.log('SignUp response:', JSON.stringify(response));
-            sendGrpcWebResponse(res, response);
+            sendGrpcWebResponse(res, AuthResponse, response);
           }
         });
         break;
@@ -148,25 +147,77 @@ function handleAuthMethod(client, method, message, res) {
   }
 }
 
-function sendGrpcWebResponse(res, response) {
-  // Encode response to protobuf
-  const encoded = AuthResponse.encode(AuthResponse.create(response)).finish();
+function handleChatMethod(client, method, message, res) {
+  try {
+    let request;
+    switch (method) {
+      case 'GetChats':
+        request = GetChatsRequest.decode(message);
+        console.log('GetChats request:', JSON.stringify(request));
+        client.getChats(request, (err, response) => {
+          if (err) {
+            console.error('GetChats error:', err);
+            sendGrpcWebError(res, err);
+          } else {
+            console.log('GetChats response:', JSON.stringify(response));
+            sendGrpcWebResponse(res, GetChatsResponse, response);
+          }
+        });
+        break;
+      case 'GetHistory':
+        request = root.lookupType('messenger.GetHistoryRequest').decode(message);
+        console.log('GetHistory request:', JSON.stringify(request));
+        client.getHistory(request, (err, response) => {
+          if (err) {
+            console.error('GetHistory error:', err);
+            sendGrpcWebError(res, err);
+          } else {
+            console.log('GetHistory response:', JSON.stringify(response));
+            sendGrpcWebResponse(res, root.lookupType('messenger.GetHistoryResponse'), response);
+          }
+        });
+        break;
+      case 'CreateDirectChat':
+        request = root.lookupType('messenger.CreateDirectChatRequest').decode(message);
+        console.log('CreateDirectChat request:', JSON.stringify(request));
+        client.createDirectChat(request, (err, response) => {
+          if (err) {
+            console.error('CreateDirectChat error:', err);
+            sendGrpcWebError(res, err);
+          } else {
+            console.log('CreateDirectChat response:', JSON.stringify(response));
+            sendGrpcWebResponse(res, root.lookupType('messenger.CreateDirectChatResponse'), response);
+          }
+        });
+        break;
+      default:
+        console.log(`ChatService method not implemented: ${method}`);
+        res.writeHead(501);
+        res.end(`Method not implemented: ${method}`);
+    }
+  } catch (err) {
+    console.error('Error in handleChatMethod:', err);
+    res.writeHead(500);
+    res.end('Internal error: ' + err.message);
+  }
+}
+
+function sendGrpcWebResponse(res, ResponseType, response) {
+  const encoded = ResponseType.encode(ResponseType.create(response)).finish();
   
-  // Build gRPC-web data frame: [compressed(1)] [length(4)] [message]
+  // Data frame
   const dataFrame = Buffer.alloc(5 + encoded.length);
-  dataFrame[0] = 0; // not compressed
+  dataFrame[0] = 0;
   dataFrame.writeUInt32BE(encoded.length, 1);
   encoded.copy(dataFrame, 5);
 
-  // Build gRPC-web trailer frame: [compressed(1)] [length(4)] [trailer]
-  // Trailer format: "grpc-status: 0\r\ngrpc-message: OK\r\n"
+  // Trailer frame
   const trailer = 'grpc-status: 0\r\ngrpc-message: OK\r\n';
   const trailerFrame = Buffer.alloc(5 + trailer.length);
-  trailerFrame[0] = 0x80; // trailer marker (compressed flag + trailer indicator)
+  trailerFrame[0] = 0x80;
   trailerFrame.writeUInt32BE(trailer.length, 1);
   Buffer.from(trailer).copy(trailerFrame, 5);
 
-  // Send both frames
   res.writeHead(200, {
     'Content-Type': 'application/grpc-web+proto',
     'Access-Control-Allow-Origin': '*',
@@ -180,13 +231,12 @@ function sendGrpcWebResponse(res, response) {
 }
 
 function sendGrpcWebError(res, err) {
-  // Build error trailer
   const statusCode = err.code || 13;
   const message = err.message || 'Internal error';
   const trailer = `grpc-status: ${statusCode}\r\ngrpc-message: ${message}\r\n`;
   
   const trailerFrame = Buffer.alloc(5 + trailer.length);
-  trailerFrame[0] = 0x80; // trailer marker
+  trailerFrame[0] = 0x80;
   trailerFrame.writeUInt32BE(trailer.length, 1);
   Buffer.from(trailer).copy(trailerFrame, 5);
 

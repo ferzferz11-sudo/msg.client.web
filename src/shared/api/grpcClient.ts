@@ -95,9 +95,9 @@ class GrpcClient {
 
   // --- Chat Methods ---
 
-  async getChats(userId: string): Promise<Chat[]> {
+  async getChats(userId: string, username?: string): Promise<Chat[]> {
     if (!this.chatClient) throw new Error('Not connected')
-    const response = await this.chatClient.getChats({ userId })
+    const response = await this.chatClient.getChats({ userId, username: username || '' })
     return (response.chats || []).map(protoToChat)
   }
 
