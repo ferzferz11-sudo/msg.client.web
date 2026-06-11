@@ -158,13 +158,12 @@ export function usePushNotifications(): UsePushNotificationsReturn {
       }
 
       // Step 5: Register token with backend via gRPC
-      await grpcClient.registerPushToken({
-        endpoint: subscriptionInfo.endpoint,
-        p256dh: subscriptionInfo.keys.p256dh,
-        auth: subscriptionInfo.keys.auth,
-        platform: 'web',
-        userAgent: navigator.userAgent,
-      })
+      // Uses ChatService.RegisterToken from messenger.proto
+      await grpcClient.registerPushToken(
+        'user-1',
+        subscriptionInfo.endpoint,
+        true // pushEnabled
+      )
 
       setIsSubscribing(false)
       return true

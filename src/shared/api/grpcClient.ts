@@ -6,13 +6,9 @@
 //
 // Environment:
 //   VITE_API_URL — backend URL (default: http://localhost:8080)
-//   VITE_VAPID_PUBLIC_KEY — VAPID key for Web Push
 //
-// Generated code from proto/messenger.proto:
-//   npm run proto:generate  (runs buf generate)
-//
-// The generated services are in src/gen/ and provide
-// type-safe clients for ChatService and PushService.
+// Real proto: proto/messenger.proto (copied from /root/msg/messenger.proto)
+// Services: ChatService (all methods), ServerService
 // ============================================
 
 /// <reference types="vite/client" />
@@ -21,16 +17,15 @@ import { createClient, type Transport } from '@connectrpc/connect'
 import { createGrpcWebTransport } from '@connectrpc/connect-web'
 import type { Chat, Message, StreamCallback } from '@/shared/types'
 
-// Import generated services
-import { ChatService, PushService } from '@/gen'
+// Import generated service definitions
+import { ChatService } from './gen/messenger_pb'
 
 // --- Singleton ---
 
 class GrpcClient {
   private static instance: GrpcClient
   private transport: Transport | null = null
-  private chatClient: ReturnType<typeof createClient<typeof ChatService>> | null = null
-  private pushClient: ReturnType<typeof createClient<typeof PushService>> | null = null
+  private chatClient: any = null
   private connected: boolean = false
   private activeStreams: Map<string, AbortController> = new Map()
 
@@ -43,21 +38,13 @@ class GrpcClient {
     return GrpcClient.instance
   }
 
-  // --- Connection ---
-
   connect(address?: string): Promise<void> {
     const baseUrl = address
       || import.meta.env.VITE_API_URL
       || 'http://localhost:8080'
 
-    this.transport = createGrpcWebTransport({
-      baseUrl,
-    })
-
-    // Create typed clients from generated service definitions
+    this.transport = createGrpcWebTransport({ baseUrl })
     this.chatClient = createClient(ChatService as any, this.transport)
-    this.pushClient = createClient(PushService as any, this.transport)
-
     this.connected = true
     return Promise.resolve()
   }
@@ -67,7 +54,6 @@ class GrpcClient {
     this.activeStreams.forEach((controller) => controller.abort())
     this.activeStreams.clear()
     this.chatClient = null
-    this.pushClient = null
     this.transport = null
   }
 
@@ -79,41 +65,71 @@ class GrpcClient {
 
   async getChats(userId: string): Promise<Chat[]> {
     if (!this.chatClient) throw new Error('Not connected')
-    const response = await (this.chatClient as any).getChats({ userId })
-    return response.chats.map(protoToChat)
+    const response = await this.chatClient.getChats({ userId })
+    return (response.chats || []).map(protoToChat)
   }
 
-  async getMessages(chatId: string, limit = 50, beforeId?: string): Promise<{ messages: Message[]; hasMore: boolean }> {
+  async getHistory(chatId: string, limit = 50): Promise<{ messages: Message[]; hasMore: boolean }> {
     if (!this.chatClient) throw new Error('Not connected')
-    const response = await (this.chatClient as any).getMessages({ chatId, limit, beforeId })
+    const response = await this.chatClient.getHistory({ room: chatId, limit })
+    const messages = (response.messages || []).map(protoToMessage)
+    return { messages, hasMore: messages.length === limit }
+  }
+
+  async sendMessage(roomId: string, content: string, userId: string): Promise<Message> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const response = await this.chatClient.chat({ roomId, text: content, userId })
+    return protoToMessage(response)
+  }
+
+  async createDirectChat(user1: string, user2: string, user1Id: string, user2Id: string): Promise<Chat> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const response = await this.chatClient.createDirectChat({ user1, user2, user1Id, user2Id })
     return {
-      messages: response.messages.map(protoToMessage),
-      hasMore: response.hasMore,
+      id: response.chatId || '',
+      name: user2,
+      type: 'regular' as string,
+      creatorId: user1Id,
+      participants: JSON.stringify([user1, user2]),
+      lastMessageText: '',
+      lastMessageTime: new Date().toISOString(),
+      unreadCount: 0,
+      isOnline: false,
     }
   }
 
-  async sendMessage(chatId: string, content: string, senderId: string, replyToId?: string): Promise<Message> {
+  async createGroupChat(name: string, participants: string[], creator: string, creatorId: string, participantIds: string[]): Promise<Chat> {
     if (!this.chatClient) throw new Error('Not connected')
-    const response = await (this.chatClient as any).sendMessage({ chatId, content, senderId, replyToId })
-    return protoToMessage(response.message!)
+    const response = await this.chatClient.createGroupChat({ name, participants, creator, creatorId, participantIds })
+    return {
+      id: response.chatId || '',
+      name,
+      type: 'group' as string,
+      creatorId,
+      participants: JSON.stringify(participants),
+      lastMessageText: '',
+      lastMessageTime: new Date().toISOString(),
+      unreadCount: 0,
+      isOnline: false,
+    }
   }
 
-  async createChat(participants: string[], name?: string, type: string = 'regular'): Promise<Chat> {
+  async deleteChat(chatId: string, requesterUsername: string, requesterUserId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const response = await (this.chatClient as any).createChat({ participants, name, type })
-    return protoToChat(response.chat!)
-  }
-
-  async deleteChat(chatId: string, userId: string): Promise<boolean> {
-    if (!this.chatClient) throw new Error('Not connected')
-    const response = await (this.chatClient as any).deleteChat({ chatId, userId })
+    const response = await this.chatClient.deleteChat({ chatId, requesterUsername, requesterUserId })
     return response.success
   }
 
-  async getMissingMessages(chatId: string, since: string): Promise<Message[]> {
+  async markRead(roomId: string, username: string, userId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const response = await (this.chatClient as any).getMissingMessages({ chatId, since })
-    return response.messages.map(protoToMessage)
+    const response = await this.chatClient.markRead({ roomId, username, userId })
+    return response.success
+  }
+
+  async registerPushToken(userId: string, token: string, pushEnabled: boolean): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const response = await this.chatClient.registerToken({ user: userId, token, pushEnabled, userId })
+    return response.success
   }
 
   // --- Server-Side Streaming ---
@@ -124,13 +140,8 @@ class GrpcClient {
     this.activeStreams.set(streamId, controller)
     const signal = controller.signal
 
-    // Use the streaming RPC from generated client
-    const stream = (this.chatClient as any).subscribeChat(
-      { chatId, userId: 'user-1' },
-      { signal }
-    )
+    const stream = this.chatClient.chat({ roomId: chatId }, { signal })
 
-    // Process the stream
     ;(async () => {
       try {
         for await (const event of stream) {
@@ -149,66 +160,39 @@ class GrpcClient {
       this.activeStreams.delete(streamId)
     }
   }
-
-  // --- Push Notifications ---
-
-  async registerPushToken(params: {
-    endpoint: string
-    p256dh: string
-    auth: string
-    platform: string
-    userAgent: string
-  }): Promise<{ success: boolean }> {
-    if (!this.pushClient) throw new Error('Not connected')
-    const response = await (this.pushClient as any).registerPushToken({
-      userId: 'user-1',
-      endpoint: params.endpoint,
-      p256dh: params.p256dh,
-      auth: params.auth,
-      platform: params.platform,
-      userAgent: params.userAgent,
-    })
-    return { success: response.success }
-  }
-
-  async unregisterPushToken(endpoint: string): Promise<boolean> {
-    if (!this.pushClient) throw new Error('Not connected')
-    const response = await (this.pushClient as any).unregisterPushToken({ endpoint })
-    return response.success
-  }
 }
 
 // --- Proto → TypeScript converters ---
 
 function protoToChat(chat: any): Chat {
   return {
-    id: chat.id,
-    name: chat.name,
-    type: chat.type as Chat['type'],
-    creatorId: chat.creatorId,
-    participants: chat.participants,
-    lastMessageText: chat.lastMessageText,
-    lastMessageTime: chat.lastMessageTime,
-    unreadCount: chat.unreadCount,
-    avatarUrl: chat.avatarUrl,
-    isOnline: chat.isOnline,
-    activeAgentId: chat.activeAgentId,
-    agentMode: chat.agentMode as Chat['agentMode'],
+    id: chat.id || '',
+    name: chat.name || '',
+    type: chat.type || 'regular',
+    creatorId: chat.creator || '',
+    participants: chat.participants || '[]',
+    lastMessageText: chat.lastMessageText || '',
+    lastMessageTime: chat.lastMessageTime?.toDate?.()?.toISOString() || new Date().toISOString(),
+    unreadCount: chat.unreadCount || 0,
+    avatarUrl: chat.avatarUrl || '',
+    isOnline: chat.isOnline || false,
+    activeAgentId: chat.activeAgentId || '',
+    agentMode: chat.agentMode || 'single',
   }
 }
 
 function protoToMessage(msg: any): Message {
   return {
-    id: msg.id,
-    chatId: msg.chatId,
-    senderId: msg.senderId,
-    senderName: msg.senderName,
-    content: msg.content,
-    createdAt: msg.createdAt,
-    isOutgoing: msg.isOutgoing,
-    isRead: msg.isRead,
-    replyToId: msg.replyToId,
-    agentId: msg.agentId,
+    id: msg.id || '',
+    chatId: msg.roomId || '',
+    senderId: msg.user || msg.userId || '',
+    senderName: msg.user || '',
+    content: msg.text || '',
+    createdAt: msg.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+    isOutgoing: msg.userId === 'user-1',
+    isRead: msg.isRead || false,
+    replyToId: msg.repliedToMessageId || '',
+    agentId: msg.agentId || '',
   }
 }
 
@@ -224,6 +208,5 @@ function handleStreamEvent(event: any, callback: StreamCallback): void {
   }
 }
 
-// Export singleton
 export const grpcClient = GrpcClient.getInstance()
 export default grpcClient

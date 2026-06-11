@@ -44,8 +44,8 @@ export function useChatMessages(chatId: string | null) {
     oldestMessageIdRef.current = null
 
     grpcClient
-      .getMessages(chatId, 50)
-      .then(({ messages: msgs, hasMore: more }) => {
+      .getHistory(chatId, 50)
+      .then(({ messages: msgs, hasMore: more }: { messages: Message[]; hasMore: boolean }) => {
         if (cancelled || chatIdRef.current !== chatId) return
         setMessages(chatId, msgs)
         setHasMore(more)
@@ -109,10 +109,9 @@ export function useChatMessages(chatId: string | null) {
     setIsLoadingMore(true)
 
     try {
-      const { messages: olderMsgs, hasMore: more } = await grpcClient.getMessages(
+      const { messages: olderMsgs, hasMore: more } = await grpcClient.getHistory(
         chatId,
-        50,
-        oldestMessageIdRef.current || undefined
+        50
       )
 
       if (olderMsgs.length > 0) {

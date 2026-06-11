@@ -77,12 +77,9 @@ export function useGrpcStream({
     if (!grpcClient.isConnected()) return
 
     try {
-      const missed = await grpcClient.getMissingMessages(
-        chatId,
-        lastMessageTimestampRef.current
-      )
-      if (missed.length > 0 && onMissedMessagesRef.current) {
-        onMissedMessagesRef.current(missed)
+      const response = await grpcClient.getHistory(chatId, 50)
+      if (response.messages.length > 0 && onMissedMessagesRef.current) {
+        onMissedMessagesRef.current(response.messages)
       }
     } catch (err) {
       console.error('Failed to fetch missed messages:', err)

@@ -1,28 +1,31 @@
 // ============================================
 // Lavender Messenger — Shared Types
 // ============================================
+// These types match the real proto/messenger.proto structures
+// and are used throughout the app (Zustand store, UI components, gRPC client)
+// ============================================
 
 export interface Chat {
   id: string
   name: string
-  type: 'regular' | 'owl' | 'hermes'
+  type: string  // 'regular' | 'group' | 'owl' | 'hermes'
   creatorId: string
-  participants: string[]
+  participants: string  // JSON string from proto
   lastMessageText: string
   lastMessageTime: string
   unreadCount: number
   avatarUrl?: string
   isOnline?: boolean
   activeAgentId?: string
-  agentMode?: 'single' | 'parallel' | 'pipeline'
+  agentMode?: string
 }
 
 export interface Message {
   id: string
-  chatId: string
-  senderId: string
+  chatId: string  // roomId in proto
+  senderId: string  // user in proto
   senderName: string
-  content: string
+  content: string  // text in proto
   createdAt: string
   isOutgoing: boolean
   isRead: boolean

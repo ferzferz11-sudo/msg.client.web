@@ -45,8 +45,8 @@ export function useChats() {
   )
 
   const createNewChat = useCallback(
-    async (participants: string[], name?: string) => {
-      const chat = await grpcClient.createChat(participants, name)
+    async (participants: string[], _name?: string) => {
+      const chat = await grpcClient.createDirectChat('user-1', participants[0], 'user-1-id', 'user-2-id')
       addChat(chat)
       setActiveChatId(chat.id)
     },
