@@ -7,8 +7,8 @@
 import { createClient, type Transport } from '@connectrpc/connect'
 import { createGrpcWebTransport } from '@connectrpc/connect-web'
 import type { Chat, Message, StreamCallback } from '@/shared/types'
-import type { AuthResponse } from '@/shared/api/gen/messenger_pb'
-import { AuthService, ChatService } from '@/shared/api/gen/messenger_pb'
+import { AuthService, ChatService } from './gen/proto/messenger_connect'
+import type { AuthResponse } from './gen/proto/messenger_pb'
 
 // --- Auth Interceptor ---
 
@@ -79,22 +79,12 @@ class GrpcClient {
 
   async signIn(username: string, password: string): Promise<AuthResponse> {
     if (!this.authClient) throw new Error('Not connected')
-    return this.authClient.signIn({
-      username,
-      password,
-      deviceId: 'web-device',
-      deviceName: 'Web Browser',
-    })
+    return this.authClient.signIn({ username, password })
   }
 
   async signUp(username: string, password: string, email?: string, displayName?: string): Promise<AuthResponse> {
     if (!this.authClient) throw new Error('Not connected')
-    return this.authClient.signUp({
-      username,
-      password,
-      email: email || '',
-      displayName: displayName || username,
-    })
+    return this.authClient.signUp({ username, password, email: email || '', displayName: displayName || username })
   }
 
   async refreshToken(refreshToken: string): Promise<AuthResponse> {

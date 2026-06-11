@@ -1,25 +1,17 @@
 # ============================================
 # Buf v2 — Protobuf code generation config
 # ============================================
-# Generates TypeScript + Connect service clients from proto/messenger.proto
-#
-# Prerequisites:
-#   - buf CLI v1.40+: https://buf.build/docs/installation
-#   - protoc-gen-es: npm install -D @bufbuild/protoc-gen-es
-#
-# Usage:
-#   npm run proto:generate  (runs buf generate)
-#
-# Output: src/shared/api/gen/
-#   - messenger_pb.ts       (plain types: Chat, Message, etc.)
-#   - messenger_connect.ts  (Connect service clients: ChatService, ServerService)
-# ============================================
 
 version: v2
 plugins:
-  # Single plugin generates both types AND Connect services
+  # Generate TypeScript messages/enums
   - local: protoc-gen-es
     out: src/shared/api/gen
     opt:
       - target=ts
-      - services=true
+
+  # Generate Connect service clients
+  - local: protoc-gen-connect-es
+    out: src/shared/api/gen
+    opt:
+      - target=ts

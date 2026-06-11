@@ -6,7 +6,7 @@
 // ============================================
 
 import { create } from 'zustand'
-import type { User } from '@/shared/api/gen/messenger_pb'
+import type { User } from '@/shared/api/gen/proto/messenger_pb'
 
 interface AuthState {
   user: User | null
