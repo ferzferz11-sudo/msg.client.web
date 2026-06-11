@@ -46,7 +46,7 @@ class GrpcClient {
     // Use Nginx gRPC-web proxy on port 80 instead of direct gRPC
     const baseUrl = address
       || import.meta.env.VITE_API_URL
-      || 'http://13.140.25.249'
+      || 'http://13.140.25.249:9090'
 
     this.getToken = getToken || null
 
