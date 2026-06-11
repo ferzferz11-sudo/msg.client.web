@@ -1,219 +1,423 @@
-# Lavender Messenger Web Client — Архитектура
+# Lavender Messenger Web Client — Полная документация
 
-Полная документация по архитектуре веб-клиента Lavender Messenger.
-
-**Статус:** v0.1.0 — базовая реализация (мобильный чат)
-**Дата:** 2026-06-10
-**Стек:** React 18 + TypeScript + Vite 5 + Zustand 4
+**Версия:** v0.2.0
+**Дата:** 2026-06-11
+**Статус:** 🟡 Ожидает AuthService на сервере
 
 ---
 
-## 1. Технологический стек (финальный)
+## 1. Обзор архитектуры
 
-| Технология | Версия | Назначение |
+### Стек технологий
+| Компонент | Версия | Назначение |
 |-----------|--------|-----------|
 | React | 18.3 | UI фреймворк |
 | TypeScript | 5.5 | Типизация |
-| Vite | 5.4 | Сборка, dev server, code splitting |
+| Vite | 5.4 | Сборка, dev server, HMR |
 | Zustand | 4.5 | State management |
+| @bufbuild/protobuf | 1.10 | Protobuf runtime |
+| @connectrpc/connect | 1.6 | gRPC-web клиент |
+| @connectrpc/connect-web | 1.6 | Транспорт для браузера |
+| react-virtuoso | 4.12 | Виртуализация списков |
 
-**Почему не grpc-web:** На данном этапе используется mock-реализация gRPC клиента. В production будет использован grpc-web через Envoy proxy или REST gateway.
-
----
-
-## 2. Структура проекта
-
+### Структура проекта
 ```
 msg.client.web/
-├── index.html                    # Entry HTML (iOS meta tags)
-├── package.json                  # Dependencies
-├── vite.config.ts                # Vite config + path aliases (@/*)
-├── tsconfig.json                 # TypeScript strict mode
-├── .gitignore
-├── doc/                          # Документация
-│   ├── INDEX.md                  # ← этот файл
+├── proto/messenger.proto              # API definition (копия с сервера)
+├── public/
+│   ├── manifest.json                  # PWA манифест
+│   ├── sw.js                          # Service Worker (push notifications)
+│   └── icons/                         # PWA иконки
+├── src/
+│   ├── main.tsx                       # Entry point
+│   ├── App.tsx                        # Root: auth + routing
+│   ├── styles/global.css              # iOS стили (SafeArea, bounce, scroll)
+│   ├── shared/
+│   │   ├── types/index.ts             # TypeScript типы (Chat, Message, User)
+│   │   └── api/
+│   │       ├── grpcClient.ts          # gRPC-web клиент + auth interceptor
+│   │       └── gen/proto/             # Сгенерированный код из proto
+│   │           ├── messenger_pb.ts    # Типы сообщений
+│   │           └── messenger_connect.ts # Сервисы (AuthService, ChatService)
+│   ├── store/
+│   │   ├── authStore.ts               # Авторизация (Zustand + localStorage)
+│   │   └── chatStore.ts               # Чаты (Zustand, нормализованный)
+│   ├── hooks/
+│   │   ├── useChats.ts                # Загрузка списка чатов
+│   │   ├── useChatMessages.ts         # История + стриминг + пагинация
+│   │   ├── useGrpcStream.ts           # Lifecycle стрима (iOS background!)
+│   │   ├── useIOSKeyboard.ts          # Обработка клавиатуры iOS
+│   │   └── usePushNotifications.ts    # Web Push подписка
+│   └── components/
+│       ├── auth/
+│       │   ├── AuthScreen.tsx         # Code splitting entry
+│       │   ├── AuthScreen.mobile.tsx  # iOS-style форма входа
+│       │   └── AuthScreen.desktop.tsx # Заглушка
+│       ├── chat/
+│       │   ├── ChatScreen.tsx
+│       │   ├── ChatScreen.mobile.tsx  # Экран чата (Virtuoso, input)
+│       │   └── ChatScreen.desktop.tsx
+│       ├── chatList/
+│       │   ├── ChatList.tsx
+│       │   ├── ChatList.mobile.tsx    # Список чатов (аватары, unread)
+│       │   ├── ChatListScreen.tsx
+│       │   ├── ChatListScreen.mobile.tsx
+│       │   └── ChatListScreen.desktop.tsx
+│       └── common/
+│           ├── Screen.tsx             # Базовый layout (header+content+footer)
+│           ├── Screen.mobile.tsx
+│           └── Screen.desktop.tsx
+├── doc/                                # Документация
+│   ├── INDEX.md
 │   ├── ARCHITECTURE.md
-│   ├── CODEBASE.md               # Подробное описание кодовой базы
-│   ├── IOS.md                    # iOS-специфичные решения
-│   ├── STATE.md                  # Управление состоянием (Zustand)
-│   ├── GRPC.md                   # gRPC клиент и стриминг
-│   ├── SERVER_INTEGRATION.md     # Интеграция с сервером
-│   ├── ANDROID_PARITY.md         # Соответствие Android-клиенту
-│   ├── PITFALLS.md               # Подводные камни
-│   └── TASKS.md                  # Таск-трекер
-└── src/
-    ├── main.tsx                  # React entry point
-    ├── App.tsx                   # Root компонент + роутинг
-    ├── styles/
-    │   └── global.css            # Глобальные стили (iOS reset, SafeArea, animations)
-    ├── shared/
-    │   ├── types/
-    │   │   └── index.ts          # TypeScript типы (Chat, Message, User, Agent, etc.)
-    │   └── api/
-    │       └── grpcClient.ts     # gRPC клиент-синглтон (mock)
-    ├── store/
-    │   └── chatStore.ts          # Zustand store (нормализованный)
-    ├── hooks/
-    │   ├── index.ts              # Экспорт всех хуков
-    │   ├── useChats.ts           # Загрузка списка чатов
-    │   ├── useChatMessages.ts    # История + стриминг + отправка
-    │   ├── useGrpcStream.ts      # Lifecycle gRPC стрима (iOS background!)
-    │   └── useIOSKeyboard.ts     # Обработка клавиатуры iOS
-    └── components/
-        ├── common/
-        │   ├── index.ts
-        │   ├── Screen.tsx         # Code splitting entry (matchMedia < 768)
-        │   ├── Screen.mobile.tsx  # Базовый layout (header + content + footer)
-        │   └── Screen.desktop.tsx # Заглушка
-        ├── chatList/
-        │   ├── ChatList.tsx              # Code splitting entry
-        │   ├── ChatList.mobile.tsx       # Список чатов (аватары, время, unread)
-        │   ├── ChatList.desktop.tsx      # Заглушка
-        │   ├── ChatListScreen.tsx        # Code splitting entry
-        │   ├── ChatListScreen.mobile.tsx # Экран списка чатов + хедер
-        │   └── ChatListScreen.desktop.tsx# Заглушка
-        └── chat/
-            ├── index.ts
-            ├── ChatScreen.tsx             # Code splitting entry
-            ├── ChatScreen.mobile.tsx      # Экран чата (хедер, сообщения, инпут)
-            └── ChatScreen.desktop.tsx     # Заглушка
+│   ├── CODEBASE.md
+│   ├── IOS.md
+│   ├── STATE.md
+│   ├── GRPC.md
+│   ├── SERVER_INTEGRATION.md
+│   ├── ANDROID_PARITY.md
+│   ├── PITFALLS.md
+│   ├── TASKS.md
+│   └── CHANGELOG.md
+├── grpc-web-proxy.js                   # Node.js gRPC-web proxy
+├── buf.gen.yaml                        # Buf generation config
+├── vite.config.ts
+├── tsconfig.json
+└── package.json
 ```
 
 ---
 
-## 3. Code Splitting — паттерн
+## 2. Авторизация
 
-Каждый компонент следует единому паттерну из 3 файлов:
+### Поток авторизации
+```
+1. Пользователь открывает PWA
+2. App.tsx проверяет authStore.isAuthenticated
+3. Если false → показывается AuthScreen
+4. Пользователь вводит username/password
+5. AuthScreen вызывает grpcClient.connect(serverUrl)
+6. Затем grpcClient.signIn(username, password)
+7. Сервер возвращает AuthResponse { accessToken, refreshToken, user }
+8. AuthScreen вызывает authStore.setAuth(user, accessToken, refreshToken)
+9. Credentials сохраняются в localStorage
+10. App.tsx переключает на ChatListScreen
+```
 
+### AuthStore (Zustand)
+```typescript
+// src/store/authStore.ts
+interface AuthState {
+  user: User | null
+  accessToken: string | null
+  refreshToken: string | null
+  isAuthenticated: boolean
+  
+  setAuth: (user, accessToken, refreshToken) => void
+  setAccessToken: (token) => void
+  logout: () => void
+}
+```
+
+**Persistence:** Все поля сохраняются в localStorage под ключами:
+- `auth_user` — JSON объект User
+- `auth_access_token` — JWT токен
+- `auth_refresh_token` — Refresh токен
+
+### Auth Interceptor
+Автоматически добавляет `Authorization: Bearer <token>` к каждому gRPC запросу:
+```typescript
+function createAuthInterceptor(getToken: () => string | null) {
+  return (next) => async (req) => {
+    const token = getToken()
+    if (token) {
+      req.header.set('Authorization', `Bearer ${token}`)
+    }
+    return next(req)
+  }
+}
+```
+
+---
+
+## 3. gRPC-web клиент
+
+### Подключение
+```typescript
+// Инициализация
+const getToken = () => useAuthStore.getState().accessToken
+await grpcClient.connect('http://server:9090', getToken)
+
+// Авторизация
+const result = await grpcClient.signIn(username, password)
+// result: { accessToken, refreshToken, user }
+
+// Работа с чатами
+const chats = await grpcClient.getChats(userId)
+const { messages, hasMore } = await grpcClient.getHistory(roomId, 50)
+const sentMsg = await grpcClient.sendMessage(roomId, text, userId)
+
+// Стриминг
+const cleanup = grpcClient.streamChatMessages(roomId, (event) => {
+  if (event.type === 'message') {
+    // Новое сообщение
+  }
+})
+// Остановка
+cleanup()
+```
+
+### Методы AuthService
+| Метод | Тип | Описание |
+|-------|-----|----------|
+| signIn | Unary | Вход (username, password) → AuthResponse |
+| signUp | Unary | Регистрация (username, password, email) → AuthResponse |
+| refreshToken | Unary | Обновление токена → AuthResponse |
+| logout | Unary | Выход → void |
+
+### Методы ChatService
+| Метод | Тип | Описание |
+|-------|-----|----------|
+| chat | BiDi Streaming | Основной чат (отправка/получение) |
+| typing | BiDi Streaming | Индикатор набора текста |
+| getChats | Unary | Список чатов пользователя |
+| getHistory | Unary | История сообщений (с пагинацией) |
+| createDirectChat | Unary | Создание личного чата |
+| createGroupChat | Unary | Создание группового чата |
+| deleteChat | Unary | Удаление чата |
+| markRead | Unary | Отметить как прочитанное |
+| registerToken | Unary | Регистрация push токена |
+
+### Proto → TypeScript конвертеры
+```typescript
+// gRPC сообщения конвертируются в плоские объекты для Zustand store
+function protoToMessage(msg: any): Message {
+  return {
+    id: msg.id || '',
+    roomId: msg.roomId || msg.chatId || '',
+    user: msg.user || '',
+    text: msg.text || '',
+    createdAt: msg.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+    isOutgoing: false,
+    isRead: msg.isRead || false,
+    repliedToMessageId: msg.repliedToMessageId || '',
+    repliedToUser: msg.repliedToUser || '',
+    repliedToText: msg.repliedToText || '',
+    agentId: msg.agentId || '',
+  }
+}
+```
+
+---
+
+## 4. State Management (Zustand)
+
+### authStore
+- **Расположение:** `src/store/authStore.ts`
+- **Persistence:** localStorage
+- **Ключи:** `auth_user`, `auth_access_token`, `auth_refresh_token`
+
+### chatStore (нормализованный)
+```typescript
+// Структура данных
+chats: { [chatId]: Chat }           // Метаданные чатов
+messages: { [messageId]: Message }  // Плоское хранилище сообщений
+chatMessages: { [chatId]: string[] } // Упорядоченные ID сообщений по чатам
+
+// Селекторы
+getChatList()      // Массив чатов, отсортированных по lastMessageTime
+getActiveChat()    // Текущий активный чат
+getChatMessages(chatId) // Массив сообщений чата
+```
+
+**Почему нормализация:**
+- O(1) доступ к любому сообщению по ID
+- O(1) обновление сообщения
+- Избежание дублирования данных
+
+---
+
+## 5. iOS оптимизации
+
+### Safe Area
+```css
+html {
+  --sat: env(safe-area-inset-top, 0px);     /* ~44px на iPhone с вырезом */
+  --sab: env(safe-area-inset-bottom, 0px);  /* ~34px на iPhone */
+}
+
+.safe-top { padding-top: var(--sat); }
+.safe-bottom { padding-bottom: var(--sab); }
+```
+
+### Bounce Scroll Prevention
+```css
+html, body {
+  overflow: hidden;
+  position: fixed;
+  overscroll-behavior: none;
+}
+
+.scrollable {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+```
+
+### Keyboard Handling (useIOSKeyboard)
+```typescript
+// Использует VisualViewport API (iOS Safari 13+)
+const viewport = window.visualViewport
+const keyboardHeight = window.innerHeight - viewport.height
+
+// Устанавливает CSS переменные
+document.documentElement.style.setProperty('--keyboard-height', `${keyboardHeight}px`)
+document.documentElement.style.setProperty('--viewport-available-height', `${viewport.height}px`)
+```
+
+### Stream Lifecycle (useGrpcStream)
+```typescript
+// Закрытие стрима при уходе в бэкграунд (экономия батареи)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) closeStream()
+  else {
+    fetchMissedMessages() // Получить пропущенные
+    openStream()          // Открыть заново
+  }
+})
+
+// iOS Safari specific
+window.addEventListener('pagehide', closeStream)
+window.addEventListener('pageshow', () => {
+  fetchMissedMessages()
+  openStream()
+})
+```
+
+---
+
+## 6. PWA
+
+### Manifest
+```json
+{
+  "name": "MSG — Lavender Messenger",
+  "short_name": "MSG",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e"
+}
+```
+
+### Service Worker
+- **Push событие:** Извлекает JSON (title, body, chatId) → `showNotification()`
+- **Notification click:** Фокусирует окно или открывает новое, навигирует в чат
+- **CORS headers:** Для gRPC-web запросов
+
+### Web Push
+```typescript
+// Подписка
+const subscription = await registration.pushManager.subscribe({
+  userVisibleOnly: true,
+  applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+})
+
+// Регистрация токена на сервере
+await grpcClient.registerPushToken(userId, endpoint, true)
+```
+
+---
+
+## 7. Code Splitting
+
+Каждый компонент имеет 3 файла:
 ```
 Component.tsx            ← React.lazy + matchMedia(768) → выбор загрузки
 Component.mobile.tsx     ← Основная реализация (мобильная)
 Component.desktop.tsx    ← Минимальная заглушка
 ```
 
-**Screen.tsx (пример):**
-```typescript
-const MobileScreen = createLazyLoader(() => import('./Screen.mobile'))
-const DesktopScreen = createLazyLoader(() => import('./Screen.desktop'))
-
-export function ChatList(props: ChatListProps) {
-  if (isMobile()) {
-    return (
-      <Suspense fallback={...}>
-        <MobileChatList {...props} />
-      </Suspense>
-    )
-  }
-  return (
-    <Suspense fallback={...}>
-      <DesktopChatList {...props} />
-    </Suspense>
-  )
-}
-```
-
-**Результат сборки (vite build):**
-```
-dist/assets/Screen.mobile-CjnQffzr.js             0.52 kB
-dist/assets/ChatList.mobile-DEXI5gHS.js           2.44 kB
-dist/assets/ChatListScreen.mobile-BkvMrEQp.js     2.31 kB
-dist/assets/ChatScreen.mobile-XLDaPCje.js         7.80 kB
-dist/assets/chatStore-BKFQKilm.js                 6.46 kB
-dist/assets/vendor-DsceW-4w.js                  140.86 kB  (React)
-dist/assets/Screen.desktop-CfcofHzY.js            0.31 kB
-dist/assets/ChatList.desktop-m1ToXg2t.js          0.27 kB
-dist/assets/ChatScreen.desktop-RFBSG4uD.js        0.27 kB
-dist/assets/ChatListScreen.desktop-DPwY7nkJ.js    0.31 kB
-```
-
-Мобильные компоненты загружаются только на мобильных, десктопные — только на десктопе.
+**Результат сборки:**
+- `AuthScreen.mobile.js` — 4.7 kB
+- `ChatScreen.mobile.js` — 8.4 kB
+- `ChatList.mobile.js` — 6.3 kB
+- `Screen.mobile.js` — 0.5 kB
+- Desktop stubs — по 0.2-0.3 kB
 
 ---
 
-## 4. Роутинг
+## 8. Команды
 
-Простой state-based роутинг в `App.tsx`:
+```bash
+# Dev server (http://localhost:3000)
+npm run dev
 
-```typescript
-type Screen = 'chatList' | 'chat'
+# Production build
+npm run build
 
-// Переход в чат:
-setActiveChatId(chatId)
-setCurrentScreen('chat')
+# Генерация кода из proto
+npx buf generate
 
-// Возврат:
-setCurrentScreen('chatList')
-setActiveChatId(null)
-```
-
-Анимация перехода через CSS: `screen-enter` (slideInFromRight 0.25s).
-
----
-
-## 5. Поток данных
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        App.tsx                               │
-│  ┌─────────────────────┐    ┌──────────────────────────┐    │
-│  │   ChatListScreen     │    │      ChatScreen           │    │
-│  │   (useChats hook)    │───▶│  (useChatMessages hook)  │    │
-│  └──────────┬───────────┘    └──────────┬───────────────┘    │
-│             │                           │                    │
-│             ▼                           ▼                    │
-│  ┌──────────────────────────────────────────────────────┐    │
-│  │              Zustand Store (chatStore.ts)             │    │
-│  │  chats: { [id]: Chat }                               │    │
-│  │  messages: { [id]: Message }                         │    │
-│  │  chatMessages: { [chatId]: string[] }                │    │
-│  └──────────────────────────┬───────────────────────────┘    │
-│                             │                                │
-│                             ▼                                │
-│  ┌──────────────────────────────────────────────────────┐    │
-│  │           useGrpcStream (lifecycle hook)              │    │
-│  │  - visibilitychange → close/reopen stream             │    │
-│  │  - pagehide/pageshow → close/reopen stream            │    │
-│  │  - unmount → abort controller                         │    │
-│  └──────────────────────────┬───────────────────────────┘    │
-│                             │                                │
-│                             ▼                                │
-│  ┌──────────────────────────────────────────────────────┐    │
-│  │         gRPC Client Singleton (grpcClient.ts)         │    │
-│  │  - connect/disconnect                                 │    │
-│  │  - getChats, getMessages, sendMessage (unary)         │    │
-│  │  - streamChatMessages (server-side streaming)         │    │
-│  │  - streamAllMessages (presence updates)               │    │
-│  └──────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────┘
+# Запуск gRPC-web proxy
+node grpc-web-proxy.js
 ```
 
 ---
 
-## 6. Мок-данные
+## 9. Переменные окружения
 
-В `grpcClient.ts` определены 4 тестовых чата:
-
-| ID | Имя | Тип | Сообщения |
-|----|-----|-----|----------|
-| chat-1 | Алексей | regular | 3 (последнее входящее) |
-| chat-2 | Работа | regular | 1 |
-| chat-3 | OWL AI | owl | 2 |
-| chat-4 | Hermes | hermes | 2 |
-
-Мок симулирует входящие сообщения каждые 15-30 секунд через `streamChatMessages`.
+| Переменная | По умолчанию | Описание |
+|-----------|-------------|----------|
+| `VITE_API_URL` | `http://13.140.25.249:9090` | URL gRPC-web proxy |
+| `VITE_VAPID_PUBLIC_KEY` | — | VAPID ключ для Web Push |
 
 ---
 
-## 7. Конфигурация
+## 10. Известные проблемы
 
-### Vite (vite.config.ts)
-- Path alias: `@/` → `src/`
-- Dev server: `0.0.0.0:3000`
-- Build target: `es2020`
-- Manual chunks: `vendor` (React)
+### Блокирующая задача
+**AuthService на сервере** — сервер пока не реализовал `AuthService`. После реализации:
+1. Обновить web-клиент для работы с реальным AuthService
+2. Настроить gRPC-web proxy (Envoy или grpcwebproxy)
+3. Протестировать end-to-end
 
-### TypeScript (tsconfig.json)
-- Strict mode: enabled
-- JSX: `react-jsx` (no React import needed)
-- Module resolution: `bundler`
-- Path alias: `@/*` → `src/*`
+### gRPC-web proxy
+Текущий Node.js прокси (`grpc-web-proxy.js`) — упрощённая реализация. Для production нужен:
+- **Envoy** с grpc-web filter
+- **grpcwebproxy** от Improbable
+- **Nginx** с `ngx_http_grpc_module`
+
+### Совместимость версий
+- `@bufbuild/protobuf@1.10.1` — совместим с `@connectrpc/connect@1.6.1`
+- `@bufbuild/protobuf@2.x` — НЕ совместим (нет `protoBase64` в экспорте)
+
+---
+
+## 11. Задачи после AuthService
+
+### Высокий приоритет
+1. Подключить web-клиент к реальному AuthService
+2. Настроить production gRPC-web proxy
+3. Протестировать signIn/signUp flow
+
+### Средний приоритет
+4. Реализовать refresh token flow
+5. Добавить logout в UI
+6. Обработка ошибок (network, auth, rate limit)
+
+### Низкий приоритет
+7. AI чаты (OWL, Hermes)
+8. Контакты и профиль
+9. Настройки и темы
+10. E2EE (секретные чаты)
+
+---
+
+## 12. Ссылки
+
+- **Сервер:** `/root/msg/`
+- **Android клиент:** `/root/msg.client.android/`
+- **Документация сервера:** `/root/msg/doc/`
+- **Proto файл:** `/root/msg/messenger.proto`
+- **Сгенерированный код:** `/root/msg.client.web/src/shared/api/gen/proto/`
