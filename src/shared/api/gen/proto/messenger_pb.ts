@@ -9651,9 +9651,9 @@ export class User extends Message$1<User> {
   username = "";
 
   /**
-   * @generated from field: string display_name = 3;
+   * @generated from field: string email = 3;
    */
-  displayName = "";
+  email = "";
 
   /**
    * @generated from field: string avatar_url = 4;
@@ -9661,19 +9661,24 @@ export class User extends Message$1<User> {
   avatarUrl = "";
 
   /**
-   * @generated from field: string email = 5;
+   * @generated from field: string bio = 5;
    */
-  email = "";
+  bio = "";
 
   /**
-   * @generated from field: bool is_online = 6;
+   * @generated from field: string status = 6;
    */
-  isOnline = false;
+  status = "";
 
   /**
-   * @generated from field: string last_seen = 7;
+   * @generated from field: google.protobuf.Timestamp created_at = 7;
    */
-  lastSeen = "";
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_seen_at = 8;
+   */
+  lastSeenAt?: Timestamp;
 
   constructor(data?: PartialMessage<User>) {
     super();
@@ -9685,11 +9690,12 @@ export class User extends Message$1<User> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "display_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 5, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 6, name: "is_online", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 7, name: "last_seen", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "bio", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "created_at", kind: "message", T: Timestamp },
+    { no: 8, name: "last_seen_at", kind: "message", T: Timestamp },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): User {
@@ -9723,16 +9729,6 @@ export class SignInRequest extends Message$1<SignInRequest> {
    */
   password = "";
 
-  /**
-   * @generated from field: string device_id = 3;
-   */
-  deviceId = "";
-
-  /**
-   * @generated from field: string device_name = 4;
-   */
-  deviceName = "";
-
   constructor(data?: PartialMessage<SignInRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -9743,8 +9739,6 @@ export class SignInRequest extends Message$1<SignInRequest> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "device_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "device_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SignInRequest {
@@ -9783,11 +9777,6 @@ export class SignUpRequest extends Message$1<SignUpRequest> {
    */
   email = "";
 
-  /**
-   * @generated from field: string display_name = 4;
-   */
-  displayName = "";
-
   constructor(data?: PartialMessage<SignUpRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -9799,7 +9788,6 @@ export class SignUpRequest extends Message$1<SignUpRequest> {
     { no: 1, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "display_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SignUpRequest {
@@ -9824,26 +9812,24 @@ export class SignUpRequest extends Message$1<SignUpRequest> {
  */
 export class AuthResponse extends Message$1<AuthResponse> {
   /**
-   * @generated from field: string access_token = 1;
+   * @generated from field: bool success = 1;
    */
-  accessToken = "";
+  success = false;
 
   /**
-   * @generated from field: string refresh_token = 2;
+   * @generated from field: string token = 2;
    */
-  refreshToken = "";
+  token = "";
 
   /**
-   * @generated from field: messenger.User user = 3;
+   * @generated from field: string message = 3;
+   */
+  message = "";
+
+  /**
+   * @generated from field: messenger.User user = 4;
    */
   user?: User;
-
-  /**
-   * Unix timestamp
-   *
-   * @generated from field: int64 expires_at = 4;
-   */
-  expiresAt = protoInt64.zero;
 
   constructor(data?: PartialMessage<AuthResponse>) {
     super();
@@ -9853,10 +9839,10 @@ export class AuthResponse extends Message$1<AuthResponse> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "messenger.AuthResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "access_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "refresh_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "user", kind: "message", T: User },
-    { no: 4, name: "expires_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "user", kind: "message", T: User },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AuthResponse {
@@ -9873,117 +9859,6 @@ export class AuthResponse extends Message$1<AuthResponse> {
 
   static equals(a: AuthResponse | PlainMessage<AuthResponse> | undefined, b: AuthResponse | PlainMessage<AuthResponse> | undefined): boolean {
     return proto3.util.equals(AuthResponse, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.RefreshTokenRequest
- */
-export class RefreshTokenRequest extends Message$1<RefreshTokenRequest> {
-  /**
-   * @generated from field: string refresh_token = 1;
-   */
-  refreshToken = "";
-
-  constructor(data?: PartialMessage<RefreshTokenRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.RefreshTokenRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "refresh_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RefreshTokenRequest {
-    return new RefreshTokenRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RefreshTokenRequest {
-    return new RefreshTokenRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RefreshTokenRequest {
-    return new RefreshTokenRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: RefreshTokenRequest | PlainMessage<RefreshTokenRequest> | undefined, b: RefreshTokenRequest | PlainMessage<RefreshTokenRequest> | undefined): boolean {
-    return proto3.util.equals(RefreshTokenRequest, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.LogoutRequest
- */
-export class LogoutRequest extends Message$1<LogoutRequest> {
-  /**
-   * @generated from field: string access_token = 1;
-   */
-  accessToken = "";
-
-  constructor(data?: PartialMessage<LogoutRequest>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.LogoutRequest";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "access_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LogoutRequest {
-    return new LogoutRequest().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LogoutRequest {
-    return new LogoutRequest().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LogoutRequest {
-    return new LogoutRequest().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: LogoutRequest | PlainMessage<LogoutRequest> | undefined, b: LogoutRequest | PlainMessage<LogoutRequest> | undefined): boolean {
-    return proto3.util.equals(LogoutRequest, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.LogoutResponse
- */
-export class LogoutResponse extends Message$1<LogoutResponse> {
-  /**
-   * @generated from field: bool success = 1;
-   */
-  success = false;
-
-  constructor(data?: PartialMessage<LogoutResponse>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.LogoutResponse";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LogoutResponse {
-    return new LogoutResponse().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LogoutResponse {
-    return new LogoutResponse().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LogoutResponse {
-    return new LogoutResponse().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: LogoutResponse | PlainMessage<LogoutResponse> | undefined, b: LogoutResponse | PlainMessage<LogoutResponse> | undefined): boolean {
-    return proto3.util.equals(LogoutResponse, a, b);
   }
 }
 

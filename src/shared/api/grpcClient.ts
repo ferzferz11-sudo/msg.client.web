@@ -6,7 +6,7 @@
 
 import { createClient, type Transport } from '@connectrpc/connect'
 import { createGrpcWebTransport } from '@connectrpc/connect-web'
-import type { Chat, Message, StreamCallback } from '@/shared/types'
+import type { Chat, Message, StreamCallback, User } from '@/shared/types'
 import { AuthService, ChatService } from './gen/proto/messenger_connect'
 import type { AuthResponse } from './gen/proto/messenger_pb'
 
@@ -46,7 +46,7 @@ class GrpcClient {
     // Use Nginx gRPC-web proxy on port 80 instead of direct gRPC
     const baseUrl = address
       || import.meta.env.VITE_API_URL
-      || 'http://13.140.25.249:9090'
+      || '/messenger'
 
     this.getToken = getToken || null
 
@@ -83,27 +83,14 @@ class GrpcClient {
     return this.authClient.signIn({ username, password })
   }
 
-  async signUp(username: string, password: string, email?: string, displayName?: string): Promise<AuthResponse> {
+  async signUp(username: string, password: string, email?: string): Promise<AuthResponse> {
     if (!this.authClient) throw new Error('Not connected')
-    return this.authClient.signUp({ username, password, email: email || '', displayName: displayName || username })
+    return this.authClient.signUp({ username, password, email: email || '' })
   }
 
-  async refreshToken(refreshToken: string): Promise<AuthResponse> {
-    if (!this.authClient) throw new Error('Not connected')
-    return this.authClient.refreshToken({ refreshToken })
-  }
-
-  async logout(): Promise<boolean> {
-    if (!this.authClient) return false
-    try {
-      const token = this.getToken?.()
-      if (token) {
-        await this.authClient.logout({ accessToken: token })
-      }
-      return true
-    } catch {
-      return false
-    }
+  async logout(): Promise<void> {
+    // Server has no Logout RPC yet — just disconnect locally
+    this.disconnect()
   }
 
   // --- Chat Methods ---
@@ -251,6 +238,19 @@ function handleStreamEvent(event: any, callback: StreamCallback): void {
     callback({ type: 'presence', userId: event.presence.userId, isOnline: event.presence.isOnline })
   } else if (event.error) {
     callback({ type: 'error', error: event.error.error })
+  }
+}
+
+export function protoToUser(u: any): User {
+  return {
+    id: u.id?.toString() || '',
+    username: u.username?.toString() || '',
+    email: u.email?.toString() || '',
+    avatarUrl: u.avatarUrl?.toString() || u.avatar_url?.toString() || '',
+    bio: u.bio?.toString() || '',
+    status: u.status?.toString() || '',
+    createdAt: u.createdAt?.toDate?.()?.toISOString() || '',
+    lastSeenAt: u.lastSeenAt?.toDate?.()?.toISOString() || u.last_seen_at?.toDate?.()?.toISOString() || '',
   }
 }
 

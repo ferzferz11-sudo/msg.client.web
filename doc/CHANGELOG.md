@@ -1,5 +1,23 @@
 # Lavender Messenger Web Client — Changelog
 
+## v0.2.1 (2026-06-11)
+
+### Добавлено
+- **AuthService интеграция**: веб-клиент подключён к реальному AuthService на сервере
+- **Proto синхронизация**: messenger.proto обновлён с сервера (добавлены User, SignInRequest, SignUpRequest, AuthResponse, AuthService)
+- **gRPC-web proxy**: Nginx проксирует `/messenger` → Envoy (9090) → gRPC сервер (50051)
+- **Production деплой**: веб-клиент доступен через `/web` на сервере
+
+### Изменёнено
+- grpcClient теперь использует относительный путь `/messenger` вместо прямого подключения к порту 9090
+- AuthScreen упрощён — убрано поле serverAddress (теперь используется относительный путь)
+- authStore обновлён — убраны поля refreshToken (не поддерживается сервером)
+
+### Исправлено
+- Сгенерированный TS код теперь включает AuthService, SignInRequest, SignUpRequest, AuthResponse, User
+
+---
+
 ## v0.2.0 (2026-06-11)
 
 ### Добавлено

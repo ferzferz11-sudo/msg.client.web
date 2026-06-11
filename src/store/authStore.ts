@@ -6,16 +6,15 @@
 // ============================================
 
 import { create } from 'zustand'
-import type { User } from '@/shared/api/gen/proto/messenger_pb'
+import type { User } from '@/shared/types'
 
 interface AuthState {
   user: User | null
   accessToken: string | null
-  refreshToken: string | null
   isAuthenticated: boolean
 
   // Actions
-  setAuth: (user: User, accessToken: string, refreshToken: string) => void
+  setAuth: (user: User, accessToken: string) => void
   setAccessToken: (token: string) => void
   logout: () => void
 }
@@ -24,14 +23,12 @@ export const useAuthStore = create<AuthState>((set) => ({
   // Initial state — try to restore from localStorage
   user: JSON.parse(localStorage.getItem('auth_user') || 'null'),
   accessToken: localStorage.getItem('auth_access_token'),
-  refreshToken: localStorage.getItem('auth_refresh_token'),
   isAuthenticated: !!localStorage.getItem('auth_access_token'),
 
-  setAuth: (user, accessToken, refreshToken) => {
+  setAuth: (user, accessToken) => {
     localStorage.setItem('auth_user', JSON.stringify(user))
     localStorage.setItem('auth_access_token', accessToken)
-    localStorage.setItem('auth_refresh_token', refreshToken)
-    set({ user, accessToken, refreshToken, isAuthenticated: true })
+    set({ user, accessToken, isAuthenticated: true })
   },
 
   setAccessToken: (token) => {
@@ -42,7 +39,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     localStorage.removeItem('auth_user')
     localStorage.removeItem('auth_access_token')
-    localStorage.removeItem('auth_refresh_token')
-    set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false })
+    set({ user: null, accessToken: null, isAuthenticated: false })
   },
 }))

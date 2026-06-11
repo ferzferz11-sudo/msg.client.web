@@ -72,10 +72,15 @@
 
 ---
 
-## 📋 Фаза 7: Интеграция с реальным сервером (после AuthService)
+## ✅ Фаза 7: Интеграция с реальным сервер (ЧАСТИЧНО)
 
-- [ ] Подключить web-клиент к реальному серверу
-- [ ] Протестировать signIn/signUp flow end-to-end
+- [x] Подключить web-клиент к реальному AuthService
+- [x] Proto синхронизирован с сервером (messenger.proto)
+- [x] grpcClient использует реальный AuthService
+- [x] AuthScreen работает с реальными полями proto (success/token/message/user)
+- [x] Production билд собирается
+- [x] Nginx настроен для /web и /messenger (gRPC-web proxy)
+- [ ] Протестировать signIn/signUp flow end-to-end (нужен браузер)
 - [ ] Обработка ошибок (network, auth, rate limit)
 - [ ] Retry с exponential backoff
 - [ ] Автоматический refresh токена

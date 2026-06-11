@@ -12,7 +12,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Screen } from '@/components/common'
-import { grpcClient } from '@/shared/api/grpcClient'
+import { grpcClient, protoToUser } from '@/shared/api/grpcClient'
 import { useAuthStore } from '@/store/authStore'
 
 interface AuthScreenProps {
@@ -23,13 +23,9 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [email, setEmail] = useState('')
-  const [displayName, setDisplayName] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [serverAddress, setServerAddress] = useState(
-    import.meta.env.VITE_API_URL || '13.140.25.249:9090'
-  )
 
   const usernameRef = useRef<HTMLInputElement>(null)
   const setAuth = useAuthStore((s) => s.setAuth)
@@ -58,34 +54,29 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     setError(null)
 
     try {
-      // Parse server address
-      const [host, portStr] = serverAddress.includes(':')
-        ? serverAddress.split(':')
-        : [serverAddress, '50051']
-      const baseUrl = `http://${host}:${portStr}`
-
-      // Connect with auth interceptor
+      // Connect to server (uses relative /messenger path via Nginx)
       const getToken = () => useAuthStore.getState().accessToken
-      await grpcClient.connect(baseUrl, getToken)
+      await grpcClient.connect(undefined, getToken)
 
       // Authenticate
       const result = isSignUp
-        ? await grpcClient.signUp(username.trim(), password, email.trim(), displayName.trim() || username.trim())
+        ? await grpcClient.signUp(username.trim(), password, email.trim())
         : await grpcClient.signIn(username.trim(), password)
 
-      if (result.accessToken && result.user) {
+      if (result.success && result.token && result.user) {
         // Save to Zustand store (persists to localStorage)
-        setAuth(result.user, result.accessToken, result.refreshToken)
+        const user = protoToUser(result.user)
+        setAuth(user, result.token)
         onAuthSuccess()
       } else {
-        setError(isSignUp ? 'Ошибка регистрации' : 'Неверные данные')
+        setError(result.message || (isSignUp ? 'Ошибка регистрации' : 'Неверные данные'))
       }
     } catch (err: any) {
       setError(err.message || 'Ошибка подключения к серверу')
     } finally {
       setIsLoading(false)
     }
-  }, [username, password, email, displayName, serverAddress, isSignUp, setAuth, onAuthSuccess])
+  }, [username, password, email, isSignUp, setAuth, onAuthSuccess])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -160,23 +151,6 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
         {/* Form */}
         <div style={{ width: '100%', maxWidth: 320 }}>
-          {/* Server */}
-          <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>
-              Сервер
-            </label>
-            <input
-              type="text"
-              value={serverAddress}
-              onChange={(e) => setServerAddress(e.target.value)}
-              placeholder="13.140.25.249:50051"
-              disabled={isLoading}
-              autoCapitalize="none"
-              autoCorrect="off"
-              style={inputStyle}
-            />
-          </div>
-
           {/* Username */}
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>
@@ -227,24 +201,6 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                 disabled={isLoading}
                 autoCapitalize="none"
                 autoCorrect="off"
-                style={inputStyle}
-              />
-            </div>
-          )}
-
-          {/* Display Name (Sign Up only) */}
-          {isSignUp && (
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>
-                Имя для отображения
-              </label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ваше имя"
-                disabled={isLoading}
                 style={inputStyle}
               />
             </div>

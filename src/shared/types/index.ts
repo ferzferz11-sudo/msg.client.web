@@ -37,10 +37,12 @@ export interface Message {
 export interface User {
   id: string
   username: string
-  displayName: string
+  email: string
   avatarUrl?: string
-  isOnline: boolean
-  lastSeen?: string
+  bio?: string
+  status?: string
+  createdAt?: string
+  lastSeenAt?: string
 }
 
 export interface AIChatSettings {
