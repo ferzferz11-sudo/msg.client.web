@@ -1,19 +1,46 @@
 // ============================================
-// Screen — Desktop Stub
+// Screen — Desktop Layout
+// ============================================
+// Full-height flex container for desktop layout.
 // ============================================
 
+import type { ReactNode } from 'react'
+
 interface ScreenProps {
-  children: React.ReactNode
-  header?: React.ReactNode
-  footer?: React.ReactNode
+  children: ReactNode
+  header?: ReactNode
+  footer?: ReactNode
 }
 
-export function Screen({ children }: ScreenProps) {
+export function Screen({ children, header, footer }: ScreenProps) {
   return (
-    <div style={{ padding: 40, textAlign: 'center' }}>
-      <h1>Lavender Messenger</h1>
-      <p>Desktop version coming soon. Please use a mobile device.</p>
-      {children}
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        width: '100%',
+        overflow: 'hidden',
+        background: '#1a1a2e',
+      }}
+    >
+      {header && (
+        <div style={{ flexShrink: 0, zIndex: 10 }}>{header}</div>
+      )}
+      <div
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0,
+        }}
+      >
+        {children}
+      </div>
+      {footer && (
+        <div style={{ flexShrink: 0 }}>{footer}</div>
+      )}
     </div>
   )
 }

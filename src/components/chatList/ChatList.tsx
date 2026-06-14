@@ -13,6 +13,7 @@ interface ChatListProps {
   chats: Chat[]
   isLoading: boolean
   onChatClick: (chatId: string) => void
+  activeChatId?: string | null
 }
 
 function createLazyLoader(

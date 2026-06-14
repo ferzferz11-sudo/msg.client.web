@@ -1,4 +1,109 @@
-# Lavender Messenger Web Client — Changelog
+# Lava Messenger Web Client — Changelog
+
+---
+
+## v0.4.0 (2026-06-14) — i18n + Dev proxy + App rename
+
+### Новое: Мультиязычность (EN/RU)
+
+- **Локализация**: `t()`, `detectLang()` в shared/types
+- **Переводы**: appName, loginTitle, signupTitle, usernamePlaceholder, passwordPlaceholder, signIn, signUp, hasAccount, noAccount, connectionError, authError, loading, selectChat, writeMessage, signOut, online, offline, retry
+- **Переключатель языка**: кнопка EN/RU в правом верхнем углу
+- **Автоопределение**: по navigator.language (ru → РУ, остальное → EN)
+
+### Переименование: Lavender → Lava / Лава
+
+- Название приложения: "Lava" (EN) / "Лава" (RU)
+- Логотип 🦞 добавлен к названию
+- Обновлены все компоненты: AuthScreen, ChatListScreen (mobile + desktop)
+
+### Переключение на Dev сервер
+
+- gRPC-web proxy → dev сервер (порт 50052)
+- systemd unit: GRPC_PORT=50052
+- Сервер запущен и работает
+
+---
+
+## v0.3.2 (2026-06-14) — Proxy V2 + Fixes
+
+### Исправлено: gRPC-web proxy не поддерживал V2 методы
+
+- **grpc-web-proxy.cjs** — полная переработка:
+  - Добавлены Auth V2 методы: SignInV2, SignUpV2, RefreshToken, SignOut, RevokeDevice, GetDevices
+  - Добавлены Chat методы: GetHistory, Chat, CreateDirectChat, CreateGroupChat, DeleteChat, MarkRead, RegisterToken
+  - Улучшена обработка ошибок (decode errors → gRPC status 3)
+  - Логирование всех методов при старте
+
+### Исправлено: crypto.randomUUID() не работает в старых браузерах
+
+- Добавлен fallback `generateUUID()` через `Math.random()` для браузеров без `crypto.randomUUID`
+
+### Исправлено: права файлов после билда
+
+- `manifest.json`, `sw.js`, `logo.png` — права 644 после билда
+- `dist/icons/` — права 755 после билда
+- Добавлен postbuild скрипт в package.json
+
+---
+
+## v0.3.1 (2026-06-14) — Error handling + Retry
+
+### Новое: Обработка ошибок
+
+- **errorStore** — Zustand store для глобальных ошибок (max 5, auto-dismiss)
+- **Классификация ошибок**: network / auth / rate_limit / server / unknown
+- **gRPC error mapping**: UNAUTHENTICATED → auth, UNAVAILABLE → network, RESOURCE_EXHAUSTED → rate_limit
+- **Online/offline detection**: window.addEventListener('online'/'offline')
+- **Stream error handling**: error callback + error store notification
+
+### Новое: Retry с exponential backoff
+
+- **withRetry()** — утилита для retry с exp. backoff (baseDelay * 2^attempt)
+- **getChats**: 3 попытки, baseDelay 500ms
+- **getHistory**: 2 попытки, baseDelay 500ms
+- **sendMessage**: 2 попытки, baseDelay 300ms
+- **signInV2/signUpV2**: 2 попытки, baseDelay 1000ms
+- **Неретраемые ошибки**: auth errors не ретраятся
+
+---
+
+## v0.3.0 (2026-06-14) — Desktop UI + Auth V2
+
+### Новое: Desktop UI
+
+- **Двухпанельный layout**: Sidebar (320px) + main area в стиле Telegram Desktop
+- **ChatListScreen.desktop**: Управление навигацией внутри компонента
+- **ChatList.desktop**: Компактные элементы с hover/active состояниями, бейджами, аватарами
+- **ChatScreen.desktop**: Сообщения, textarea с auto-resize, кнопка вложения, хедер с поиском
+- **AuthScreen.desktop**: Полноценная форма входа/регистрации V2
+- **App.tsx**: Десктоп рендерит ChatListScreen напрямую (без screen-based навигации)
+
+### Новое: AuthService V2 — JWT авторизация
+
+- **JWT токены**: Переход с v1 (UUID token) на v2 (access + refresh JWT)
+- **Автоматический refresh**: Access token обновляется автоматически за 5 минут до истечения
+- **Token rotation**: Refresh token ротируется при каждом refresh
+- **Device management**: При login/signup передаётся device info (deviceId, deviceName, deviceType)
+- **SignOut**: Полноценный logout через AuthService.SignOut
+- **RevokeDevice**: Возможность отзыва устройств
+
+### Изменено
+- `authStore.ts`: `accessToken: string` → `tokens: TokenPair` (access + refresh + expires)
+- `grpcClient.ts`: signIn/signUp → signInV2/signUpV2, добавлен refreshToken interceptor
+- `AuthScreen`: Вызовы V2 API с device info
+- `App.tsx`: Восстановление сессии через refresh token expiry check
+- Proto: Синхронизирован с сервером (SignInV2, SignUpV2, RefreshToken, SignOut, RevokeDevice)
+- localStorage: `auth_access_token` → `auth_tokens` (JSON с TokenPair)
+- ChatList.tsx: Добавлен проп `activeChatId` для desktop highlight
+
+### Безопасность
+- Access token TTL: 15 минут
+- Refresh token TTL: 30 дней
+- При истечении refresh token — автоматический logout
+- Device ID генерируется при первом входе и сохраняется в localStorage
+
+---
 
 ## v0.2.2 (2026-06-11)
 

@@ -1,10 +1,10 @@
-# Lavender Messenger Web Client — Задачи
+# Lava Messenger Web Client — Задачи
 
 Таск-трекер проекта веб-клиента.
 
-**Версия:** v0.2.0
-**Дата:** 2026-06-11
-**Статус:** 🟡 Ожидает AuthService на сервере
+**Версия:** v0.4.0
+**Дата:** 2026-06-14
+**Статус:** 🟢 Auth V2 работает + Desktop UI + i18n + Dev proxy
 
 ---
 
@@ -24,8 +24,9 @@
 
 ### Фаза 2: State Management
 - [x] Zustand store с нормализованной структурой
-- [x] authStore (user, accessToken, isAuthenticated) + localStorage persist
+- [x] authStore (user, tokens, isAuthenticated) + localStorage persist
 - [x] chatStore (chats, messages, chatMessages)
+- [x] errorStore (глобальные ошибки, network status)
 
 ### Фаза 3: Хуки
 - [x] useChats, useChatMessages, useGrpcStream, useIOSKeyboard, usePushNotifications
@@ -33,7 +34,7 @@
 ### Фаза 4: UI компоненты
 - [x] Screen, ChatListScreen, ChatList, ChatScreen
 - [x] AuthScreen (iOS-style login/signup form)
-- [x] Code splitting для всех компонентов
+- [x] Code splitting mobile/desktop для всех компонентов
 
 ### Фаза 5: iOS оптимизации
 - [x] Safe Area, bounce prevention, momentum scroll
@@ -42,52 +43,70 @@
 
 ### Фаза 6: Protobuf + gRPC-web
 - [x] messenger.proto скопирован с сервера
-- [x] AuthService добавлен в proto (SignIn, SignUp, RefreshToken, Logout)
+- [x] AuthService V2 добавлен в proto
 - [x] Код сгенерирован через buf generate
-- [x] grpc-web-proxy.js (Node.js прокси)
+- [x] grpc-web-proxy.cjs (Node.js прокси с V2 поддержкой)
 
 ---
 
-## 🔴 Блокирующая задача (выполняется на сервере)
+## ✅ Фаза 7: Интеграция с реальным сервером
 
-### AuthService на сервере
-Сервер должен реализовать `AuthService` с методами `SignIn` и `SignUp`.
-
-**После завершения на сервере:**
-
-1. **Обновить web-клиент для работы с реальным AuthService**
-   - Заменить mock вызовы на реальные gRPC вызовы
-   - Протестировать signIn/signUp flow
-   - Убедиться что токен сохраняется в Zustand + localStorage
-
-2. **Настроить gRPC-web proxy**
-   - Установить Envoy или grpcwebproxy для трансляции HTTP/1.1 ↔ HTTP/2
-   - Настроить Nginx как reverse proxy
-   - Протестировать CORS заголовки
-
-3. **Обновить документацию API**
-   - Описать AuthService методы
-   - Описать формат токенов
-   - Описать обработку ошибок
-
----
-
-## ✅ Фаза 7: Интеграция с реальным сервер (ЧАСТИЧНО)
-
-- [x] Подключить web-клиент к реальному AuthService
+- [x] Подключить web-клиент к реальному AuthService V2
 - [x] Proto синхронизирован с сервером (messenger.proto)
-- [x] grpcClient использует реальный AuthService
-- [x] AuthScreen работает с реальными полями proto (success/token/message/user)
+- [x] grpcClient использует реальный AuthService V2 (SignInV2/SignUpV2)
+- [x] AuthScreen работает с V2 API (success/accessToken/refreshToken/user)
 - [x] Production билд собирается
 - [x] Nginx настроен для /web и /messenger (gRPC-web proxy)
-- [ ] Протестировать signIn/signUp flow end-to-end (нужен браузер)
-- [ ] Обработка ошибок (network, auth, rate limit)
-- [ ] Retry с exponential backoff
-- [ ] Автоматический refresh токена
+- [x] AuthService V2 — JWT токены (access + refresh)
+- [x] Автоматический refresh access token (за 5 мин до истечения)
+- [x] Device info передаётся при login/signup (deviceId, deviceName, deviceType)
+- [x] Token rotation при refresh
+- [x] SignOut + RevokeDevice
+- [x] Обработка ошибок (network, auth, rate limit) — errorStore + классификация
+- [x] Retry с exponential backoff (3 попытки, baseDelay 500-1000ms)
+- [x] Stream error handling — error callback + error store notification
+- [x] **Авторизация работает** ✅ (проверено на dev сервере)
+- [ ] Секция управления устройствами в настройках
 
 ---
 
-## 📋 Фаза 8: AI чаты
+## ✅ Фаза 7.5: Desktop UI
+
+- [x] Screen.desktop — полноценный flex layout
+- [x] ChatListScreen.desktop — sidebar + main area (двухпанельный layout)
+- [x] ChatList.desktop — список чатов в sidebar с hover/active состояниями
+- [x] ChatScreen.desktop — чат с сообщениями, инпутом, хедером
+- [x] AuthScreen.desktop — форма входа/регистрации V2
+- [x] App.tsx — десктоп рендерит ChatListScreen напрямую
+- [ ] Адаптивность sidebar (ресайз, сворачивание)
+- [ ] Горячие клавиши (Ctrl+K поиск, Escape и т.д.)
+
+---
+
+## ✅ Фаза 7.5b: Локализация (i18n)
+
+- [x] Система локализации `t()`, `detectLang()` в shared/types
+- [x] Переводы: appName, loginTitle, signupTitle, placeholders, buttons, errors
+- [x] Переключатель языка EN/RU в AuthScreen
+- [x] Автоопределение языка по navigator.language
+- [x] Переименование: Lavender → Lava (EN) / Лава (RU)
+- [ ] Перевести остальные компоненты (ChatListScreen, ChatScreen, Settings)
+
+---
+
+## 📋 Фаза 8: Список чатов и сообщения
+
+- [x] useChats — загрузка списка чатов
+- [x] useChatMessages — загрузка истории + real-time streaming
+- [ ] Интеграция ChatList с реальными данными (getChats)
+- [ ] Интеграция ChatScreen с реальными данными (getHistory, sendMessage, stream)
+- [ ] Индикаторы загрузки / пустые состояния
+- [ ] Unread count, last message preview
+- [ ] Статусы online/offline
+
+---
+
+## 📋 Фаза 9: AI чаты
 
 - [ ] AIChatView — единый компонент для OWL и Hermes
 - [ ] Стриминг AI ответов (ChatWithAI)
@@ -98,7 +117,7 @@
 
 ---
 
-## 📋 Фаза 9: Контакты и профиль
+## 📋 Фаза 10: Контакты и профиль
 
 - [ ] Список контактов
 - [ ] Добавление контакта
@@ -107,16 +126,17 @@
 
 ---
 
-## 📋 Фаза 10: Настройки и темы
+## 📋 Фаза 11: Настройки и темы
 
 - [ ] Настройки сервера (адрес, порт)
 - [ ] Переключение тем (светлая/тёмная)
 - [ ] Кастомные темы
-- [ ] Язык (RU/EN)
+- [ ] Управление устройствами (RevokeDevice, SignOut all)
+- [ ] Смена пароля
 
 ---
 
-## 📋 Фаза 11: E2EE (секретные чаты)
+## 📋 Фаза 12: E2EE (секретные чаты)
 
 - [ ] ECDH обмен ключами через WebCrypto
 - [ ] AES-256-GCM шифрование
@@ -124,11 +144,9 @@
 
 ---
 
-## 📋 Фаза 12: Полировка
+## 📋 Фаза 13: Полировка
 
-- [ ] Виртуализация списков (react-virtuoso)
-- [ ] Pull-to-refresh
-- [ ] Infinite scroll для истории
+- [ ] Pull-to-refresh (mobile)
 - [ ] Поиск по сообщениям
 - [ ] Копирование сообщения
 - [ ] Reply / Forward
@@ -150,6 +168,17 @@
 
 ---
 
+## Текущая конфигурация
+
+| Компонент | Адрес | Статус |
+|-----------|-------|--------|
+| Dev сервер gRPC | `127.0.0.1:50052` | ✅ Работает |
+| Prod сервер gRPC | `127.0.0.1:50051` | ⬜ Старая версия |
+| gRPC-web proxy | `127.0.0.1:9090` | ✅ Работает → dev |
+| Веб-клиент SPA | `/web` (Nginx) | ✅ Работает |
+
+---
+
 ## Архитектура проекта
 
 ```
@@ -164,15 +193,14 @@ msg.client.web/
 │   ├── App.tsx                    # Root component (auth + routing)
 │   ├── styles/global.css          # Global iOS styles
 │   ├── shared/
-│   │   ├── types/index.ts         # TypeScript types
+│   │   ├── types/index.ts         # TypeScript types + i18n
 │   │   └── api/
-│   │       ├── grpcClient.ts      # gRPC-web client + auth interceptor
+│   │       ├── grpcClient.ts      # gRPC-web client + auth interceptor + retry
 │   │       └── gen/proto/         # Generated protobuf code
-│   │           ├── messenger_pb.ts
-│   │           └── messenger_connect.ts
 │   ├── store/
-│   │   ├── authStore.ts           # Auth state (Zustand + persist)
-│   │   └── chatStore.ts           # Chat state (Zustand, normalized)
+│   │   ├── authStore.ts           # Auth state (Zustand + persist, V2 JWT)
+│   │   ├── chatStore.ts           # Chat state (Zustand, normalized)
+│   │   └── errorStore.ts          # Global errors + network status
 │   ├── hooks/
 │   │   ├── useChats.ts
 │   │   ├── useChatMessages.ts
@@ -180,25 +208,11 @@ msg.client.web/
 │   │   ├── useIOSKeyboard.ts
 │   │   └── usePushNotifications.ts
 │   └── components/
-│       ├── auth/
-│       │   ├── AuthScreen.tsx     # Code splitting entry
-│       │   ├── AuthScreen.mobile.tsx
-│       │   └── AuthScreen.desktop.tsx
-│       ├── chat/
-│       │   ├── ChatScreen.tsx
-│       │   ├── ChatScreen.mobile.tsx
-│       │   └── ChatScreen.desktop.tsx
-│       ├── chatList/
-│       │   ├── ChatList.tsx
-│       │   ├── ChatList.mobile.tsx
-│       │   ├── ChatListScreen.tsx
-│       │   ├── ChatListScreen.mobile.tsx
-│       │   └── ChatListScreen.desktop.tsx
-│       └── common/
-│           ├── Screen.tsx
-│           ├── Screen.mobile.tsx
-│           └── Screen.desktop.tsx
-├── grpc-web-proxy.js              # Node.js gRPC-web proxy
+│       ├── auth/                  # AuthScreen (entry, mobile, desktop)
+│       ├── chat/                  # ChatScreen (entry, mobile, desktop)
+│       ├── chatList/              # ChatList + ChatListScreen (entry, mobile, desktop)
+│       └── common/                # Screen (entry, mobile, desktop)
+├── grpc-web-proxy.cjs             # Node.js gRPC-web proxy (V2)
 ├── buf.gen.yaml                   # Buf generation config
 ├── vite.config.ts
 ├── tsconfig.json
@@ -213,20 +227,23 @@ msg.client.web/
 # Dev server
 npm run dev
 
-# Production build
+# Production build (+ chmod fix)
 npm run build
 
 # Generate proto code
 npx buf generate
 
 # Start gRPC-web proxy
-node grpc-web-proxy.js
+node grpc-web-proxy.cjs
 ```
 
 ---
 
 ## Ссылки
 
-- Сервер: `/root/msg/`
-- Android клиент: `/root/msg.client.android/`
+- Dev сервер: `/root/msg/` (порт 50052)
 - Документация сервера: `/root/msg/doc/`
+- AuthService V2 docs: `/root/msg/doc/AUTHSERVICE_V2.md`
+- Android клиент: `/root/msg.client.android/`
+- iOS клиент: `/root/msg.client.ios/`
+- macOS клиент: `/root/msg.client.macos/`

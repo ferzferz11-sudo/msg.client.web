@@ -1,210 +1,361 @@
-# Lavender Messenger Web — AuthService v2 Integration Plan
+# Lava Messenger Web Client — Промпт для новой сессии
 
-**Версия:** v1.1.4.0
+**Версия:** v0.4.0
 **Дата:** 2026-06-14
-**Статус:** Проект интеграции (legacy код удаляем полностью)
+**Статус:** 🟢 Auth V2 работает + Desktop UI + i18n + Dev proxy
 
 ---
 
-## Текущее состояние
+## Что это за проект
 
-Веб клиент (`/root/msg.client.web/`) уже имеет:
-- `grpcClient.ts` — gRPC-web клиент с auth interceptor (Bearer token из localStorage)
-- `authStore.ts` — Zustand store с `accessToken` + `user`
-- Auth interceptor прокидывает `Authorization: Bearer <token>` в каждый запрос
+Lava Messenger Web Client — SPA мессенджер на React 18 + TypeScript + Vite.
+gRPC-web через Connect-RPC, Zustand state management, PWA.
+Аналог Telegram Web, но для собственного сервера (Go + PostgreSQL).
 
-**Проблема:** Сейчас используется AuthService v1 (SignIn/SignUp с UUID tokenом). Нужно перейти на V2 с JWT.
-
----
-
-## Архитектура AuthService v2
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Web Client (TypeScript)                   │
-│                                                               │
-│  ┌──────────────┐    ┌──────────────┐    ┌───────────────┐  │
-│  │  AuthStore    │◄──►│  grpcClient  │◄──►│  AuthService  │  │
-│  │  (Zustand)    │    │  (gRPC-web)  │    │  v2 (server)  │  │
-│  └──────────────┘    └──────────────┘    └───────────────┘  │
-│         │                    │                                │
-│         │ store tokens       │ Bearer <access_token>         │
-│         ▼                    ▼                                │
-│  ┌──────────────┐    ┌──────────────┐                        │
-│  │  localStorage │    │  gRPC calls  │                        │
-│  │  (encrypted)  │    │  + refresh   │                        │
-│  └──────────────┘    └──────────────┘                        │
-└─────────────────────────────────────────────────────────────┘
-
-Поток данных:
-1. SignInV2(username, password, deviceInfo) → access_token + refresh_token
-2. Храним оба токена + expires_at в localStorage
-3. Каждый gRPC запрос → interceptor проверяет access_token expiry
-4. Если access истёк → refreshToken() → новые access + refresh
-5. Если refresh истёк → redirect to login
-```
+**Путь:** `/root/msg.client.web/`
+**Деплой:** `http://13.140.25.249/web/` (Nginx → dist/)
 
 ---
 
-## Что изменить
+## Текущее состояние (v0.4.0)
 
-### 1. `src/shared/api/grpcClient.ts`
+### ✅ Работает
+- **Auth V2** — SignInV2/SignUpV2 с JWT (access + refresh), авто-refresh за 5 мин до истечения
+- **Device management** — deviceId генерируется при входе, передаётся на сервер
+- **Token rotation** — refresh token ротируется при каждом refresh
+- **i18n** — EN/RU локализация, автоопределение по navigator.language
+- **Desktop UI** — двухпанельный layout (sidebar 320px + main area), стиль Telegram Desktop
+- **Mobile UI** — screen-based навигация, iOS-оптимизации
+- **gRPC-web proxy** — Node.js прокси на порту 9090 → dev сервер 50052
+- **Error handling** — классификация ошибок, retry с exponential backoff, errorStore
+- **Название:** "Lava" (EN) / "Лава" (RU) с 🦞 логотипом
 
-**Удалить:**
-- `signIn()` — старый v1 метод
-- `signUp()` — старый v1 метод
-- `logout()` — старый (просто disconnect)
+### 📋 Следующая задача
+**Фаза 8: Список чатов и сообщения**
+- Интеграция ChatList с реальными данными (getChats)
+- Интеграция ChatScreen с реальными данными (getHistory, sendMessage, stream)
+- Индикаторы загрузки / пустые состояния
+- Unread count, last message preview
+- Статусы online/offline
 
-**Добавить:**
+---
 
-```typescript
-// AuthService V2 методы
-async signInV2(username: string, password: string, deviceInfo: DeviceInfo): Promise<AuthResponseV2>
-async signUpV2(username: string, password: string, email: string, deviceInfo: DeviceInfo): Promise<AuthResponseV2>
-async refreshToken(refreshToken: string): Promise<RefreshTokenResponse>
-async signOut(refreshToken: string, allDevices: boolean): Promise<void>
-async revokeDevice(deviceId: string): Promise<void>
+## Архитектура
+
+```
+Браузер (gRPC-web) → Nginx :80 (/messenger) → Node.js proxy :9090 → gRPC dev сервер :50052
+Браузер (SPA) → Nginx :80 (/web) → /root/msg.client.web/dist/
 ```
 
-**Типы:**
+### Стек
+| Компонент | Версия | Назначение |
+|-----------|--------|-----------|
+| React | 18.3 | UI фреймворк |
+| TypeScript | 5.5 | Типизация |
+| Vite | 5.4 | Сборка, dev server, HMR |
+| Zustand | 4.5 | State management |
+| @bufbuild/protobuf | 1.10 | Protobuf runtime |
+| @connectrpc/connect | 1.6 | gRPC-web клиент |
+| @connectrpc/connect-web | 1.6 | Транспорт для браузера |
+| react-virtuoso | 4.12 | Виртуализация списков |
 
-```typescript
-interface DeviceInfo {
-  deviceId: string    // crypto.randomUUID() или fingerprint
-  deviceName: string  // navigator.userAgent или "Web Browser"
-  deviceType: "web"
-}
-
-interface AuthResponseV2 {
-  success: boolean
-  message: string
-  accessToken: string      // JWT access token
-  refreshToken: string     // JWT refresh token
-  accessExpiresAt: number  // unix timestamp
-  refreshExpiresAt: number // unix timestamp
-  user: {
-    id: string
-    username: string
-    email: string
-    avatarUrl: string
-    bio: string
-    status: string
-  }
-}
-
-interface RefreshTokenResponse {
-  accessToken: string
-  refreshToken: string    // новый refresh token (rotation)
-  accessExpiresAt: number
-  refreshExpiresAt: number
-}
+### Структура файлов
+```
+msg.client.web/
+├── proto/messenger.proto              # API definition (копия с сервера)
+├── public/
+│   ├── manifest.json                  # PWA манифест
+│   ├── sw.js                          # Service Worker (push notifications)
+│   └── icons/                         # PWA иконки
+├── src/
+│   ├── main.tsx                       # Entry point
+│   ├── App.tsx                        # Root: auth + routing (desktop/mobile)
+│   ├── styles/global.css              # iOS стили (SafeArea, bounce, scroll)
+│   ├── shared/
+│   │   ├── types/index.ts             # TypeScript типы + i18n (t(), detectLang())
+│   │   └── api/
+│   │       ├── grpcClient.ts          # gRPC-web клиент + auth interceptor + retry
+│   │       └── gen/proto/             # Сгенерированный код из proto
+│   ├── store/
+│   │   ├── authStore.ts               # Auth state (Zustand + persist, V2 JWT)
+│   │   ├── chatStore.ts               # Chat state (Zustand, нормализованный)
+│   │   └── errorStore.ts              # Global errors + network status
+│   ├── hooks/
+│   │   ├── useChats.ts                # Загрузка списка чатов
+│   │   ├── useChatMessages.ts         # История + стриминг + пагинация
+│   │   ├── useGrpcStream.ts           # Lifecycle стрима (iOS background!)
+│   │   ├── useIOSKeyboard.ts          # Обработка клавиатуры iOS
+│   │   └── usePushNotifications.ts    # Web Push подписка
+│   └── components/
+│       ├── auth/                      # AuthScreen (entry, mobile, desktop)
+│       ├── chat/                      # ChatScreen (entry, mobile, desktop)
+│       ├── chatList/                  # ChatList + ChatListScreen (entry, mobile, desktop)
+│       └── common/                    # Screen (entry, mobile, desktop)
+├── doc/                               # Документация
+│   ├── INDEX.md                       # Индекс документации
+│   ├── ARCHITECTURE.md                # Полная архитектура
+│   ├── CODEBASE.md                    # Детальное описание каждого модуля
+│   ├── IOS.md                         # iOS Safari специфика
+│   ├── STATE.md                       # Zustand store документация
+│   ├── GRPC.md                        # gRPC клиент и стриминг
+│   ├── SERVER_INTEGRATION.md          # Интеграция с сервером
+│   ├── GRPC_WEB_PROXY.md              # gRPC-web proxy
+│   ├── ANDROID_PARITY.md              # Соответствие Android-клиенту
+│   ├── PITFALLS.md                    # Подводные камни
+│   ├── LAVENDER_CONTEXT.md            # Контекст проекта (сервер, AI)
+│   ├── TASKS.md                       # Таск-трекер
+│   ├── CHANGELOG.md                   # История изменений
+│   └── PROMPT.md                      # Этот файл
+├── grpc-web-proxy.cjs                 # Node.js gRPC-web proxy (V2)
+├── buf.gen.yaml                       # Buf generation config
+├── vite.config.ts
+├── tsconfig.json
+└── package.json
 ```
 
-**Auth Interceptor — обновить:**
+---
 
-```typescript
-function createAuthInterceptor(getTokens: () => TokenPair | null) {
-  return (next: any) => async (req: any) => {
-    const tokens = getTokens()
-    if (tokens) {
-      // Check if access token needs refresh
-      const now = Math.floor(Date.now() / 1000)
-      if (now >= tokens.accessExpiresAt - 300) { // 5 min buffer
-        // Refresh token
-        const newTokens = await grpcClient.refreshToken(tokens.refreshToken)
-        if (newTokens) {
-          authStore.setTokens(newTokens) // update store + localStorage
-          req.header.set('Authorization', `Bearer ${newTokens.accessToken}`)
-        } else {
-          authStore.logout()
-          // redirect to login
-        }
-      } else {
-        req.header.set('Authorization', `Bearer ${tokens.accessToken}`)
-      }
-    }
-    return next(req)
-  }
-}
+## Auth V2 Flow
+
+```
+1. Пользователь вводит username/password
+2. AuthScreen вызывает grpcClient.signInV2(username, password, deviceInfo)
+3. Сервер возвращает AuthResponseV2 { success, accessToken, refreshToken, accessExpiresAt, refreshExpiresAt, user }
+4. authStore.setTokens(response) → сохраняет в localStorage (ключ: auth_tokens)
+5. Каждый gRPC запрос → interceptor проверяет accessExpiresAt
+6. Если access истекает через < 5 мин → refreshToken() → новые токены
+7. Если refresh истёк → logout → redirect to login
 ```
 
-### 2. `src/store/authStore.ts`
-
-**Удалить:**
-- `accessToken: string | null` — заменить на полный TokenPair
-- `setAuth()` — заменить на `setTokens()`
-- `setAccessToken()` — удалить
-
-**Новый интерфейс:**
-
+### TokenPair
 ```typescript
 interface TokenPair {
   accessToken: string
   refreshToken: string
-  accessExpiresAt: number
-  refreshExpiresAt: number
-}
-
-interface AuthState {
-  user: User | null
-  tokens: TokenPair | null
-  isAuthenticated: boolean
-
-  setTokens: (response: AuthResponseV2) => void
-  updateAccessToken: (response: RefreshTokenResponse) => void
-  logout: () => void
+  accessExpiresAt: number   // unix timestamp
+  refreshExpiresAt: number  // unix timestamp
 }
 ```
 
-**localStorage ключи:**
-- `auth_tokens` — JSON с TokenPair (вместо `auth_access_token`)
-- `auth_user` — JSON с User (без изменений)
+### DeviceInfo
+```typescript
+interface DeviceInfo {
+  deviceId: string    // crypto.randomUUID() или Math.random() fallback
+  deviceName: string  // navigator.userAgent или "Web Browser"
+  deviceType: "web"
+}
+```
 
-### 3. Компоненты UI
+---
 
-**Login/Register формы:**
-- Вызывать `grpcClient.signInV2()` / `grpcClient.signUpV2()` вместо v1
-- Передавать `deviceInfo: { deviceId, deviceName: "Web Browser", deviceType: "web" }`
+## State Management (Zustand)
 
-**Settings/Security секция (новое):**
-- Список устройств пользователя (`GetDevices` — уже есть в ChatService)
-- Кнопка "Revoke" для каждого устройства
-- Кнопка "Sign out all devices"
+### authStore
+- `user: User | null`
+- `tokens: TokenPair | null`
+- `isAuthenticated: boolean`
+- `setTokens(response: AuthResponseV2)` — сохраняет токены + пользователя
+- `updateAccessToken(response: RefreshTokenResponse)` — обновляет после refresh
+- `logout()` — очищает всё
+- **Persistence:** localStorage (`auth_tokens`, `auth_user`)
 
-### 4. Proto генерация
+### chatStore (нормализованный)
+```
+chats:    { [chatId]: Chat }           — метаданные чатов
+messages: { [messageId]: Message }     — плоское хранилище сообщений
+chatMessages: { [chatId]: string[] }   — упорядоченные ID сообщений по чатам
+```
+- **Selectors:** `getChatList()`, `getActiveChat()`, `getChatMessages(chatId)`
+- **Actions:** `setChats`, `addChat`, `updateChat`, `setActiveChatId`, `setMessages`, `addMessage`, `prependMessages`
+
+### errorStore
+- `errors: AppError[]` (max 5, auto-dismiss)
+- `networkStatus: 'online' | 'offline'`
+- `addError`, `dismissError`, `clearErrors`
+
+---
+
+## gRPC клиент (grpcClient.ts)
+
+### Методы Auth V2
+- `signInV2(username, password, deviceInfo)` → AuthResponseV2
+- `signUpV2(username, password, email, deviceInfo)` → AuthResponseV2
+- `refreshToken(refreshToken)` → RefreshTokenResponse
+- `signOut(refreshToken, allDevices)` → void
+- `revokeDevice(deviceId)` → void
+
+### Методы Chat
+- `getChats(userId, username)` → Chat[]
+- `getHistory(chatId, limit)` → { messages: Message[], hasMore: boolean }
+- `sendMessage(chatId, content)` → Message
+- `createDirectChat(participantId)` → Chat
+- `streamChatMessages(chatId, callback)` → cleanup function
+
+### Error handling
+- `classifyError(error)` → 'network' | 'auth' | 'rate_limit' | 'server' | 'unknown'
+- `withRetry(fn, options)` — retry с exponential backoff
+- Auth errors НЕ ретраятся
+- Network errors: 3 попытки, baseDelay 500ms
+
+---
+
+## i18n
+
+### Использование
+```typescript
+import { t, setLang, getLang } from '@/shared/types'
+
+t('loginTitle')      // "Вход" (RU) / "Sign In" (EN)
+t('signIn')          // "Войти" (RU) / "Sign In" (EN)
+setLang('en')        // Переключить язык
+```
+
+### Переведённые ключи
+appName, loginTitle, signupTitle, usernamePlaceholder, passwordPlaceholder, emailPlaceholder, signIn, signUp, hasAccount, noAccount, connectionError, authError, loading, selectChat, writeMessage, signOut, online, offline, retry
+
+### Переключатель
+- Кнопка EN/RU в AuthScreen (правый верхний угол)
+- Автоопределение по navigator.language
+
+---
+
+## Desktop vs Mobile
+
+### Desktop (≥ 768px)
+- Двухпанельный layout: Sidebar (320px) + main area
+- ChatListScreen рендерится напрямую (без screen-based навигации)
+- Sidebar: список чатов с hover/active состояниями
+- Main area: ChatScreen с сообщениями
+
+### Mobile (< 768px)
+- Screen-based навигация (ChatListScreen → ChatScreen)
+- iOS оптимизации: SafeArea, bounce prevention, keyboard handling
+- PWA: standalone display, Web Push
+
+---
+
+## Конфигурация
+
+| Компонент | Адрес | Статус |
+|-----------|-------|--------|
+| Dev сервер gRPC | `127.0.0.1:50052` | ✅ Работает |
+| Prod сервер gRPC | `127.0.0.1:50051` | ⬜ Старая версия |
+| gRPC-web proxy | `0.0.0.0:9090` | ✅ Работает → dev |
+| Веб-клиент SPA | `/web` (Nginx) | ✅ Работает |
+| gRPC-web endpoint | `/messenger` (Nginx → 9090) | ✅ Работает |
+
+### Переменные окружения
+- `VITE_API_URL` — URL gRPC-web proxy (по умолчанию `/messenger`)
+
+---
+
+## Команды
 
 ```bash
-cd /root/msg.client.web
-# Сгенерировать новые proto из обновлённого messenger.proto
+# Dev server
+npm run dev
+
+# Production build (+ chmod fix для manifest.json)
+npm run build
+
+# TypeScript check
+npx tsc --noEmit
+
+# Генерация кода из proto
 npx buf generate
+
+# gRPC-web proxy
+node grpc-web-proxy.cjs
+
+# Перезапуск proxy (systemd)
+sudo systemctl restart grpc-web-proxy
 ```
 
 ---
 
-## Порядок выполнения
+## Документация сервера
 
-1. **Обновить proto** — сгенерировать из нового messenger.proto
-2. **Типы** — добавить AuthResponseV2, RefreshTokenResponse, DeviceInfo
-3. **grpcClient.ts** — заменить signIn/signUp на V2, обновить interceptor
-4. **authStore.ts** — перейти на TokenPair вместо accessToken
-5. **Login/Register UI** — вызовы V2 + deviceInfo
-6. **Настройки** — секция управления устройствами
-7. **Тестирование** — login → refresh → API calls → logout
+Полная документация: `/root/msg/doc/`
+- `AUTHSERVICE_V2.md` — AuthService V2: JWT + device management
+- `INTEGRATION_SESSION.md` — Текущий статус, версии, архитектура
+- `TASKS.md` — Таск-трекер сервера и Android
+- `INDEX.md` — Полный индекс документации
 
 ---
 
-## Безопасность
+## Связанные проекты
 
-- Access token живёт 15 минут
-- Refresh token живёт 30 дней, ротация при каждом refresh
-- При обнаружении reuse refresh token — все устройства отзываются
-- Токены хранятся в localStorage (для PWA на iPhone)
-- Для production — рассмотреть httpOnly cookies
+| Проект | Путь | Версия |
+|--------|------|--------|
+| Dev сервер | `/root/msg/` | v1.1.4.0 |
+| Prod сервер | `/root/LavenderMessenger/run/` | v1.1.3.10 |
+| Android | `/root/msg.client.android/` | v1.1.3.10 |
+| iOS | `/root/msg.client.ios/` | — |
+| **Web Client** | **/root/msg.client.web/** | **v0.4.0** |
 
 ---
 
-## Совместимость
+## Фазы разработки
 
-- Старые клиенты (Android v1.1.3.x) продолжают работать через Chat stream auth
-- Новые клиенты (web v1.1.4.0+) используют AuthService v2 + JWT
-- Сервер поддерживает оба механизма одновременно
+### ✅ Завершённые
+- Фаза 0: Инициализация проекта
+- Фаза 1: gRPC клиент
+- Фаза 2: State Management
+- Фаза 3: Хуки
+- Фаза 4: UI компоненты
+- Фаза 5: iOS оптимизации
+- Фаза 6: Protobuf + gRPC-web
+- Фаза 7: Интеграция с реальным сервером (Auth V2)
+- Фаза 7.5: Desktop UI
+- Фаза 7.5b: Локализация (i18n)
+
+### 📋 Следующие
+- **Фаза 8:** Список чатов и сообщения (интеграция с реальными данными)
+- **Фаза 9:** AI чаты (OWL + Hermes)
+- **Фаза 10:** Контакты и профиль
+- **Фаза 11:** Настройки и темы
+- **Фаза 12:** E2EE (секретные чаты)
+- **Фаза 13:** Полировка (pull-to-refresh, поиск, реакции, файлы, голосовые, offline, a11y)
+
+---
+
+## Важные заметки
+
+### Подключение к dev серверу
+- Proxy настроен на dev сервер (порт 50052)
+- Prod сервер (50051) имеет старую версию — НЕ подключаться
+- systemd сервис: `grpc-web-proxy`
+
+### Auth V2
+- Сервер требует `deviceInfo` при signIn/signUp
+- Access token TTL: 15 минут
+- Refresh token TTL: 30 дней
+- При истечении refresh token — автоматический logout
+
+### Proto
+- `proto/messenger.proto` — копируется с сервера (`/root/msg/messenger.proto`)
+- Генерация: `npx buf generate`
+- Сгенерированный код: `src/shared/api/gen/proto/`
+
+### Сборка
+- `npm run build` — production build + postbuild chmod fix
+- `npx tsc --noEmit` — проверка типов
+- Vite dev server: `npm run dev` (порт 3000)
+
+### Nginx
+- `/web` → `/root/msg.client.web/dist/` (SPA)
+- `/messenger` → `127.0.0.1:9090` (gRPC-web proxy)
+- Конфиг: `/etc/nginx/sites-enabled/lavender`
+
+---
+
+## Известные проблемы
+
+### Серверные (не блокирующие)
+- Prod DB: `ON CONFLICT requires unique constraint` на device registration — миграция не применена
+- Dev сервер: работает стабильно
+
+### Клиентские
+- Нет интеграции с реальными данными чатов (фаза 8)
+- Нет AI чатов (фаза 9)
+- Нет контактов/профиля (фаза 10)

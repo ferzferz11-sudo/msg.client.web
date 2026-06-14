@@ -1,19 +1,16 @@
 // ============================================
-// AuthScreen — iOS Native Style Login/SignUp
+// AuthScreen — iOS Native Style Login/SignUp (V2)
 // ============================================
 // Clean, native-looking iOS authentication screen.
-// Features:
-// - Large logo + app name
-// - Username/password inputs with autoCapitalize="none"
-// - Smooth validation transitions
-// - Toggle between Sign In and Sign Up
-// - Loading state with spinner
+// V2: Uses AuthService.SignInV2 / SignUpV2 with JWT tokens.
+// Multi-language: EN / RU
 // ============================================
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Screen } from '@/components/common'
-import { grpcClient, protoToUser } from '@/shared/api/grpcClient'
+import { grpcClient } from '@/shared/api/grpcClient'
 import { useAuthStore } from '@/store/authStore'
+import { t, detectLang, type Lang } from '@/shared/types'
 
 interface AuthScreenProps {
   onAuthSuccess: () => void
@@ -26,11 +23,11 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [isSignUp, setIsSignUp] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lang, setLang] = useState<Lang>(detectLang())
 
   const usernameRef = useRef<HTMLInputElement>(null)
-  const setAuth = useAuthStore((s) => s.setAuth)
+  const setTokens = useAuthStore((s) => s.setTokens)
 
-  // Focus username on mount
   useEffect(() => {
     const timer = setTimeout(() => usernameRef.current?.focus(), 500)
     return () => clearTimeout(timer)
@@ -38,15 +35,15 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   const handleSubmit = useCallback(async () => {
     if (!username.trim()) {
-      setError('Введите имя пользователя')
+      setError(t('usernamePlaceholder', lang))
       return
     }
     if (!password.trim()) {
-      setError('Введите пароль')
+      setError(t('passwordPlaceholder', lang))
       return
     }
     if (isSignUp && !email.trim()) {
-      setError('Введите email')
+      setError(t('emailPlaceholder', lang))
       return
     }
 
@@ -54,29 +51,31 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     setError(null)
 
     try {
-      // Connect to server (uses relative /messenger path via Nginx)
-      const getToken = () => useAuthStore.getState().accessToken
-      await grpcClient.connect(undefined, getToken)
+      const getTokens = () => useAuthStore.getState().tokens
+      await grpcClient.connect(undefined, getTokens)
 
-      // Authenticate
       const result = isSignUp
-        ? await grpcClient.signUp(username.trim(), password, email.trim())
-        : await grpcClient.signIn(username.trim(), password)
+        ? await grpcClient.signUpV2(username.trim(), password, email.trim())
+        : await grpcClient.signInV2(username.trim(), password)
 
-      if (result.success && result.token && result.user) {
-        // Save to Zustand store (persists to localStorage)
-        const user = protoToUser(result.user)
-        setAuth(user, result.token)
+      if (result.success && result.accessToken && result.user) {
+        setTokens({
+          accessToken: result.accessToken,
+          refreshToken: result.refreshToken,
+          accessExpiresAt: result.accessExpiresAt,
+          refreshExpiresAt: result.refreshExpiresAt,
+          user: result.user,
+        })
         onAuthSuccess()
       } else {
-        setError(result.message || (isSignUp ? 'Ошибка регистрации' : 'Неверные данные'))
+        setError(result.message || (isSignUp ? t('authError', lang) : t('authError', lang)))
       }
     } catch (err: any) {
-      setError(err.message || 'Ошибка подключения к серверу')
+      setError(err.message || t('connectionError', lang))
     } finally {
       setIsLoading(false)
     }
-  }, [username, password, email, isSignUp, setAuth, onAuthSuccess])
+  }, [username, password, email, isSignUp, setTokens, onAuthSuccess, lang])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -85,13 +84,17 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         handleSubmit()
       }
     },
-    [handleSubmit]
+    [handleSubmit],
   )
 
   const toggleMode = useCallback(() => {
     setIsSignUp(!isSignUp)
     setError(null)
   }, [isSignUp])
+
+  const toggleLang = useCallback(() => {
+    setLang(lang === 'ru' ? 'en' : 'ru')
+  }, [lang])
 
   return (
     <Screen>
@@ -106,6 +109,25 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           background: '#1a1a2e',
         }}
       >
+        {/* Language toggle */}
+        <button
+          onClick={toggleLang}
+          style={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            background: 'rgba(255,255,255,0.1)',
+            border: 'none',
+            color: 'rgba(255,255,255,0.6)',
+            fontSize: 13,
+            padding: '6px 12px',
+            borderRadius: 8,
+            cursor: 'pointer',
+          }}
+        >
+          {lang === 'ru' ? 'EN' : 'RU'}
+        </button>
+
         {/* Logo */}
         <div
           style={{
@@ -125,11 +147,11 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
         {/* App name */}
         <div style={{ fontSize: 28, fontWeight: 700, color: '#fff', marginBottom: 8 }}>
-          Lavender
+          {t('appName', lang)}
         </div>
 
         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 40 }}>
-          {isSignUp ? 'Создать аккаунт' : 'Вход в мессенджер'}
+          {isSignUp ? t('signupTitle', lang) : t('loginTitle', lang)}
         </div>
 
         {/* Error */}
@@ -154,7 +176,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           {/* Username */}
           <div style={{ marginBottom: 12 }}>
             <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>
-              Имя пользователя
+              {t('usernamePlaceholder', lang)}
             </label>
             <input
               ref={usernameRef}
@@ -162,7 +184,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="username"
+              placeholder={t('usernamePlaceholder', lang)}
               disabled={isLoading}
               autoCapitalize="none"
               autoCorrect="off"
@@ -173,7 +195,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           {/* Password */}
           <div style={{ marginBottom: isSignUp ? 12 : 20 }}>
             <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>
-              Пароль
+              {t('passwordPlaceholder', lang)}
             </label>
             <input
               type="password"
@@ -190,7 +212,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           {isSignUp && (
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>
-                Email
+                {t('emailPlaceholder', lang)}
               </label>
               <input
                 type="email"
@@ -225,7 +247,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               marginBottom: 16,
             }}
           >
-            {isLoading ? 'Подключение...' : isSignUp ? 'Зарегистрироваться' : 'Войти'}
+            {isLoading ? t('loading', lang) : isSignUp ? t('signUp', lang) : t('signIn', lang)}
           </button>
 
           {/* Toggle mode */}
@@ -245,7 +267,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               WebkitTapHighlightColor: 'transparent',
             }}
           >
-            {isSignUp ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+            {isSignUp ? t('hasAccount', lang) : t('noAccount', lang)}
           </button>
         </div>
       </div>

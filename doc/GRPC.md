@@ -1,10 +1,9 @@
-# Lavender Messenger Web Client — gRPC клиент и стриминг
+# Lava Messenger Web Client — gRPC клиент и стриминг
 
-Документация по gRPC клиенту, стримингу и интеграции с сервером.
-
+**Версия:** v0.4.0
 **Файл:** `src/shared/api/grpcClient.ts`
 **Хуки:** `src/hooks/useGrpcStream.ts`, `src/hooks/useChatMessages.ts`
-**Дата:** 2026-06-10
+**Дата:** 2026-06-14
 
 ---
 
@@ -34,33 +33,44 @@ export const grpcClient = GrpcClient.getInstance()
 
 ```typescript
 // App.tsx — при монтировании
-grpcClient.connect('ws://localhost:50051')
+const getToken = () => useAuthStore.getState().tokens
+grpcClient.connect('/messenger', getToken)
 
 // App.tsx — при размонтировании
 grpcClient.disconnect()
 ```
 
-`disconnect()` закрывает все активные стримы через `AbortController`.
-
 ---
 
 ## 2. API клиента
 
-### Unary Calls
+### AuthService V2 (Unary)
 
 | Метод | Параметры | Возвращает | Описание |
 |-------|-----------|-----------|----------|
-| `getChats(userId)` | `string` | `Promise<Chat[]>` | Список чатов пользователя |
-| `getMessages(chatId, limit?)` | `string, number=50` | `Promise<Message[]>` | История сообщений |
-| `sendMessage(chatId, content, senderId)` | `string, string, string` | `Promise<Message>` | Отправка сообщения |
-| `createChat(participants, name?, type?)` | `string[], string?, Chat['type']` | `Promise<Chat>` | Создание чата |
+| `signInV2` | `username, password, deviceInfo` | `Promise<AuthResponseV2>` | Вход |
+| `signUpV2` | `username, password, email, deviceInfo` | `Promise<AuthResponseV2>` | Регистрация |
+| `refreshToken` | `refreshToken` | `Promise<RefreshTokenResponse>` | Обновление токена |
+| `signOut` | `refreshToken, allDevices` | `Promise<void>` | Выход |
+| `revokeDevice` | `deviceId` | `Promise<void>` | Отзыв устройства |
+
+### ChatService (Unary)
+
+| Метод | Параметры | Возвращает | Описание |
+|-------|-----------|-----------|----------|
+| `getChats` | `userId, username` | `Promise<Chat[]>` | Список чатов |
+| `getHistory` | `chatId, limit` | `Promise<{ messages: Message[], hasMore: boolean }>` | История сообщений |
+| `sendMessage` | `chatId, content` | `Promise<Message>` | Отправка сообщения |
+| `createDirectChat` | `participantId` | `Promise<Chat>` | Создание личного чата |
+| `createGroupChat` | `name, participants` | `Promise<Chat>` | Создание группового чата |
+| `deleteChat` | `chatId` | `Promise<void>` | Удаление чата |
+| `markRead` | `chatId` | `Promise<void>` | Отметить как прочитанное |
 
 ### Server-Side Streaming
 
 | Метод | Параметры | Возвращает | Описание |
 |-------|-----------|-----------|----------|
-| `streamChatMessages(chatId, callback)` | `string, StreamCallback` | `() => void` (cleanup) | Сообщения чата в реальном времени |
-| `streamAllMessages(callback)` | `StreamCallback` | `() => void` (cleanup) | Presence updates |
+| `streamChatMessages` | `chatId, callback` | `() => void` (cleanup) | Сообщения чата в реальном времени |
 
 ---
 
@@ -77,35 +87,64 @@ type StreamEvent =
 
 ---
 
-## 4. Мок-реализация
+## 4. Auth Interceptor
 
-На данном этапе gRPC клиент использует mock-данные. В production будет заменён на сгенерированный grpc-web клиент из `messenger.proto`.
-
-### Мок-чаты (4 штуки)
+Автоматически добавляет `Authorization: Bearer *** к каждому gRPC запросу.
+Проверяет expiry и делает refresh за 5 минут до истечения.
 
 ```typescript
-const MOCK_CHATS: Record<string, Chat> = {
-  'chat-1': { name: 'Алексей', type: 'regular', isOnline: true, ... },
-  'chat-2': { name: 'Работа', type: 'regular', ... },
-  'chat-3': { name: 'OWL AI', type: 'owl', ... },
-  'chat-4': { name: 'Hermes', type: 'hermes', ... },
+function createAuthInterceptor(getTokens: () => TokenPair | null) {
+  return (next: any) => async (req: any) => {
+    const tokens = getTokens()
+    if (tokens) {
+      const now = Math.floor(Date.now() / 1000)
+      if (now >= tokens.accessExpiresAt - 300) {
+        // Refresh token
+        const newTokens = await grpcClient.refreshToken(tokens.refreshToken)
+        if (newTokens) {
+          authStore.setTokens(newTokens)
+          req.header.set('Authorization', `Bearer ${newTokens.accessToken}`)
+        } else {
+          authStore.logout()
+        }
+      } else {
+        req.header.set('Authorization', `Bearer ${tokens.accessToken}`)
+      }
+    }
+    return next(req)
+  }
 }
 ```
 
-### Мок-сообщения
+---
 
-Каждый чат имеет 1-3 тестовых сообщения. Последнее сообщение в `chat-1` — входящее (для демонстрации unread).
+## 5. Error Handling
 
-### Мок-стриминг
+### Классификация ошибок
 
-`streamChatMessages()` симулирует входящие сообщения:
-- Первое сообщение через 3 секунды
-- Далее каждые 15-30 секунд (random)
-- Текст из массива `INCOMING_MESSAGES` (10 вариантов)
+```typescript
+type ErrorType = 'network' | 'auth' | 'rate_limit' | 'server' | 'unknown'
+
+// gRPC error mapping:
+// UNAUTHENTICATED → auth
+// UNAVAILABLE → network
+// RESOURCE_EXHAUSTED → rate_limit
+// остальное → server
+```
+
+### Retry с exponential backoff
+
+```typescript
+withRetry(fn, { maxAttempts: 3, baseDelay: 500 })
+// - Auth errors НЕ ретраятся
+// - Network errors: 3 попытки
+// - signIn/SignUp: 2 попытки, baseDelay 1000ms
+// - sendMessage: 2 попытки, baseDelay 300ms
+```
 
 ---
 
-## 5. useGrpcStream — lifecycle hook
+## 6. useGrpcStream — lifecycle hook
 
 ### Назначение
 
@@ -126,29 +165,25 @@ useGrpcStream({ chatId, onEvent, enabled })
 ### Поведение
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    useGrpcStream                             │
-│                                                             │
-│  Mount / chatId change                                      │
-│         │                                                   │
-│         ▼                                                   │
-│  grpcClient.streamChatMessages(chatId, callback)            │
-│         │                                                   │
-│         ▼                                                   │
-│  Stream active ←──────────────────────────────┐             │
-│         │                                      │             │
-│         ▼                                      │             │
-│  Events: message, typing, presence, error      │             │
-│         │                                      │             │
-│         ▼                                      │             │
-│  onEvent(event) ───────────────────────────────┤             │
-│         │                                      │             │
-│         ▼                                      │             │
-│  Unmount / chatId change / background          │             │
-│         │                                      │             │
-│         ▼                                      │             │
-│  cleanup() → AbortController.abort() ──────────┘             │
-└─────────────────────────────────────────────────────────────┘
+Mount / chatId change
+        │
+        ▼
+grpcClient.streamChatMessages(chatId, callback)
+        │
+        ▼
+Stream active ←──────────────────────────────┐
+        │                                      │
+        ▼                                      │
+Events: message, typing, presence, error      │
+        │                                      │
+        ▼                                      │
+onEvent(event) ───────────────────────────────┤
+        │                                      │
+        ▼                                      │
+Unmount / chatId change / background          │
+        │                                      │
+        ▼                                      │
+cleanup() → AbortController.abort() ──────────┘
 ```
 
 ### iOS Background Handling
@@ -156,13 +191,13 @@ useGrpcStream({ chatId, onEvent, enabled })
 ```typescript
 // 1. Page Visibility API
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) → close stream    // экономия батареи
-  else → reopen stream
+  if (document.hidden) closeStream()
+  else reopenStream()
 })
 
 // 2. iOS Safari specific
-window.addEventListener('pagehide', () => close stream)
-window.addEventListener('pageshow', () => reopen stream)
+window.addEventListener('pagehide', closeStream)
+window.addEventListener('pageshow', reopenStream)
 
 // 3. React cleanup
 useEffect(() => () => cleanup(), [chatId])
@@ -187,7 +222,7 @@ controller.abort()  // отмена всех pending setTimeout
 
 ---
 
-## 6. useChatMessages — комплексный хук
+## 7. useChatMessages — комплексный хук
 
 ### Назначение
 
@@ -202,7 +237,7 @@ const { messages, isLoadingMessages, isSendingMessage, sendMessage } = useChatMe
 ```
 1. Монтирование (chatId изменился)
    │
-   ├─→ grpcClient.getMessages(chatId, 50) → store.setMessages()
+   ├─→ grpcClient.getHistory(chatId, 50) → store.setMessages()
    ├─→ store.updateChat(chatId, { unreadCount: 0 })
    └─→ useGrpcStream({ chatId, onEvent: handleStreamEvent })
        │
@@ -210,7 +245,7 @@ const { messages, isLoadingMessages, isSendingMessage, sendMessage } = useChatMe
 
 2. Отправка сообщения
    │
-   ├─→ grpcClient.sendMessage(chatId, content, 'user-1')
+   ├─→ grpcClient.sendMessage(chatId, content)
    └─→ store.addMessage(response)
 
 3. Размонтирование
@@ -232,110 +267,15 @@ if (chatIdRef.current !== chatId) return  // устарело, игнориру�
 
 ---
 
-## 7. Интеграция с сервером (production)
-
-### Замена mock на реальный gRPC
-
-```typescript
-// Сейчас (mock):
-import { grpcClient } from '@/shared/api/grpcClient'
-
-// Production (grpc-web):
-import { ChatServiceClient } from '../proto/messenger_grpc_web_pb'
-import { GetChatsRequest } from '../proto/messenger_pb'
-
-const client = new ChatServiceClient('https://server:50051')
-
-// Unary:
-const request = new GetChatsRequest()
-request.setUserId('user-1')
-client.getChats(request, {}, (err, response) => { ... })
-
-// Streaming:
-const stream = client.streamChatMessages(request)
-stream.on('data', (response) => { ... })
-stream.on('end', () => { ... })
-```
-
-### Proto файлы
+## 8. Proto файлы
 
 Серверные proto: `/root/msg/messenger.proto`
 Сгенерированные Go: `/root/msg/gen/`
 
 Для веб-клиента:
-1. Скопировать `messenger.proto`
-2. `protoc --grpc-web_out=import_style=typescript,mode=grpcwebtext:. messenger.proto`
-3. Использовать сгенерированные классы
-
-### Envoy Proxy
-
-Для grpc-web нужен Envoy proxy:
-
-```yaml
-# envoy.yaml (упрощённо)
-static_resources:
-  listeners:
-  - address:
-      socket_address: { address: 0.0.0.0, port_value: 8080 }
-    filter_chains:
-    - filters:
-      - name: envoy.filters.network.http_connection_manager
-        typed_config:
-          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
-          codec_type: AUTO
-          route_config:
-            virtual_hosts:
-            - name: backend
-              domains: ["*"]
-              routes:
-              - match: { prefix: "/" }
-                route: { cluster: grpc_backend }
-          http_filters:
-          - name: envoy.filters.http.grpc_web
-          - name: envoy.filters.http.cors
-          - name: envoy.filters.http.router
-  clusters:
-  - name: grpc_backend
-    connect_timeout: 0.25s
-    type: LOGICAL_DNS
-    lb_policy: ROUND_ROBIN
-    load_assignment:
-      cluster_name: grpc_backend
-      endpoints:
-      - lb_endpoints:
-        - endpoint:
-            address:
-              socket_address: { address: lavender-server, port_value: 50051 }
-```
-
----
-
-## 8. Обработка ошибок
-
-### Текущая реализация (mock)
-
-```typescript
-try {
-  const message = await grpcClient.sendMessage(chatId, content, senderId)
-  addMessage(message)
-} catch (err) {
-  console.error('Failed to send message:', err)
-}
-```
-
-### Production (план)
-
-```typescript
-// Типы ошибок:
-// - NetworkError (нет связи)
-// - AuthError (401, нужна переаутентификация)
-// - RateLimitError (429, too many requests)
-// - ServerError (500)
-
-// Retry с exponential backoff для NetworkError
-// Показать toast для RateLimitError
-// Redirect на login для AuthError
-```
+1. Скопировать `messenger.proto` в `proto/`
+2. `npx buf generate`
+3. Использовать сгенерированный код из `src/shared/api/gen/proto/`
 
 ---
 

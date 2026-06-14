@@ -1,11 +1,11 @@
 {
   "name": "msg.client.web",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && chmod -R 755 dist/icons && chmod 644 dist/manifest.json dist/sw.js dist/logo.png 2>/dev/null || true",
     "preview": "vite preview",
     "proto:generate": "buf generate"
   },

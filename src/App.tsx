@@ -13,6 +13,10 @@ import '@/styles/global.css'
 
 type Screen = 'auth' | 'chatList' | 'chat'
 
+function isMobile(): boolean {
+  return typeof window !== 'undefined' && window.innerWidth < 768
+}
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth')
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
@@ -20,7 +24,7 @@ export default function App() {
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const logout = useAuthStore((s) => s.logout)
-  const setAuth = useAuthStore((s) => s.setAuth)
+  const setTokens = useAuthStore((s) => s.setTokens)
 
   useIOSKeyboard()
 
@@ -49,33 +53,48 @@ export default function App() {
 
   // Restore session on mount
   useEffect(() => {
-    const token = localStorage.getItem('auth_access_token')
+    const tokensStr = localStorage.getItem('auth_tokens')
     const userStr = localStorage.getItem('auth_user')
-    
-    if (token && userStr) {
+
+    if (tokensStr && userStr) {
       try {
+        const tokens = JSON.parse(tokensStr)
         const user = JSON.parse(userStr)
-        // Connect gRPC client with saved token
-        const getToken = () => token
-        grpcClient.connect(undefined, getToken)
-        // Mark as authenticated (token will be validated on first API call)
-        setAuth(user, token)
-        setCurrentScreen('chatList')
+        // Check if refresh token is still valid
+        const now = Math.floor(Date.now() / 1000)
+        if (tokens.refreshExpiresAt > now) {
+          // Connect gRPC client with saved tokens
+          const getTokens = () => useAuthStore.getState().tokens
+          grpcClient.connect(undefined, getTokens)
+          // Restore session
+          setTokens({
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            accessExpiresAt: tokens.accessExpiresAt,
+            refreshExpiresAt: tokens.refreshExpiresAt,
+            user,
+          })
+          setCurrentScreen('chatList')
+        } else {
+          // Refresh token expired — clear session
+          localStorage.removeItem('auth_tokens')
+          localStorage.removeItem('auth_user')
+        }
       } catch (err) {
         console.error('Failed to restore session:', err)
-        localStorage.removeItem('auth_access_token')
+        localStorage.removeItem('auth_tokens')
         localStorage.removeItem('auth_user')
       }
     }
     setIsLoading(false)
-  }, [setAuth])
+  }, [setTokens])
 
   const handleAuthSuccess = useCallback(() => {
     setCurrentScreen('chatList')
   }, [])
 
   const handleLogout = useCallback(async () => {
-    await grpcClient.logout()
+    await grpcClient.signOut(false)
     logout()
     setCurrentScreen('auth')
   }, [logout])
@@ -95,7 +114,7 @@ export default function App() {
     return (
       <div style={{
         width: '100%',
-        height: '100dvh',
+        height: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -111,6 +130,21 @@ export default function App() {
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />
   }
 
+  // Desktop: ChatListScreen manages its own navigation (sidebar + main area)
+  if (!isMobile()) {
+    return (
+      <div style={{
+        width: '100%',
+        height: '100vh',
+        overflow: 'hidden',
+        background: '#1a1a2e',
+      }}>
+        <ChatListScreen onChatSelect={handleChatSelect} onLogout={handleLogout} />
+      </div>
+    )
+  }
+
+  // Mobile: screen-based navigation
   return (
     <div
       style={{

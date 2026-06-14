@@ -1,9 +1,6 @@
 // ============================================
 // Lavender Messenger — Shared Types
 // ============================================
-// These types match the real proto/messenger.proto structures
-// and are used throughout the app (Zustand store, UI components, gRPC client)
-// ============================================
 
 export interface Chat {
   id: string
@@ -65,6 +62,37 @@ export interface Agent {
   emoji: string
 }
 
+// Auth V2 types
+export interface TokenPair {
+  accessToken: string
+  refreshToken: string
+  accessExpiresAt: number   // unix timestamp (seconds)
+  refreshExpiresAt: number  // unix timestamp (seconds)
+}
+
+export interface DeviceInfo {
+  deviceId: string
+  deviceName: string
+  deviceType: 'web'
+}
+
+export interface AuthResponseV2 {
+  success: boolean
+  message: string
+  accessToken: string
+  refreshToken: string
+  accessExpiresAt: number
+  refreshExpiresAt: number
+  user: User
+}
+
+export interface RefreshTokenResponse {
+  accessToken: string
+  refreshToken: string
+  accessExpiresAt: number
+  refreshExpiresAt: number
+}
+
 // gRPC stream event types
 export type StreamEvent =
   | { type: 'message'; message: Message }
@@ -74,3 +102,42 @@ export type StreamEvent =
   | { type: 'done' }
 
 export type StreamCallback = (event: StreamEvent) => void
+
+// ============================================
+// Localization
+// ============================================
+
+export type Lang = 'en' | 'ru'
+
+const translations: Record<string, Record<Lang, string>> = {
+  appName: { en: 'Lava', ru: 'Лава' },
+  loginTitle: { en: 'Sign In', ru: 'Вход' },
+  signupTitle: { en: 'Sign Up', ru: 'Регистрация' },
+  usernamePlaceholder: { en: 'Username', ru: 'Имя пользователя' },
+  passwordPlaceholder: { en: 'Password', ru: 'Пароль' },
+  emailPlaceholder: { en: 'Email', ru: 'Email' },
+  signIn: { en: 'Sign In', ru: 'Войти' },
+  signUp: { en: 'Sign Up', ru: 'Зарегистрироваться' },
+  hasAccount: { en: 'Already have an account? Sign In', ru: 'Уже есть аккаунт? Войти' },
+  noAccount: { en: 'No account? Sign Up', ru: 'Нет аккаунта? Зарегистрироваться' },
+  connectionError: { en: 'Connection error', ru: 'Ошибка подключения' },
+  authError: { en: 'Authentication failed', ru: 'Ошибка авторизации' },
+  loading: { en: 'Loading...', ru: 'Загрузка...' },
+  selectChat: { en: 'Select a chat', ru: 'Выберите чат' },
+  selectChatHint: { en: 'Choose a chat from the list to start messaging', ru: 'Выберите чат из списка, чтобы начать общение' },
+  writeMessage: { en: 'Write a message...', ru: 'Написать сообщение...' },
+  signOut: { en: 'Sign Out', ru: 'Выйти' },
+  online: { en: 'online', ru: 'в сети' },
+  offline: { en: 'offline', ru: 'не в сети' },
+  retry: { en: 'Retrying... ({attempt}/3)', ru: 'Повторное подключение ({attempt}/3)...' },
+}
+
+export function t(key: string, lang: Lang = 'ru', replacements?: Record<string, string | number>): string {
+  const text = translations[key]?.[lang] ?? translations[key]?.['en'] ?? key
+  if (!replacements) return text
+  return Object.entries(replacements).reduce((acc, [k, v]) => acc.replace(`{${k}}`, String(v)), text)
+}
+
+export function detectLang(): Lang {
+  return (navigator.language?.startsWith('ru') ? 'ru' : 'en') as Lang
+}

@@ -1,9 +1,7 @@
-# Lavender Messenger Web Client — State Management (Zustand)
+# Lava Messenger Web Client — State Management (Zustand)
 
-Документация по управлению состоянием через Zustand.
-
-**Файл:** `src/store/chatStore.ts`
-**Дата:** 2026-06-10
+**Версия:** v0.4.0
+**Дата:** 2026-06-14
 
 ---
 
@@ -21,42 +19,36 @@ Zustand выбран за минимализм и отличную поддер�
 
 ---
 
-## 2. Нормализованная структура
+## 2. Stores
 
-### Модель данных
+### authStore (`src/store/authStore.ts`)
 
-```
-chats:    { [chatId]: Chat }           — метаданные чатов
-messages: { [messageId]: Message }     — плоское хранилище сообщений
-chatMessages: { [chatId]: string[] }   — упорядоченные ID сообщений по чатам
-```
+```typescript
+interface TokenPair {
+  accessToken: string
+  refreshToken: string
+  accessExpiresAt: number   // unix timestamp
+  refreshExpiresAt: number  // unix timestamp
+}
 
-### Зачем нормализация
+interface AuthState {
+  user: User | null
+  tokens: TokenPair | null
+  isAuthenticated: boolean
 
-**Без нормализации (вложенные данные):**
-```javascript
-// ❌ Дублирование, сложные обновления
-chats: [
-  {
-    id: 'chat-1',
-    messages: [ { id: 'm1', ... }, { id: 'm2', ... } ]  // вложенный массив
-  }
-]
-// Обновить сообщение → найти чат → найти сообщение → обновить → перерендерить весь чат
-```
-
-**С нормализацией:**
-```javascript
-// ✅ O(1) доступ, O(1) обновление
-chats:    { 'chat-1': { ... } }
-messages: { 'm1': { ... }, 'm2': { ... } }
-chatMessages: { 'chat-1': ['m1', 'm2'] }
-// Обновить сообщение → messages['m1'] = newMsg → перерендерить только MessageBubble
+  setTokens: (response: AuthResponseV2) => void
+  updateAccessToken: (response: RefreshTokenResponse) => void
+  logout: () => void
+}
 ```
 
----
+**Persistence:** localStorage
+- `auth_tokens` — JSON с TokenPair
+- `auth_user` — JSON с User
 
-## 3. Store Interface
+### chatStore (`src/store/chatStore.ts`)
+
+Нормализованное хранилище чатов и сообщений.
 
 ```typescript
 interface ChatState {
@@ -96,6 +88,63 @@ interface ChatState {
 }
 ```
 
+### errorStore (`src/store/errorStore.ts`)
+
+```typescript
+interface AppError {
+  id: string
+  type: 'network' | 'auth' | 'rate_limit' | 'server' | 'unknown'
+  message: string
+  timestamp: number
+  dismissed: boolean
+}
+
+interface ErrorState {
+  errors: AppError[]           // max 5, auto-dismiss
+  networkStatus: 'online' | 'offline'
+
+  addError: (error: Omit<AppError, 'id' | 'timestamp' | 'dismissed'>) => void
+  dismissError: (id: string) => void
+  clearErrors: () => void
+  setNetworkStatus: (status: 'online' | 'offline') => void
+}
+```
+
+---
+
+## 3. Нормализованная структура (chatStore)
+
+### Модель данных
+
+```
+chats:    { [chatId]: Chat }           — метаданные чатов
+messages: { [messageId]: Message }     — плоское хранилище сообщений
+chatMessages: { [chatId]: string[] }   — упорядоченные ID сообщений по чатам
+```
+
+### Зачем нормализация
+
+**Без нормализации (вложенные данные):**
+```javascript
+// ❌ Дублирование, сложные обновления
+chats: [
+  {
+    id: 'chat-1',
+    messages: [ { id: 'm1', ... }, { id: 'm2', ... } ]  // вложенный массив
+  }
+]
+// Обновить сообщение → найти чат → найти сообщение → обновить → перерендерить весь чат
+```
+
+**С нормализацией:**
+```javascript
+// ✅ O(1) доступ, O(1) обновление
+chats:    { 'chat-1': { ... } }
+messages: { 'm1': { ... }, 'm2': { ... } }
+chatMessages: { 'chat-1': ['m1', 'm2'] }
+// Обновить сообщение → messages['m1'] = newMsg → перерендерить только MessageBubble
+```
+
 ---
 
 ## 4. Actions — подробно
@@ -103,15 +152,6 @@ interface ChatState {
 ### setChats(chats: Chat[])
 
 Массовая инициализация чатов. Создаёт записи в `chats` и пустые массивы в `chatMessages`.
-
-```typescript
-// Вызов:
-store.setChats([chat1, chat2, chat3])
-
-// Результат:
-// chats: { 'chat-1': chat1, 'chat-2': chat2, 'chat-3': chat3 }
-// chatMessages: { 'chat-1': [], 'chat-2': [], 'chat-3': [] }
-```
 
 ### addMessage(message: Message)
 
@@ -121,32 +161,9 @@ store.setChats([chat1, chat2, chat3])
 - Обновляет `chat.lastMessageText`, `chat.lastMessageTime`
 - Инкрементит `chat.unreadCount` (если входящее)
 
-```typescript
-// Вызов:
-store.addMessage({
-  id: 'm-new',
-  chatId: 'chat-1',
-  content: 'Привет!',
-  isOutgoing: false,
-  ...
-})
-
-// Автоматически:
-// messages['m-new'] = message
-// chatMessages['chat-1'].push('m-new')
-// chats['chat-1'].lastMessageText = 'Привет!'
-// chats['chat-1'].unreadCount += 1
-```
-
 ### prependMessages(chatId, messages[])
 
 Добавляет сообщения в начало списка (для пагинации истории). Дедуплицирует по ID.
-
-```typescript
-// Загрузка старых сообщений при scroll-up:
-const oldMessages = await grpcClient.getMessages(chatId, 50, offset)
-store.prependMessages(chatId, oldMessages)
-```
 
 ### updateChat(chatId, updates)
 
@@ -260,18 +277,31 @@ User Action / gRPC Event
 
 ---
 
-## 8. Мок-данные
+## 8. Поток авторизации (authStore)
 
-Store заполняется данными из `grpcClient.ts`:
-
-| Chat ID | Имя | Тип | Сообщения |
-|---------|-----|-----|----------|
-| chat-1 | Алексей | regular | 3 |
-| chat-2 | Работа | regular | 1 |
-| chat-3 | OWL AI | owl | 2 |
-| chat-4 | Hermes | hermes | 2 |
-
-При старте приложения:
-1. `useChats()` → `grpcClient.getChats()` → `store.setChats()`
-2. При открытии чата: `useChatMessages()` → `grpcClient.getMessages()` → `store.setMessages()`
-3. Стрим: `grpcClient.streamChatMessages()` → `store.addMessage()` для каждого события
+```
+1. signInV2(username, password, deviceInfo)
+         │
+         ▼
+2. Сервер → AuthResponseV2 { accessToken, refreshToken, user, ... }
+         │
+         ▼
+3. authStore.setTokens(response)
+   - Сохраняет TokenPair в localStorage (ключ: auth_tokens)
+   - Сохраняет User в localStorage (ключ: auth_user)
+   - Устанавливает isAuthenticated = true
+         │
+         ▼
+4. App.tsx переключает на ChatListScreen
+         │
+         ▼
+5. Каждый gRPC запрос → interceptor проверяет accessExpiresAt
+         │
+         ├── OK → добавляет Bearer token
+         │
+         └── Истекает < 5 мин → refreshToken()
+                              │
+                              ├── OK → updateAccessToken() → новые токены
+                              │
+                              └── FAIL → logout() → redirect to login
+```

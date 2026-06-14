@@ -1,5 +1,6 @@
 # gRPC-web Proxy — Архитектура и настройка
 
+**Версия:** v0.4.0
 **Файл:** `grpc-web-proxy.cjs`
 **Сервис:** `grpc-web-proxy.service` (systemd)
 **Порт:** 9090
@@ -17,10 +18,8 @@
 Node.js прокси на хосте (не в Docker):
 
 ```
-Браузер → Nginx :80 (/messenger) → Node.js proxy :9090 → gRPC сервер :50051 (prod)
+Браузер → Nginx :80 (/messenger) → Node.js proxy :9090 → gRPC dev сервер :50052
 ```
-
-**Важно:** Prod сервер на порту 50051, dev — 50052. По умолчанию proxy использует prod.
 
 ### Почему не Envoy?
 
@@ -30,14 +29,23 @@ Envoy в Docker контейнере не мог подключиться к gRP
 
 ## Поддерживаемые методы
 
-### AuthService
-- `SignIn` — вход (username, password) → AuthResponse
-- `SignUp` — регистрация (username, password, email) → AuthResponse
+### AuthService V2
+- `SignInV2` — вход (username, password, deviceInfo) → AuthResponseV2
+- `SignUpV2` — регистрация (username, password, email, deviceInfo) → AuthResponseV2
+- `RefreshToken` — обновление токена → RefreshTokenResponse
+- `SignOut` — выход (refreshToken, allDevices) → void
+- `RevokeDevice` — отзыв устройства (deviceId) → void
+- `GetDevices` — список устройств → GetDevicesResponse
 
 ### ChatService
 - `GetChats` — список чатов (GetChatsRequest: username, user_id) → GetChatsResponse
 - `GetHistory` — история сообщений (GetHistoryRequest: room, limit) → GetHistoryResponse
-- `CreateDirectChat` — создание чата (CreateDirectChatRequest) → CreateDirectChatResponse
+- `Chat` — bidirectional streaming (SendMessage, ReceiveMessage)
+- `CreateDirectChat` — создание личного чата
+- `CreateGroupChat` — создание группового чата
+- `DeleteChat` — удаление чата
+- `MarkRead` — отметить как прочитанное
+- `RegisterToken` — регистрация push токена
 
 ---
 
@@ -84,6 +92,20 @@ sudo journalctl -u grpc-web-proxy -f
 
 ---
 
+## Nginx configuration
+
+```nginx
+location /messenger {
+    rewrite ^/messenger(/.*)$ $1 break;
+    proxy_pass http://127.0.0.1:9090;
+    proxy_http_version 1.1;
+    proxy_read_timeout 300s;
+    # CORS headers...
+}
+```
+
+---
+
 ## Известные проблемы и решения
 
 ### "missing trailer"
@@ -101,17 +123,3 @@ sudo journalctl -u grpc-web-proxy -f
 ### systemd сервис не запускался
 **Причина:** Путь `/usr/bin/node` не найден.
 **Решение:** Node.js в `/root/.local/bin/node`.
-
----
-
-## Nginx configuration
-
-```nginx
-location /messenger {
-    rewrite ^/messenger(/.*)$ $1 break;
-    proxy_pass http://127.0.0.1:9090;
-    proxy_http_version 1.1;
-    proxy_read_timeout 300s;
-    # CORS headers...
-}
-```

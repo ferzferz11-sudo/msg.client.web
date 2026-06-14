@@ -1,41 +1,63 @@
-# Lavender Messenger Web Client — Интеграция с сервером
+# Lava Messenger Web Client — Интеграция с сервером
 
-Документация по интеграции веб-клиента с сервером Lavender Messenger.
-
-**Дата:** 2026-06-11
-**Статус:** AuthService интегрирован, gRPC-web proxy настроен
+**Версия:** v0.4.0
+**Дата:** 2026-06-14
+**Статус:** ✅ Auth V2 работает, gRPC-web proxy настроен на dev сервер
 
 ---
 
 ## Архитектура gRPC-web подключения
 
 ```
-Браузер (gRPC-web) → Nginx :80 (/messenger) → Node.js proxy :9090 → gRPC сервер :50052
+Браузер (gRPC-web) → Nginx :80 (/messenger) → Node.js proxy :9090 → gRPC dev сервер :50052
+Браузер (SPA) → Nginx :80 (/web) → /root/msg.client.web/dist/
 ```
 
-### Почему не Envoy?
+---
 
-Изначально использовался Envoy в Docker контейнере с grpc_web filter, но возникли проблемы:
-- Envoy в контейнере с `--network host` не мог подключиться к gRPC серверу на 127.0.0.1:50052
-- SELinux/AppArmor или iptables блокировали подключение из контейнера
+## Конфигурация
 
-Решение: Node.js proxy на хосте — проще и надёжнее.
+| Компонент | Адрес | Статус |
+|-----------|-------|--------|
+| Dev сервер gRPC | `127.0.0.1:50052` | ✅ Работает |
+| Prod сервер gRPC | `127.0.0.1:50051` | ⬜ Старая версия |
+| gRPC-web proxy | `0.0.0.0:9090` | ✅ Работает → dev |
+| Веб-клиент SPA | `/web` (Nginx) | ✅ Работает |
+| gRPC-web endpoint | `/messenger` (Nginx → 9090) | ✅ Работает |
 
 ---
 
 ## gRPC-web proxy
 
-**Файл:** `grpc-web-proxy.cjs` — Node.js прокси для конвертации gRPC-web ↔ gRPC
-
+**Файл:** `grpc-web-proxy.cjs`
 **Сервис:** `grpc-web-proxy.service` (systemd)
+**Порт:** 9090
 
-**Управление:**
+### Поддерживаемые методы
+
+#### AuthService V2
+- `SignInV2` — вход (username, password, deviceInfo) → AuthResponseV2
+- `SignUpV2` — регистрация (username, password, email, deviceInfo) → AuthResponseV2
+- `RefreshToken` — обновление токена → RefreshTokenResponse
+- `SignOut` — выход (refreshToken, allDevices) → void
+- `RevokeDevice` — отзыв устройства (deviceId) → void
+- `GetDevices` — список устройств → GetDevicesResponse
+
+#### ChatService
+- `GetChats` — список чатов (username, user_id) → GetChatsResponse
+- `GetHistory` — история сообщений (room, limit) → GetHistoryResponse
+- `Chat` — bidirectional streaming (SendMessage, ReceiveMessage)
+- `CreateDirectChat` — создание личного чата
+- `CreateGroupChat` — создание группового чата
+- `DeleteChat` — удаление чата
+- `MarkRead` — отметить как прочитанное
+- `RegisterToken` — регистрация push токена
+
+### Управление
+
 ```bash
-# Запуск
-sudo systemctl start grpc-web-proxy
-
-# Остановка
-sudo systemctl stop grpc-web-proxy
+# Статус
+sudo systemctl status grpc-web-proxy
 
 # Перезапуск
 sudo systemctl restart grpc-web-proxy
@@ -43,12 +65,6 @@ sudo systemctl restart grpc-web-proxy
 # Логи
 sudo journalctl -u grpc-web-proxy -f
 ```
-
-**Подключение:**
-- `Nginx :80 /messenger` → `Node.js proxy :9090`
-- `Node.js proxy` → `gRPC сервер :50052` (dev) через @grpc/grpc-js
-
-**Proto:** `proto/messenger.proto` загружается через @grpc/proto-loader
 
 ---
 
@@ -77,28 +93,59 @@ location /messenger {
 
 ---
 
-## Переменные окружения
+## gRPC-web framing
 
-**gRPC сервер:**
-- Dev: `127.0.0.1:50052`
-- Prod: `127.0.0.1:50051`
+```
+[compressed flag (1 byte)] [message length (4 bytes)] [message]
+```
 
-**gRPC-web proxy:** `0.0.0.0:9090`
+Trailer frame (в конце ответа):
+```
+[0x80 (trailer flag)] [length (4 bytes)] ["grpc-status: 0\r\ngrpc-message: OK\r\n"]
+```
+
+**Важно:** Браузерный gRPC-web клиент ожидает trailer с `grpc-status`. Без него ошибка "missing trailer".
 
 ---
 
-## Зависимости
+## Proto
 
-```bash
-npm install @grpc/grpc-js @grpc/proto-loader --legacy-peer-deps
+Используется `protobufjs` для ручного декодирования/кодирования:
+```javascript
+const root = protobuf.loadSync(PROTO_PATH);
+const SignInRequest = root.lookupType('messenger.SignInRequest');
+const request = SignInRequest.decode(message);
 ```
+
+**Важно:** `@grpc/proto-loader` и `@bufbuild/protobuf` — разные библиотеки. Для ручного декодирования использовать `protobufjs`.
 
 ---
 
 ## Известные проблемы
 
-1. **426 Upgrade Required** — возникает если Nginx проксирует на Envoy, а не на Node.js proxy
-2. **502 Bad Gateway** — возникает если proxy не запущен или упал
+### "missing trailer"
+**Причина:** Proxy не отправлял trailer с `grpc-status`.
+**Решение:** Добавлен trailer frame в конец каждого ответа.
+
+### "user not found" при входе
+**Причина:** Пользователь не зарегистрирован в БД.
+**Решение:** Сначала зарегистрировать через SignUp.
+
+### GetChats возвращает пустой список
+**Причина:** GetChats ищет чаты по `username` в поле `participants` (JSON массив username), а не по `user_id`.
+**Решение:** Передавать `username` из authStore в `useChats.ts`.
+
+### systemd сервис не запускался
+**Причина:** Путь `/usr/bin/node` не найден.
+**Решение:** Node.js в `/root/.local/bin/node`.
+
+### 426 Upgrade Required
+**Причина:** Nginx проксирует на Envoy, а не на Node.js proxy.
+**Решение:** Использовать Node.js proxy.
+
+### 502 Bad Gateway
+**Причина:** Proxy не запущен или упал.
+**Решение:** `sudo systemctl restart grpc-web-proxy`
 
 ---
 

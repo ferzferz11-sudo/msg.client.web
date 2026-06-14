@@ -62,7 +62,7 @@ function ChatListHeader() {
         Чаты
       </span>
       <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>
-        Lavender
+        🦞 Лава
       </span>
       <div style={{ width: 40 }} /> {/* Spacer for balance */}
     </div>
