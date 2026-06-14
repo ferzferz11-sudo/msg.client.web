@@ -717,6 +717,7 @@ service ChatService {
   rpc DeleteHermesSession(DeleteHermesSessionRequest) returns (DeleteHermesSessionResponse);
   rpc ListRemoteAgents(ListRemoteAgentsRequest) returns (ListRemoteAgentsResponse);
   rpc DeployAgentTask(DeployAgentTaskRequest) returns (DeployAgentTaskResponse);
+  rpc DeployAgentTaskStream(DeployAgentTaskRequest) returns (stream DeployAgentTaskStreamResponse);
   rpc GetRemoteAgentStatus(GetRemoteAgentStatusRequest) returns (GetRemoteAgentStatusResponse);
 
   // AI Chat (unified for OWL + Hermes)
@@ -1072,18 +1073,49 @@ message ListRemoteAgentsResponse {
   repeated RemoteAgentInfo agents = 1;
 }
 
+enum TunnelMode {
+  TUNNEL_NONE = 0;       // прямое подключение (без туннеля)
+  TUNNEL_SSH = 1;        // SSH туннель: агент подключается к localhost:<port>
+}
+
 message DeployAgentTaskRequest {
   string agent_id = 1;
   string task_type = 2;
   map<string, string> params = 3;
   string working_dir = 4;
   int32 timeout_sec = 5;
+  TunnelMode tunnel_mode = 6;      // режим туннеля (по умолчанию NONE)
+  string tunnel_host = 7;          // SSH хост туннеля (напр. 13.140.25.249)
+  int32 tunnel_port = 8;           // SSH порт (по умолчанию 22)
+  string tunnel_user = 9;          // SSH пользователь
+  string tunnel_password = 10;     // SSH пароль
+  string tunnel_server_host = 11;  // хост сервера за туннелем (по умолчанию localhost)
+  int32 tunnel_server_port = 12;   // порт сервера за туннелем
+  int32 tunnel_local_port = 13;    // локальный порт для проброса
 }
 
 message DeployAgentTaskResponse {
   bool success = 1;
   string task_id = 2;
   string error = 3;
+  string stdout = 4;
+  string stderr = 5;
+  int32 exit_code = 6;
+  int64 duration_ms = 7;
+}
+
+message DeployAgentTaskStreamResponse {
+  string task_id = 1;
+  string stdout_chunk = 2;       // промежуточный stdout (по строкам или чанкам)
+  string stderr_chunk = 3;       // промежуточный stderr
+  string progress = 4;           // progress message (шаги, проценты)
+  string status = 5;             // "running", "completed", "failed", "timeout"
+  string stdout = 6;             // полный stdout (при done=true)
+  string stderr = 7;             // полный stderr (при done=true)
+  int32 exit_code = 8;           // финальный exit code
+  int64 duration_ms = 9;         // финальная длительность
+  string error = 10;             // финальная ошибка
+  bool done = 11;                // true = последний чанк, задача завершена
 }
 
 message GetRemoteAgentStatusRequest {
@@ -1333,4 +1365,60 @@ message AuthResponse {
 service AuthService {
   rpc SignIn(SignInRequest) returns (AuthResponse);
   rpc SignUp(SignUpRequest) returns (AuthResponse);
+
+  // V2 — JWT-based authentication with device management
+  rpc SignInV2(SignInRequestV2) returns (AuthResponseV2);
+  rpc SignUpV2(SignUpRequestV2) returns (AuthResponseV2);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+  rpc SignOut(SignOutRequest) returns (AuthResponse);
+  rpc RevokeDevice(RevokeDeviceRequest) returns (AuthResponse);
+  // GetDevices is already in ChatService — reused via interceptor context
 }
+
+// ======= Auth V2 Messages =======
+
+message SignInRequestV2 {
+  string username = 1;
+  string password = 2;
+  DeviceInfo device = 3;
+  string client_version = 4;
+}
+
+message SignUpRequestV2 {
+  string username = 1;
+  string password = 2;
+  string email = 3;
+  DeviceInfo device = 4;
+  string client_version = 5;
+}
+
+message AuthResponseV2 {
+  bool success = 1;
+  string message = 2;
+  string access_token = 3;
+  string refresh_token = 4;
+  int64 access_expires_at = 5;
+  int64 refresh_expires_at = 6;
+  User user = 7;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message RefreshTokenResponse {
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 access_expires_at = 3;
+  int64 refresh_expires_at = 4;
+}
+
+message SignOutRequest {
+  string refresh_token = 1;
+  bool all_devices = 2;
+}
+
+message RevokeDeviceRequest {
+  string device_id = 1;
+}
+

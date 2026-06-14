@@ -7,6 +7,30 @@ import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialM
 import { Message as Message$1, proto3, protoInt64, Timestamp } from "@bufbuild/protobuf";
 
 /**
+ * @generated from enum messenger.TunnelMode
+ */
+export enum TunnelMode {
+  /**
+   * прямое подключение (без туннеля)
+   *
+   * @generated from enum value: TUNNEL_NONE = 0;
+   */
+  TUNNEL_NONE = 0,
+
+  /**
+   * SSH туннель: агент подключается к localhost:<port>
+   *
+   * @generated from enum value: TUNNEL_SSH = 1;
+   */
+  TUNNEL_SSH = 1,
+}
+// Retrieve enum metadata with: proto3.getEnumType(TunnelMode)
+proto3.util.setEnumType(TunnelMode, "messenger.TunnelMode", [
+  { no: 0, name: "TUNNEL_NONE" },
+  { no: 1, name: "TUNNEL_SSH" },
+]);
+
+/**
  * @generated from message messenger.Message
  */
 export class Message extends Message$1<Message> {
@@ -7864,6 +7888,62 @@ export class DeployAgentTaskRequest extends Message$1<DeployAgentTaskRequest> {
    */
   timeoutSec = 0;
 
+  /**
+   * режим туннеля (по умолчанию NONE)
+   *
+   * @generated from field: messenger.TunnelMode tunnel_mode = 6;
+   */
+  tunnelMode = TunnelMode.TUNNEL_NONE;
+
+  /**
+   * SSH хост туннеля (напр. 13.140.25.249)
+   *
+   * @generated from field: string tunnel_host = 7;
+   */
+  tunnelHost = "";
+
+  /**
+   * SSH порт (по умолчанию 22)
+   *
+   * @generated from field: int32 tunnel_port = 8;
+   */
+  tunnelPort = 0;
+
+  /**
+   * SSH пользователь
+   *
+   * @generated from field: string tunnel_user = 9;
+   */
+  tunnelUser = "";
+
+  /**
+   * SSH пароль
+   *
+   * @generated from field: string tunnel_password = 10;
+   */
+  tunnelPassword = "";
+
+  /**
+   * хост сервера за туннелем (по умолчанию localhost)
+   *
+   * @generated from field: string tunnel_server_host = 11;
+   */
+  tunnelServerHost = "";
+
+  /**
+   * порт сервера за туннелем
+   *
+   * @generated from field: int32 tunnel_server_port = 12;
+   */
+  tunnelServerPort = 0;
+
+  /**
+   * локальный порт для проброса
+   *
+   * @generated from field: int32 tunnel_local_port = 13;
+   */
+  tunnelLocalPort = 0;
+
   constructor(data?: PartialMessage<DeployAgentTaskRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -7877,6 +7957,14 @@ export class DeployAgentTaskRequest extends Message$1<DeployAgentTaskRequest> {
     { no: 3, name: "params", kind: "map", K: 9 /* ScalarType.STRING */, V: {kind: "scalar", T: 9 /* ScalarType.STRING */} },
     { no: 4, name: "working_dir", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "timeout_sec", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "tunnel_mode", kind: "enum", T: proto3.getEnumType(TunnelMode) },
+    { no: 7, name: "tunnel_host", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "tunnel_port", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 9, name: "tunnel_user", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "tunnel_password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "tunnel_server_host", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 12, name: "tunnel_server_port", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 13, name: "tunnel_local_port", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeployAgentTaskRequest {
@@ -7915,6 +8003,26 @@ export class DeployAgentTaskResponse extends Message$1<DeployAgentTaskResponse> 
    */
   error = "";
 
+  /**
+   * @generated from field: string stdout = 4;
+   */
+  stdout = "";
+
+  /**
+   * @generated from field: string stderr = 5;
+   */
+  stderr = "";
+
+  /**
+   * @generated from field: int32 exit_code = 6;
+   */
+  exitCode = 0;
+
+  /**
+   * @generated from field: int64 duration_ms = 7;
+   */
+  durationMs = protoInt64.zero;
+
   constructor(data?: PartialMessage<DeployAgentTaskResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -7926,6 +8034,10 @@ export class DeployAgentTaskResponse extends Message$1<DeployAgentTaskResponse> 
     { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 2, name: "task_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "error", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "stdout", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "stderr", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "exit_code", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "duration_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeployAgentTaskResponse {
@@ -7942,6 +8054,123 @@ export class DeployAgentTaskResponse extends Message$1<DeployAgentTaskResponse> 
 
   static equals(a: DeployAgentTaskResponse | PlainMessage<DeployAgentTaskResponse> | undefined, b: DeployAgentTaskResponse | PlainMessage<DeployAgentTaskResponse> | undefined): boolean {
     return proto3.util.equals(DeployAgentTaskResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.DeployAgentTaskStreamResponse
+ */
+export class DeployAgentTaskStreamResponse extends Message$1<DeployAgentTaskStreamResponse> {
+  /**
+   * @generated from field: string task_id = 1;
+   */
+  taskId = "";
+
+  /**
+   * промежуточный stdout (по строкам или чанкам)
+   *
+   * @generated from field: string stdout_chunk = 2;
+   */
+  stdoutChunk = "";
+
+  /**
+   * промежуточный stderr
+   *
+   * @generated from field: string stderr_chunk = 3;
+   */
+  stderrChunk = "";
+
+  /**
+   * progress message (шаги, проценты)
+   *
+   * @generated from field: string progress = 4;
+   */
+  progress = "";
+
+  /**
+   * "running", "completed", "failed", "timeout"
+   *
+   * @generated from field: string status = 5;
+   */
+  status = "";
+
+  /**
+   * полный stdout (при done=true)
+   *
+   * @generated from field: string stdout = 6;
+   */
+  stdout = "";
+
+  /**
+   * полный stderr (при done=true)
+   *
+   * @generated from field: string stderr = 7;
+   */
+  stderr = "";
+
+  /**
+   * финальный exit code
+   *
+   * @generated from field: int32 exit_code = 8;
+   */
+  exitCode = 0;
+
+  /**
+   * финальная длительность
+   *
+   * @generated from field: int64 duration_ms = 9;
+   */
+  durationMs = protoInt64.zero;
+
+  /**
+   * финальная ошибка
+   *
+   * @generated from field: string error = 10;
+   */
+  error = "";
+
+  /**
+   * true = последний чанк, задача завершена
+   *
+   * @generated from field: bool done = 11;
+   */
+  done = false;
+
+  constructor(data?: PartialMessage<DeployAgentTaskStreamResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.DeployAgentTaskStreamResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "task_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "stdout_chunk", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "stderr_chunk", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "progress", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "stdout", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "stderr", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "exit_code", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 9, name: "duration_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 10, name: "error", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "done", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeployAgentTaskStreamResponse {
+    return new DeployAgentTaskStreamResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeployAgentTaskStreamResponse {
+    return new DeployAgentTaskStreamResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeployAgentTaskStreamResponse {
+    return new DeployAgentTaskStreamResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeployAgentTaskStreamResponse | PlainMessage<DeployAgentTaskStreamResponse> | undefined, b: DeployAgentTaskStreamResponse | PlainMessage<DeployAgentTaskStreamResponse> | undefined): boolean {
+    return proto3.util.equals(DeployAgentTaskStreamResponse, a, b);
   }
 }
 
@@ -9859,6 +10088,367 @@ export class AuthResponse extends Message$1<AuthResponse> {
 
   static equals(a: AuthResponse | PlainMessage<AuthResponse> | undefined, b: AuthResponse | PlainMessage<AuthResponse> | undefined): boolean {
     return proto3.util.equals(AuthResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.SignInRequestV2
+ */
+export class SignInRequestV2 extends Message$1<SignInRequestV2> {
+  /**
+   * @generated from field: string username = 1;
+   */
+  username = "";
+
+  /**
+   * @generated from field: string password = 2;
+   */
+  password = "";
+
+  /**
+   * @generated from field: messenger.DeviceInfo device = 3;
+   */
+  device?: DeviceInfo;
+
+  /**
+   * @generated from field: string client_version = 4;
+   */
+  clientVersion = "";
+
+  constructor(data?: PartialMessage<SignInRequestV2>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.SignInRequestV2";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "device", kind: "message", T: DeviceInfo },
+    { no: 4, name: "client_version", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SignInRequestV2 {
+    return new SignInRequestV2().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SignInRequestV2 {
+    return new SignInRequestV2().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SignInRequestV2 {
+    return new SignInRequestV2().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SignInRequestV2 | PlainMessage<SignInRequestV2> | undefined, b: SignInRequestV2 | PlainMessage<SignInRequestV2> | undefined): boolean {
+    return proto3.util.equals(SignInRequestV2, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.SignUpRequestV2
+ */
+export class SignUpRequestV2 extends Message$1<SignUpRequestV2> {
+  /**
+   * @generated from field: string username = 1;
+   */
+  username = "";
+
+  /**
+   * @generated from field: string password = 2;
+   */
+  password = "";
+
+  /**
+   * @generated from field: string email = 3;
+   */
+  email = "";
+
+  /**
+   * @generated from field: messenger.DeviceInfo device = 4;
+   */
+  device?: DeviceInfo;
+
+  /**
+   * @generated from field: string client_version = 5;
+   */
+  clientVersion = "";
+
+  constructor(data?: PartialMessage<SignUpRequestV2>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.SignUpRequestV2";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "device", kind: "message", T: DeviceInfo },
+    { no: 5, name: "client_version", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SignUpRequestV2 {
+    return new SignUpRequestV2().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SignUpRequestV2 {
+    return new SignUpRequestV2().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SignUpRequestV2 {
+    return new SignUpRequestV2().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SignUpRequestV2 | PlainMessage<SignUpRequestV2> | undefined, b: SignUpRequestV2 | PlainMessage<SignUpRequestV2> | undefined): boolean {
+    return proto3.util.equals(SignUpRequestV2, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.AuthResponseV2
+ */
+export class AuthResponseV2 extends Message$1<AuthResponseV2> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string message = 2;
+   */
+  message = "";
+
+  /**
+   * @generated from field: string access_token = 3;
+   */
+  accessToken = "";
+
+  /**
+   * @generated from field: string refresh_token = 4;
+   */
+  refreshToken = "";
+
+  /**
+   * @generated from field: int64 access_expires_at = 5;
+   */
+  accessExpiresAt = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 refresh_expires_at = 6;
+   */
+  refreshExpiresAt = protoInt64.zero;
+
+  /**
+   * @generated from field: messenger.User user = 7;
+   */
+  user?: User;
+
+  constructor(data?: PartialMessage<AuthResponseV2>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.AuthResponseV2";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "access_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "refresh_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "access_expires_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 6, name: "refresh_expires_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 7, name: "user", kind: "message", T: User },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AuthResponseV2 {
+    return new AuthResponseV2().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AuthResponseV2 {
+    return new AuthResponseV2().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AuthResponseV2 {
+    return new AuthResponseV2().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AuthResponseV2 | PlainMessage<AuthResponseV2> | undefined, b: AuthResponseV2 | PlainMessage<AuthResponseV2> | undefined): boolean {
+    return proto3.util.equals(AuthResponseV2, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.RefreshTokenRequest
+ */
+export class RefreshTokenRequest extends Message$1<RefreshTokenRequest> {
+  /**
+   * @generated from field: string refresh_token = 1;
+   */
+  refreshToken = "";
+
+  constructor(data?: PartialMessage<RefreshTokenRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.RefreshTokenRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "refresh_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RefreshTokenRequest {
+    return new RefreshTokenRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RefreshTokenRequest {
+    return new RefreshTokenRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RefreshTokenRequest {
+    return new RefreshTokenRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RefreshTokenRequest | PlainMessage<RefreshTokenRequest> | undefined, b: RefreshTokenRequest | PlainMessage<RefreshTokenRequest> | undefined): boolean {
+    return proto3.util.equals(RefreshTokenRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.RefreshTokenResponse
+ */
+export class RefreshTokenResponse extends Message$1<RefreshTokenResponse> {
+  /**
+   * @generated from field: string access_token = 1;
+   */
+  accessToken = "";
+
+  /**
+   * @generated from field: string refresh_token = 2;
+   */
+  refreshToken = "";
+
+  /**
+   * @generated from field: int64 access_expires_at = 3;
+   */
+  accessExpiresAt = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 refresh_expires_at = 4;
+   */
+  refreshExpiresAt = protoInt64.zero;
+
+  constructor(data?: PartialMessage<RefreshTokenResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.RefreshTokenResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "access_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "refresh_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "access_expires_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "refresh_expires_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RefreshTokenResponse {
+    return new RefreshTokenResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RefreshTokenResponse {
+    return new RefreshTokenResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RefreshTokenResponse {
+    return new RefreshTokenResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RefreshTokenResponse | PlainMessage<RefreshTokenResponse> | undefined, b: RefreshTokenResponse | PlainMessage<RefreshTokenResponse> | undefined): boolean {
+    return proto3.util.equals(RefreshTokenResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.SignOutRequest
+ */
+export class SignOutRequest extends Message$1<SignOutRequest> {
+  /**
+   * @generated from field: string refresh_token = 1;
+   */
+  refreshToken = "";
+
+  /**
+   * @generated from field: bool all_devices = 2;
+   */
+  allDevices = false;
+
+  constructor(data?: PartialMessage<SignOutRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.SignOutRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "refresh_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "all_devices", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SignOutRequest {
+    return new SignOutRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SignOutRequest {
+    return new SignOutRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SignOutRequest {
+    return new SignOutRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SignOutRequest | PlainMessage<SignOutRequest> | undefined, b: SignOutRequest | PlainMessage<SignOutRequest> | undefined): boolean {
+    return proto3.util.equals(SignOutRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.RevokeDeviceRequest
+ */
+export class RevokeDeviceRequest extends Message$1<RevokeDeviceRequest> {
+  /**
+   * @generated from field: string device_id = 1;
+   */
+  deviceId = "";
+
+  constructor(data?: PartialMessage<RevokeDeviceRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.RevokeDeviceRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "device_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RevokeDeviceRequest {
+    return new RevokeDeviceRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RevokeDeviceRequest {
+    return new RevokeDeviceRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RevokeDeviceRequest {
+    return new RevokeDeviceRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RevokeDeviceRequest | PlainMessage<RevokeDeviceRequest> | undefined, b: RevokeDeviceRequest | PlainMessage<RevokeDeviceRequest> | undefined): boolean {
+    return proto3.util.equals(RevokeDeviceRequest, a, b);
   }
 }
 
