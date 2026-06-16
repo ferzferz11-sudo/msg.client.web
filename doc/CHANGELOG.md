@@ -2,6 +2,32 @@
 
 ---
 
+## v0.5.0 (2026-06-16) — Фаза 8: Интеграция списка чатов и сообщений
+
+### Новое: Реальные данные чатов и сообщений
+
+- **useChats** — исправлен критический баг: `cancelled` флаг всегда был `true` при mount, чаты не загружались
+- **useChatMessages** — интеграция с реальным `getHistory`, `sendMessage`, `openReceiveStream`
+- **gRPC BiDi Chat stream** — правильная аутентификация через JWT в первом сообщении стрима
+- **sendMessage** — использует эфемерный BiDi стрим (auth → send → wait for echo → close)
+- **openReceiveStream** — receive-only стрим с JWT auth для real-time сообщений
+- **handleChatMessage** — парсинг raw Message от сервера (без обёрток typing/presence)
+- **i18n** — переведены ChatList, ChatListScreen, ChatScreen (EN/RU)
+- **Новые переводы**: noChats, chat, loadingMessages, noMessages, messageRead, messageDelivered
+- **Пустые состояния** — локализованные сообщения "Нет чатов", "Нет сообщений"
+- **Обработка ошибок** — errorStore интеграция при загрузке чатов
+
+### Архитектура: BiDi Chat Stream
+
+```
+Клиент → Chat (BiDi stream) → Сервер
+   ├── Первое сообщение: { jwt_token, room_id } (auth)
+   ├── Последующие: { room_id, text, user_id } (отправка)
+   └── Ответ: broadcast Message от других пользователей
+```
+
+---
+
 ## v0.4.0 (2026-06-14) — i18n + Dev proxy + App rename
 
 ### Новое: Мультиязычность (EN/RU)

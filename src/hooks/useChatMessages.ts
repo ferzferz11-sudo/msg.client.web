@@ -1,18 +1,17 @@
 // ============================================
 // useChatMessages — Chat Messages Hook
-// ============================================
 // Loads message history + real-time streaming + pagination.
 // Features:
 // - Loads initial history on mount
-// - Subscribes to real-time stream via useGrpcStream
-// - Fetches missed messages on foreground reconnect
+// - Opens a receive-only Chat stream via grpcClient for real-time messages
+// - Sends messages via grpcClient.sendMessage (ephemeral BiDi stream)
 // - Supports pagination (load more on scroll to top)
 // ============================================
 
 import { useEffect, useCallback, useRef, useState } from 'react'
 import { useChatStore } from '@/store/chatStore'
 import { grpcClient } from '@/shared/api/grpcClient'
-import { useGrpcStream } from '@/hooks/useGrpcStream'
+import { useAuthStore } from '@/store/authStore'
 import type { Message } from '@/shared/types'
 
 export function useChatMessages(chatId: string | null) {
@@ -25,6 +24,7 @@ export function useChatMessages(chatId: string | null) {
   const setLoadingMessages = useChatStore((s) => s.setLoadingMessages)
   const setSendingMessage = useChatStore((s) => s.setSendingMessage)
   const updateChat = useChatStore((s) => s.updateChat)
+  const user = useAuthStore((s) => s.user)
 
   // Pagination state
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -33,6 +33,9 @@ export function useChatMessages(chatId: string | null) {
 
   const chatIdRef = useRef(chatId)
   chatIdRef.current = chatId
+
+  const userIdRef = useRef(user?.id || '')
+  userIdRef.current = user?.id || ''
 
   // Load message history when chat opens
   useEffect(() => {
@@ -55,6 +58,7 @@ export function useChatMessages(chatId: string | null) {
         }
       })
       .catch((err) => {
+        if (cancelled) return
         console.error('Failed to load messages:', err)
       })
       .finally(() => {
@@ -75,7 +79,8 @@ export function useChatMessages(chatId: string | null) {
   const handleStreamEvent = useCallback(
     (event: { type: string; message?: Message }) => {
       if (event.type === 'message' && event.message) {
-        if (chatIdRef.current === event.message.roomId) {
+        // Only add if it belongs to the current chat
+        if (event.message.roomId === chatIdRef.current) {
           addMessage(event.message)
         }
       }
@@ -83,24 +88,16 @@ export function useChatMessages(chatId: string | null) {
     [addMessage]
   )
 
-  // Handle missed messages (from background reconnect)
-  const handleMissedMessages = useCallback(
-    (missedMessages: Message[]) => {
-      if (chatIdRef.current !== chatId) return
-      for (const msg of missedMessages) {
-        addMessage(msg)
-      }
-    },
-    [addMessage, chatId]
-  )
+  // Subscribe to real-time stream via BiDi Chat stream
+  useEffect(() => {
+    if (!chatId) return
 
-  // Subscribe to real-time stream
-  useGrpcStream({
-    chatId: chatId || '',
-    onEvent: handleStreamEvent,
-    onMissedMessages: handleMissedMessages,
-    enabled: !!chatId,
-  })
+    const cleanup = grpcClient.openReceiveStream(chatId, handleStreamEvent)
+
+    return () => {
+      cleanup()
+    }
+  }, [chatId, handleStreamEvent])
 
   // Load more messages (pagination)
   const loadMore = useCallback(async () => {
@@ -134,7 +131,11 @@ export function useChatMessages(chatId: string | null) {
 
       setSendingMessage(true)
       try {
-        const message = await grpcClient.sendMessage(chatId, content.trim(), 'user-1')
+        const message = await grpcClient.sendMessage(
+          chatId,
+          content.trim(),
+          userIdRef.current
+        )
         addMessage(message)
       } catch (err) {
         console.error('Failed to send message:', err)

@@ -3,6 +3,7 @@
 // ============================================
 
 import type { Chat } from '@/shared/types'
+import { t } from '@/shared/types'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 
 interface ChatListProps {
@@ -41,7 +42,7 @@ export function ChatList({ chats, isLoading, onChatClick }: ChatListProps) {
   if (isLoading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#888', fontSize: 14 }}>
-        Загрузка...
+        {t('loading')}
       </div>
     )
   }
@@ -230,7 +231,7 @@ function ChatListItem({ chat, onChatClick }: ChatListItemProps) {
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 14, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-            {chat.lastMessageText || 'Нет сообщений'}
+            {chat.lastMessageText || t('noMessages')}
           </span>
           {chat.unreadCount > 0 && (
             <span style={{

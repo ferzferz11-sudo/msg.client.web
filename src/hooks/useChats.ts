@@ -6,6 +6,7 @@ import { useEffect, useCallback } from 'react'
 import { useChatStore } from '@/store/chatStore'
 import { useAuthStore } from '@/store/authStore'
 import { grpcClient } from '@/shared/api/grpcClient'
+import { useErrorStore } from '@/store/errorStore'
 
 export function useChats() {
   const chatList = useChatStore((s) => s.getChatList())
@@ -15,10 +16,11 @@ export function useChats() {
   const addChat = useChatStore((s) => s.addChat)
   const setActiveChatId = useChatStore((s) => s.setActiveChatId)
   const user = useAuthStore((s) => s.user)
+  const addError = useErrorStore((s) => s.addError)
 
-  // Load chats on mount
+  // Load chats on mount and when user changes
   useEffect(() => {
-    let cancelled = true
+    let cancelled = false
     setLoadingChats(true)
 
     const userId = user?.id || ''
@@ -31,7 +33,12 @@ export function useChats() {
         setChats(chats)
       })
       .catch((err) => {
+        if (cancelled) return
         console.error('Failed to load chats:', err)
+        addError({
+          message: 'Не удалось загрузить список чатов',
+          type: 'network',
+        })
       })
       .finally(() => {
         if (!cancelled) setLoadingChats(false)
@@ -40,7 +47,7 @@ export function useChats() {
     return () => {
       cancelled = true
     }
-  }, [setChats, setLoadingChats, user])
+  }, [setChats, setLoadingChats, user?.id, user?.username, addError])
 
   const openChat = useCallback(
     (chatId: string) => {
@@ -52,7 +59,12 @@ export function useChats() {
   const createNewChat = useCallback(
     async (participants: string[], _name?: string) => {
       if (!user) return
-      const chat = await grpcClient.createDirectChat(user.username, participants[0], user.id, 'user-2-id')
+      const chat = await grpcClient.createDirectChat(
+        user.username,
+        participants[0],
+        user.id,
+        'user-2-id'
+      )
       addChat(chat)
       setActiveChatId(chat.id)
     },

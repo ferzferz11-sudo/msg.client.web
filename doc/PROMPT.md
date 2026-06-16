@@ -1,8 +1,8 @@
 # Lava Messenger Web Client — Промпт для новой сессии
 
-**Версия:** v0.4.0
-**Дата:** 2026-06-14
-**Статус:** 🟢 Auth V2 работает + Desktop UI + i18n + Dev proxy
+**Версия:** v0.5.0
+**Дата:** 2026-06-16
+**Статус:** 🟢 Auth V2 + Chat V2 + Profile V2 + i18n + Dev proxy
 
 ---
 
@@ -21,22 +21,20 @@ gRPC-web через Connect-RPC, Zustand state management, PWA.
 
 ### ✅ Работает
 - **Auth V2** — SignInV2/SignUpV2 с JWT (access + refresh), авто-refresh за 5 мин до истечения
-- **Device management** — deviceId генерируется при входе, передаётся на сервер
-- **Token rotation** — refresh token ротируется при каждом refresh
+- **Chat V2** — getChats, getHistory, sendMessage через BiDi stream, real-time сообщения
+- **Profile V2** — getProfile, updateProfile, updateAvatar, getUserSettings, updateUserSettings
 - **i18n** — EN/RU локализация, автоопределение по navigator.language
-- **Desktop UI** — двухпанельный layout (sidebar 320px + main area), стиль Telegram Desktop
+- **Desktop UI** — двухпанельный layout (sidebar 320px + main area)
 - **Mobile UI** — screen-based навигация, iOS-оптимизации
 - **gRPC-web proxy** — Node.js прокси на порту 9090 → dev сервер 50052
 - **Error handling** — классификация ошибок, retry с exponential backoff, errorStore
-- **Название:** "Lava" (EN) / "Лава" (RU) с 🦞 логотипом
 
 ### 📋 Следующая задача
-**Фаза 8: Список чатов и сообщения**
-- Интеграция ChatList с реальными данными (getChats)
-- Интеграция ChatScreen с реальными данными (getHistory, sendMessage, stream)
-- Индикаторы загрузки / пустые состояния
-- Unread count, last message preview
-- Статусы online/offline
+**Фаза 9: Контакты и профиль**
+- Экран профиля (отображение/редактирование username, bio, status, avatar)
+- Настройки пользователя (locale, theme, push)
+- Список контактов
+- Управление устройствами
 
 ---
 
@@ -308,11 +306,11 @@ sudo systemctl restart grpc-web-proxy
 - Фаза 7: Интеграция с реальным сервером (Auth V2)
 - Фаза 7.5: Desktop UI
 - Фаза 7.5b: Локализация (i18n)
+- **Фаза 8:** Список чатов и сообщения (реальные данные, BiDi stream, i18n)
 
 ### 📋 Следующие
-- **Фаза 8:** Список чатов и сообщения (интеграция с реальными данными)
-- **Фаза 9:** AI чаты (OWL + Hermes)
-- **Фаза 10:** Контакты и профиль
+- **Фаза 9:** Контакты и профиль (ProfileService V2, экран профиля, настройки)
+- **Фаза 10:** AI чаты (OWL + Hermes)
 - **Фаза 11:** Настройки и темы
 - **Фаза 12:** E2EE (секретные чаты)
 - **Фаза 13:** Полировка (pull-to-refresh, поиск, реакции, файлы, голосовые, offline, a11y)

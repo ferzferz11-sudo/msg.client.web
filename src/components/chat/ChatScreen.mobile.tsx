@@ -12,6 +12,7 @@ import { Screen } from '@/components/common'
 import { useChatMessages } from '@/hooks/useChatMessages'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
 import { useChatStore } from '@/store/chatStore'
+import { t } from '@/shared/types'
 import type { Message } from '@/shared/types'
 
 interface ChatScreenProps {
@@ -99,7 +100,7 @@ export function ChatScreen({ chatId, onBack }: ChatScreenProps) {
     >
       {isLoadingMessages ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: '#888' }}>
-          Загрузка сообщений...
+          t('loadingMessages')
         </div>
       ) : (
         <div style={{ flex: 1, padding: '8px 0', minHeight: 0 }}>
@@ -292,7 +293,7 @@ const MessageInput = forwardRef<HTMLInputElement, MessageInputProps>(
               value={value}
               onChange={onChange}
               onKeyDown={onKeyDown}
-              placeholder="Сообщение"
+              placeholder={t('writeMessage')}
               disabled={isSending}
               style={{
                 flex: 1,

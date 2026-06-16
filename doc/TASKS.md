@@ -96,19 +96,29 @@
 
 ## 📋 Фаза 8: Список чатов и сообщения
 
-- [x] useChats — загрузка списка чатов
+- [x] useChats — загрузка списка чатов (исправлен cancelled баг)
 - [x] useChatMessages — загрузка истории + real-time streaming
-- [ ] Интеграция ChatList с реальными данными (getChats)
-- [ ] Интеграция ChatScreen с реальными данными (getHistory, sendMessage, stream)
-- [ ] Индикаторы загрузки / пустые состояния
-- [ ] Unread count, last message preview
-- [ ] Статусы online/offline
+- [x] Интеграция ChatList с реальными данными (getChats)
+- [x] Интеграция ChatScreen с реальными данными (getHistory, sendMessage, stream)
+- [x] Индикаторы загрузки / пустые состояния
+- [x] Unread count, last message preview
+- [x] Статусы online/offline
+- [x] ProfileService V2 — getProfile, updateProfile, updateAvatar, getUserSettings, updateUserSettings
+- [x] i18n — переведены ChatList, ChatListScreen, ChatScreen
 
 ---
 
-## 📋 Фаза 9: AI чаты
+## 📋 Фаза 9: Контакты и профиль (V2)
 
-- [ ] AIChatView — единый компонент для OWL и Hermes
+- [x] gRPC клиент — ProfileService V2 методы (getProfile, updateProfile, updateAvatar, settings)
+- [ ] Экран профиля — отображение и редактирование (username, bio, status, avatar)
+- [ ] Настройки пользователя — locale, theme_id, push_enabled
+- [ ] Список контактов (GetContacts/AddContact/RemoveContact)
+- [ ] Управление устройствами (GetDevices/DeleteDevice)
+
+---
+
+## 📋 Фаза 10: AI чаты
 - [ ] Стриминг AI ответов (ChatWithAI)
 - [ ] Индикатор набора текста для AI
 - [ ] Настройки AI (API key, model)

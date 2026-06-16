@@ -6,6 +6,7 @@
 // - Exponential backoff retry (3 attempts)
 // - Error classification (network/auth/rate-limit/server)
 // - Error store integration
+// - BiDi Chat streaming (auth via first message JWT)
 // ============================================
 
 /// <reference types="vite/client" />
@@ -15,16 +16,14 @@ import { createGrpcWebTransport } from '@connectrpc/connect-web'
 import type { Chat, Message, StreamCallback, User, TokenPair, DeviceInfo } from '@/shared/types'
 import { useAuthStore } from '@/store/authStore'
 import { useErrorStore } from '@/store/errorStore'
-import { AuthService, ChatService } from './gen/proto/messenger_connect'
+import { AuthService, ChatService, ProfileService } from './gen/proto/messenger_connect'
 
 // --- Device Info ---
 
 function generateUUID(): string {
-  // Use crypto.randomUUID if available (modern browsers)
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }
-  // Fallback for older browsers
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0
     const v = c === 'x' ? r : (r & 0x3) | 0x8
@@ -53,7 +52,6 @@ function classifyError(err: any): ErrorType {
   const msg = String(err?.message || err || '').toLowerCase()
   const code = err?.code
 
-  // gRPC status codes: UNAUTHENTICATED=14, PERMISSION_DENIED=7, UNAVAILABLE=14
   if (code === 'UNAUTHENTICATED' || code === 14 || msg.includes('unauthenticated') || msg.includes('unauthorized')) {
     return 'auth'
   }
@@ -91,23 +89,13 @@ async function withRetry<T>(
       return await fn()
     } catch (err) {
       lastErr = err
-
-      // Don't retry auth errors
-      if (!isRetryableError(err)) {
-        throw err
-      }
-
-      // Last attempt — don't retry
-      if (attempt === maxRetries) {
-        throw err
-      }
-
+      if (!isRetryableError(err)) throw err
+      if (attempt === maxRetries) throw err
       const delay = baseDelay * Math.pow(2, attempt)
       onRetry?.(attempt + 1, err)
       await new Promise((resolve) => setTimeout(resolve, delay))
     }
   }
-
   throw lastErr
 }
 
@@ -121,7 +109,6 @@ function createAuthInterceptor(
     const tokens = getTokens()
     if (tokens) {
       const now = Math.floor(Date.now() / 1000)
-      // Refresh if access token expires within 5 minutes
       if (now >= tokens.accessExpiresAt - 300) {
         try {
           const client = authClientRef.current
@@ -137,7 +124,6 @@ function createAuthInterceptor(
             req.header.set('Authorization', `Bearer ${newTokens.accessToken}`)
           }
         } catch {
-          // Refresh failed — force logout
           useAuthStore.getState().logout()
           useErrorStore.getState().addError({
             message: 'Сессия истекла. Войдите снова.',
@@ -152,6 +138,72 @@ function createAuthInterceptor(
   }
 }
 
+// --- Proto → TypeScript converters ---
+
+function protoToChat(chat: any): Chat {
+  return {
+    id: chat.id || '',
+    name: chat.name || '',
+    type: chat.type || 'regular',
+    creatorId: chat.creator || '',
+    participants: chat.participants || '[]',
+    lastMessageText: chat.lastMessageText || '',
+    lastMessageTime: chat.lastMessageTime?.toDate?.()?.toISOString() || new Date().toISOString(),
+    unreadCount: chat.unreadCount || 0,
+    avatarUrl: chat.avatarUrl || '',
+    isOnline: chat.isOnline || false,
+    activeAgentId: chat.activeAgentId || '',
+    agentMode: chat.agentMode || 'single',
+  }
+}
+
+function protoToMessage(msg: any): Message {
+  return {
+    id: msg.id || '',
+    roomId: msg.roomId || msg.chatId || '',
+    user: msg.user || '',
+    text: msg.text || '',
+    createdAt: msg.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+    isOutgoing: false,
+    isRead: msg.isRead || false,
+    repliedToMessageId: msg.repliedToMessageId || '',
+    repliedToUser: msg.repliedToUser || '',
+    repliedToText: msg.repliedToText || '',
+    agentId: msg.agentId || '',
+  }
+}
+
+function handleChatMessage(msg: any, callback: StreamCallback): void {
+  if (!msg || !msg.user) return
+  const text = msg.text || ''
+  if (
+    text.startsWith('SERVER_INFO:') ||
+    text === 'AUTH_FAILED' ||
+    text.startsWith('DEPRECATED:') ||
+    text === 'SET_SUPER_ADMIN' ||
+    text.startsWith('CLEAR_CACHE:') ||
+    text.startsWith('CHAT_DELETED:') ||
+    text === 'REGISTRATION_SUCCESS' ||
+    text === 'USER_NOT_FOUND'
+  ) {
+    return
+  }
+  callback({ type: 'message', message: protoToMessage(msg) })
+}
+
+export function protoToUser(u: any): User {
+  return {
+    id: u.id?.toString() || '',
+    username: u.username?.toString() || '',
+    email: u.email?.toString() || '',
+    avatarUrl: u.avatarUrl?.toString() || u.avatar_url?.toString() || '',
+    bio: u.bio?.toString() || '',
+    status: u.status?.toString() || '',
+    createdAt: u.createdAt?.toDate?.()?.toISOString() || '',
+    lastSeenAt: u.lastSeenAt?.toDate?.()?.toISOString() || u.last_seen_at?.toDate?.()?.toISOString() || '',
+  }
+}
+
 // --- Singleton ---
 
 class GrpcClient {
@@ -159,6 +211,7 @@ class GrpcClient {
   private transport: Transport | null = null
   private authClient: any = null
   private chatClient: any = null
+  private profileClient: any = null
   private connected: boolean = false
   private activeStreams: Map<string, AbortController> = new Map()
   private _getTokens: (() => TokenPair | null) | null = null
@@ -191,16 +244,14 @@ class GrpcClient {
 
     this.authClient = createClient(AuthService as any, this.transport)
     this.chatClient = createClient(ChatService as any, this.transport)
+    this.profileClient = createClient(ProfileService as any, this.transport)
     authClientRef.current = this.authClient
-
     this.connected = true
 
-    // Listen for online/offline events
     if (typeof window !== 'undefined') {
       window.addEventListener('online', this.handleOnline)
       window.addEventListener('offline', this.handleOffline)
     }
-
     return Promise.resolve()
   }
 
@@ -222,6 +273,7 @@ class GrpcClient {
     this.activeStreams.clear()
     this.authClient = null
     this.chatClient = null
+    this.profileClient = null
     this.transport = null
 
     if (typeof window !== 'undefined') {
@@ -258,7 +310,7 @@ class GrpcClient {
             deviceName: deviceInfo.deviceName,
             deviceType: deviceInfo.deviceType,
           },
-          clientVersion: 'web-0.3.0',
+          clientVersion: 'web-0.4.0',
         })
         if (!result || !result.success) {
           throw new Error(result?.message || 'Ошибка авторизации')
@@ -273,13 +325,7 @@ class GrpcClient {
           user: result.user ? protoToUser(result.user) : { id: '', username, email: '', avatarUrl: '', bio: '', status: '', createdAt: '', lastSeenAt: '' },
         }
       },
-      {
-        maxRetries: 2,
-        baseDelay: 1000,
-        onRetry: (attempt, err) => {
-          console.warn(`SignInV2 retry ${attempt}:`, err)
-        },
-      },
+      { maxRetries: 2, baseDelay: 1000 },
     )
   }
 
@@ -306,7 +352,7 @@ class GrpcClient {
             deviceName: deviceInfo.deviceName,
             deviceType: deviceInfo.deviceType,
           },
-          clientVersion: 'web-0.3.0',
+          clientVersion: 'web-0.4.0',
         })
         if (!result || !result.success) {
           throw new Error(result?.message || 'Ошибка регистрации')
@@ -321,13 +367,7 @@ class GrpcClient {
           user: result.user ? protoToUser(result.user) : { id: '', username, email, avatarUrl: '', bio: '', status: '', createdAt: '', lastSeenAt: '' },
         }
       },
-      {
-        maxRetries: 2,
-        baseDelay: 1000,
-        onRetry: (attempt, err) => {
-          console.warn(`SignUpV2 retry ${attempt}:`, err)
-        },
-      },
+      { maxRetries: 2, baseDelay: 1000 },
     )
   }
 
@@ -351,7 +391,63 @@ class GrpcClient {
     return result.success ?? false
   }
 
-  // --- Chat Methods (with retry) ---
+  // --- ProfileService V2 Methods (JWT auth) ---
+
+  async getProfile(): Promise<User & { bio: string; status: string; locale: string; isSuperAdmin: boolean }> {
+    if (!this.profileClient) throw new Error('Not connected')
+    const result = await this.profileClient.getProfile({})
+    return {
+      id: result.userId || '',
+      username: result.username || '',
+      email: result.email || '',
+      avatarUrl: result.avatarUrl || '',
+      bio: result.bio || '',
+      status: result.status || '',
+      locale: result.locale || 'ru',
+      isSuperAdmin: result.isSuperAdmin || false,
+      createdAt: result.createdAt || '',
+      lastSeenAt: result.lastSeenAt || '',
+    }
+  }
+
+  async updateProfile(updates: { username?: string; bio?: string; status?: string; locale?: string }): Promise<boolean> {
+    if (!this.profileClient) throw new Error('Not connected')
+    const result = await this.profileClient.updateProfile({
+      username: updates.username || '',
+      bio: updates.bio || '',
+      status: updates.status || '',
+      locale: updates.locale || '',
+    })
+    return result.success ?? false
+  }
+
+  async updateAvatar(avatarUrl: string, fullAvatarUrl?: string): Promise<boolean> {
+    if (!this.profileClient) throw new Error('Not connected')
+    const result = await this.profileClient.updateAvatar({ avatarUrl, fullAvatarUrl: fullAvatarUrl || '' })
+    return result.success ?? false
+  }
+
+  async getUserSettings(): Promise<{ locale: string; themeId: string; pushEnabled: boolean }> {
+    if (!this.profileClient) throw new Error('Not connected')
+    const result = await this.profileClient.getUserSettings({})
+    return {
+      locale: result.locale || 'ru',
+      themeId: result.themeId || '',
+      pushEnabled: result.pushEnabled ?? true,
+    }
+  }
+
+  async updateUserSettings(settings: { locale?: string; themeId?: string; pushEnabled?: boolean }): Promise<boolean> {
+    if (!this.profileClient) throw new Error('Not connected')
+    const result = await this.profileClient.updateUserSettings({
+      locale: settings.locale || '',
+      themeId: settings.themeId || '',
+      pushEnabled: settings.pushEnabled ?? true,
+    })
+    return result.success ?? false
+  }
+
+  // --- Chat Methods ---
 
   async getChats(userId: string, username?: string): Promise<Chat[]> {
     if (!this.chatClient) throw new Error('Not connected')
@@ -360,19 +456,7 @@ class GrpcClient {
         const response = await this.chatClient.getChats({ userId, username: username || '' })
         return (response.chats || []).map(protoToChat)
       },
-      {
-        maxRetries: 3,
-        baseDelay: 500,
-        onRetry: (attempt, err) => {
-          const type = classifyError(err)
-          if (type === 'network') {
-            useErrorStore.getState().addError({
-              message: `Повторное подключение (${attempt}/3)...`,
-              type: 'network',
-            })
-          }
-        },
-      },
+      { maxRetries: 3, baseDelay: 500 },
     )
   }
 
@@ -385,17 +469,6 @@ class GrpcClient {
         return { messages, hasMore: messages.length === limit }
       },
       { maxRetries: 2, baseDelay: 500 },
-    )
-  }
-
-  async sendMessage(roomId: string, content: string, userId: string): Promise<Message> {
-    if (!this.chatClient) throw new Error('Not connected')
-    return withRetry(
-      async () => {
-        const response = await this.chatClient.chat({ roomId, text: content, userId })
-        return protoToMessage(response)
-      },
-      { maxRetries: 2, baseDelay: 300 },
     )
   }
 
@@ -449,21 +522,56 @@ class GrpcClient {
     return response.success
   }
 
-  // --- Server-Side Streaming ---
+  // --- BiDi Chat Stream (receive-only) ---
+  // Opens a Chat stream, sends JWT auth in the first message,
+  // then listens for broadcast messages from the server.
 
-  streamChatMessages(roomId: string, callback: StreamCallback): () => void {
-    const streamId = `stream-${roomId}-${Date.now()}`
+  openReceiveStream(roomId: string, callback: StreamCallback): () => void {
+    const streamId = `recv-${roomId}`
     const controller = new AbortController()
-    this.activeStreams.set(streamId, controller)
     const signal = controller.signal
 
-    const stream = this.chatClient.chat({ roomId }, { signal })
+    const existing = this.activeStreams.get(streamId)
+    if (existing) {
+      existing.abort()
+      this.activeStreams.delete(streamId)
+    }
+    this.activeStreams.set(streamId, controller)
+
+    const tokens = this._getTokens?.()
+    const jwtToken = tokens?.accessToken || ''
+
+    let authSent = false
+    const sendQueue: any[] = []
+    let sendResolve: ((value: IteratorResult<any>) => void) | null = null
+
+    const inputStream = {
+      [Symbol.asyncIterator]() {
+        return {
+          next(): Promise<IteratorResult<any>> {
+            if (sendQueue.length > 0) {
+              return Promise.resolve({ value: sendQueue.shift()!, done: false })
+            }
+            if (!authSent && jwtToken) {
+              authSent = true
+              return Promise.resolve({ value: { jwtToken, roomId }, done: false })
+            }
+            // Keep stream open, waiting for close
+            return new Promise<IteratorResult<any>>((resolve) => {
+              sendResolve = resolve
+            })
+          },
+        }
+      },
+    }
+
+    const stream = this.chatClient.chat(inputStream, { signal })
 
     ;(async () => {
       try {
-        for await (const event of stream) {
+        for await (const msg of stream) {
           if (signal.aborted) break
-          handleStreamEvent(event, callback)
+          handleChatMessage(msg, callback)
         }
       } catch (err) {
         if (!signal.aborted) {
@@ -480,67 +588,83 @@ class GrpcClient {
     return () => {
       controller.abort()
       this.activeStreams.delete(streamId)
+      if (sendResolve) {
+        const resolve = sendResolve
+        sendResolve = null
+        resolve({ value: undefined as any, done: true })
+      }
     }
   }
-}
 
-// --- Proto → TypeScript converters ---
+  // --- Send Message via ephemeral BiDi stream ---
+  // Opens a new Chat stream, sends auth + message, waits for the echoed response, then closes.
 
-function protoToChat(chat: any): Chat {
-  return {
-    id: chat.id || '',
-    name: chat.name || '',
-    type: chat.type || 'regular',
-    creatorId: chat.creator || '',
-    participants: chat.participants || '[]',
-    lastMessageText: chat.lastMessageText || '',
-    lastMessageTime: chat.lastMessageTime?.toDate?.()?.toISOString() || new Date().toISOString(),
-    unreadCount: chat.unreadCount || 0,
-    avatarUrl: chat.avatarUrl || '',
-    isOnline: chat.isOnline || false,
-    activeAgentId: chat.activeAgentId || '',
-    agentMode: chat.agentMode || 'single',
-  }
-}
+  async sendMessage(roomId: string, content: string, userId: string): Promise<Message> {
+    if (!this.chatClient) throw new Error('Not connected')
 
-function protoToMessage(msg: any): Message {
-  return {
-    id: msg.id || '',
-    roomId: msg.roomId || msg.chatId || '',
-    user: msg.user || '',
-    text: msg.text || '',
-    createdAt: msg.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-    isOutgoing: false,
-    isRead: msg.isRead || false,
-    repliedToMessageId: msg.repliedToMessageId || '',
-    repliedToUser: msg.repliedToUser || '',
-    repliedToText: msg.repliedToText || '',
-    agentId: msg.agentId || '',
-  }
-}
+    return withRetry(
+      async () => {
+        const tokens = this._getTokens?.()
+        const jwtToken = tokens?.accessToken || ''
 
-function handleStreamEvent(event: any, callback: StreamCallback): void {
-  if (event.message) {
-    callback({ type: 'message', message: protoToMessage(event.message) })
-  } else if (event.typing) {
-    callback({ type: 'typing', chatId: event.typing.chatId, userId: event.typing.userId, isTyping: event.typing.isTyping })
-  } else if (event.presence) {
-    callback({ type: 'presence', userId: event.presence.userId, isOnline: event.presence.isOnline })
-  } else if (event.error) {
-    callback({ type: 'error', error: event.error.error })
-  }
-}
+        const sendQueue: any[] = []
 
-export function protoToUser(u: any): User {
-  return {
-    id: u.id?.toString() || '',
-    username: u.username?.toString() || '',
-    email: u.email?.toString() || '',
-    avatarUrl: u.avatarUrl?.toString() || u.avatar_url?.toString() || '',
-    bio: u.bio?.toString() || '',
-    status: u.status?.toString() || '',
-    createdAt: u.createdAt?.toDate?.()?.toISOString() || '',
-    lastSeenAt: u.lastSeenAt?.toDate?.()?.toISOString() || u.last_seen_at?.toDate?.()?.toISOString() || '',
+        const inputStream = {
+          [Symbol.asyncIterator]() {
+            return {
+              next(): Promise<IteratorResult<any>> {
+                if (sendQueue.length > 0) {
+                  return Promise.resolve({ value: sendQueue.shift()!, done: false })
+                }
+                // No more items — keep waiting (stream stays open until abort)
+                return new Promise<IteratorResult<any>>(() => {})
+              },
+            }
+          },
+        }
+
+        const controller = new AbortController()
+        const stream = this.chatClient.chat(inputStream, { signal: controller.signal })
+
+        // Push auth message — the stream's next() will pick it up
+        sendQueue.push({ jwtToken, roomId })
+
+        // Push the actual message
+        const localId = `local-${Date.now()}`
+        sendQueue.push({ roomId, text: content, userId, id: localId })
+
+        // Wait for the echoed message from server
+        let savedMessage: Message | null = null
+
+        try {
+          for await (const msg of stream) {
+            if (controller.signal.aborted) break
+            const text = msg.text || ''
+            if (
+              !text ||
+              text.startsWith('SERVER_INFO:') ||
+              text === 'AUTH_FAILED' ||
+              text.startsWith('DEPRECATED:') ||
+              text === 'SET_SUPER_ADMIN' ||
+              text.startsWith('CLEAR_CACHE:') ||
+              text.startsWith('CHAT_DELETED:')
+            ) {
+              continue
+            }
+            savedMessage = { ...protoToMessage(msg), isOutgoing: true }
+            break
+          }
+        } finally {
+          controller.abort()
+        }
+
+        if (!savedMessage) {
+          throw new Error('Не удалось отправить сообщение')
+        }
+        return savedMessage
+      },
+      { maxRetries: 2, baseDelay: 300 },
+    )
   }
 }
 

@@ -5,6 +5,7 @@
 // ============================================
 
 import type { Chat } from '@/shared/types'
+import { t } from '@/shared/types'
 
 interface ChatListProps {
   chats: Chat[]
@@ -57,7 +58,7 @@ export function ChatList({ chats, isLoading, onChatClick, activeChatId }: ChatLi
         color: 'rgba(255,255,255,0.3)',
         fontSize: 13,
       }}>
-        Загрузка...
+        {t('loading')}
       </div>
     )
   }
@@ -73,7 +74,7 @@ export function ChatList({ chats, isLoading, onChatClick, activeChatId }: ChatLi
         fontSize: 13,
         textAlign: 'center',
       }}>
-        Нет чатов. Создайте первый чат!
+        {t('noChats')}
       </div>
     )
   }
@@ -186,7 +187,7 @@ export function ChatList({ chats, isLoading, onChatClick, activeChatId }: ChatLi
                   whiteSpace: 'nowrap',
                   flex: 1,
                 }}>
-                  {chat.lastMessageText || 'Нет сообщений'}
+                  {chat.lastMessageText || t('noMessages')}
                 </span>
                 {chat.unreadCount > 0 && (
                   <span style={{

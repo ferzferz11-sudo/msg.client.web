@@ -10,6 +10,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import { useChatMessages } from '@/hooks/useChatMessages'
 import { useChatStore } from '@/store/chatStore'
+import { t } from '@/shared/types'
 import type { Message } from '@/shared/types'
 
 interface ChatScreenProps {
@@ -111,11 +112,11 @@ export function ChatScreen({ chatId }: ChatScreenProps) {
         {/* Name + status */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {activeChat?.name || 'Чат'}
+            {activeChat?.name || t('chat')}
           </div>
           {activeChat?.isOnline !== undefined && (
             <div style={{ fontSize: 12, color: activeChat.isOnline ? '#4caf50' : 'rgba(255,255,255,0.3)' }}>
-              {activeChat.isOnline ? 'в сети' : 'не в сети'}
+              {activeChat.isOnline ? t('online') : t('offline')}
             </div>
           )}
         </div>
@@ -154,7 +155,7 @@ export function ChatScreen({ chatId }: ChatScreenProps) {
           color: 'rgba(255,255,255,0.3)',
           fontSize: 14,
         }}>
-          Загрузка сообщений...
+        {t('loadingMessages')}
         </div>
       ) : (
         <div style={{ flex: 1, padding: '8px 0', minHeight: 0 }}>
@@ -226,7 +227,7 @@ export function ChatScreen({ chatId }: ChatScreenProps) {
               value={inputText}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              placeholder="Написать сообщение..."
+              placeholder={t('writeMessage')}
               rows={1}
               style={{
                 flex: 1,

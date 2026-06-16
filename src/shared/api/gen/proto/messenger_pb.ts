@@ -60,7 +60,7 @@ export class Message extends Message$1<Message> {
   reactions: Reaction[] = [];
 
   /**
-   * Password for authentication (only in first/join message)
+   * Password for authentication (only in first/join message) — v1 legacy
    *
    * @generated from field: string password = 6;
    */
@@ -197,6 +197,13 @@ export class Message extends Message$1<Message> {
    */
   e2eePayload = "";
 
+  /**
+   * JWT Bearer token for ChatStream v2 auth (alternative to password)
+   *
+   * @generated from field: string jwt_token = 26;
+   */
+  jwtToken = "";
+
   constructor(data?: PartialMessage<Message>) {
     super();
     proto3.util.initPartial(data, this);
@@ -230,6 +237,7 @@ export class Message extends Message$1<Message> {
     { no: 23, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 24, name: "is_e2ee", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 25, name: "e2ee_payload", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 26, name: "jwt_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Message {
@@ -1037,6 +1045,34 @@ export class ChatInfo extends Message$1<ChatInfo> {
    */
   agentMode = "";
 
+  /**
+   * ChatList v2: pinned status
+   *
+   * @generated from field: bool is_pinned = 22;
+   */
+  isPinned = false;
+
+  /**
+   * ChatList v2: muted status
+   *
+   * @generated from field: bool is_muted = 23;
+   */
+  isMuted = false;
+
+  /**
+   * ChatList v2: archived status
+   *
+   * @generated from field: bool is_archived = 24;
+   */
+  isArchived = false;
+
+  /**
+   * ChatList v2: timestamp when pinned (for sort order)
+   *
+   * @generated from field: int64 pinned_at = 25;
+   */
+  pinnedAt = protoInt64.zero;
+
   constructor(data?: PartialMessage<ChatInfo>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1064,6 +1100,10 @@ export class ChatInfo extends Message$1<ChatInfo> {
     { no: 17, name: "e2ee_ready", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 20, name: "active_agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 21, name: "agent_mode", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 22, name: "is_pinned", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 23, name: "is_muted", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 24, name: "is_archived", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 25, name: "pinned_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ChatInfo {
@@ -1097,6 +1137,27 @@ export class GetChatsRequest extends Message$1<GetChatsRequest> {
    */
   userId = "";
 
+  /**
+   * Pagination: max number of chats to return (0 = default 100)
+   *
+   * @generated from field: int32 limit = 3;
+   */
+  limit = 0;
+
+  /**
+   * Pagination: skip N chats
+   *
+   * @generated from field: int32 offset = 4;
+   */
+  offset = 0;
+
+  /**
+   * Filter: "all", "pinned", "archived", "muted"
+   *
+   * @generated from field: string filter = 5;
+   */
+  filter = "";
+
   constructor(data?: PartialMessage<GetChatsRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1107,6 +1168,9 @@ export class GetChatsRequest extends Message$1<GetChatsRequest> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "filter", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetChatsRequest {
@@ -5392,6 +5456,670 @@ export class PipelineResponse extends Message$1<PipelineResponse> {
 
   static equals(a: PipelineResponse | PlainMessage<PipelineResponse> | undefined, b: PipelineResponse | PlainMessage<PipelineResponse> | undefined): boolean {
     return proto3.util.equals(PipelineResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.PinChatRequest
+ */
+export class PinChatRequest extends Message$1<PinChatRequest> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string chat_id = 2;
+   */
+  chatId = "";
+
+  constructor(data?: PartialMessage<PinChatRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.PinChatRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "chat_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PinChatRequest {
+    return new PinChatRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PinChatRequest {
+    return new PinChatRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PinChatRequest {
+    return new PinChatRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PinChatRequest | PlainMessage<PinChatRequest> | undefined, b: PinChatRequest | PlainMessage<PinChatRequest> | undefined): boolean {
+    return proto3.util.equals(PinChatRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.PinChatResponse
+ */
+export class PinChatResponse extends Message$1<PinChatResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  constructor(data?: PartialMessage<PinChatResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.PinChatResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PinChatResponse {
+    return new PinChatResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PinChatResponse {
+    return new PinChatResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PinChatResponse {
+    return new PinChatResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PinChatResponse | PlainMessage<PinChatResponse> | undefined, b: PinChatResponse | PlainMessage<PinChatResponse> | undefined): boolean {
+    return proto3.util.equals(PinChatResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UnPinChatRequest
+ */
+export class UnPinChatRequest extends Message$1<UnPinChatRequest> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string chat_id = 2;
+   */
+  chatId = "";
+
+  constructor(data?: PartialMessage<UnPinChatRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UnPinChatRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "chat_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnPinChatRequest {
+    return new UnPinChatRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnPinChatRequest {
+    return new UnPinChatRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnPinChatRequest {
+    return new UnPinChatRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnPinChatRequest | PlainMessage<UnPinChatRequest> | undefined, b: UnPinChatRequest | PlainMessage<UnPinChatRequest> | undefined): boolean {
+    return proto3.util.equals(UnPinChatRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UnPinChatResponse
+ */
+export class UnPinChatResponse extends Message$1<UnPinChatResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  constructor(data?: PartialMessage<UnPinChatResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UnPinChatResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnPinChatResponse {
+    return new UnPinChatResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnPinChatResponse {
+    return new UnPinChatResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnPinChatResponse {
+    return new UnPinChatResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnPinChatResponse | PlainMessage<UnPinChatResponse> | undefined, b: UnPinChatResponse | PlainMessage<UnPinChatResponse> | undefined): boolean {
+    return proto3.util.equals(UnPinChatResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.SearchChatsRequest
+ */
+export class SearchChatsRequest extends Message$1<SearchChatsRequest> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string query = 2;
+   */
+  query = "";
+
+  /**
+   * @generated from field: int32 limit = 3;
+   */
+  limit = 0;
+
+  /**
+   * @generated from field: int32 offset = 4;
+   */
+  offset = 0;
+
+  constructor(data?: PartialMessage<SearchChatsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.SearchChatsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchChatsRequest {
+    return new SearchChatsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchChatsRequest {
+    return new SearchChatsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchChatsRequest {
+    return new SearchChatsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchChatsRequest | PlainMessage<SearchChatsRequest> | undefined, b: SearchChatsRequest | PlainMessage<SearchChatsRequest> | undefined): boolean {
+    return proto3.util.equals(SearchChatsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.SearchChatsResponse
+ */
+export class SearchChatsResponse extends Message$1<SearchChatsResponse> {
+  /**
+   * @generated from field: repeated messenger.ChatInfo chats = 1;
+   */
+  chats: ChatInfo[] = [];
+
+  constructor(data?: PartialMessage<SearchChatsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.SearchChatsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "chats", kind: "message", T: ChatInfo, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchChatsResponse {
+    return new SearchChatsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchChatsResponse {
+    return new SearchChatsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchChatsResponse {
+    return new SearchChatsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchChatsResponse | PlainMessage<SearchChatsResponse> | undefined, b: SearchChatsResponse | PlainMessage<SearchChatsResponse> | undefined): boolean {
+    return proto3.util.equals(SearchChatsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ArchiveChatRequest
+ */
+export class ArchiveChatRequest extends Message$1<ArchiveChatRequest> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string chat_id = 2;
+   */
+  chatId = "";
+
+  constructor(data?: PartialMessage<ArchiveChatRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ArchiveChatRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "chat_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ArchiveChatRequest {
+    return new ArchiveChatRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ArchiveChatRequest {
+    return new ArchiveChatRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ArchiveChatRequest {
+    return new ArchiveChatRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ArchiveChatRequest | PlainMessage<ArchiveChatRequest> | undefined, b: ArchiveChatRequest | PlainMessage<ArchiveChatRequest> | undefined): boolean {
+    return proto3.util.equals(ArchiveChatRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ArchiveChatResponse
+ */
+export class ArchiveChatResponse extends Message$1<ArchiveChatResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  constructor(data?: PartialMessage<ArchiveChatResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ArchiveChatResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ArchiveChatResponse {
+    return new ArchiveChatResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ArchiveChatResponse {
+    return new ArchiveChatResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ArchiveChatResponse {
+    return new ArchiveChatResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ArchiveChatResponse | PlainMessage<ArchiveChatResponse> | undefined, b: ArchiveChatResponse | PlainMessage<ArchiveChatResponse> | undefined): boolean {
+    return proto3.util.equals(ArchiveChatResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UnarchiveChatRequest
+ */
+export class UnarchiveChatRequest extends Message$1<UnarchiveChatRequest> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string chat_id = 2;
+   */
+  chatId = "";
+
+  constructor(data?: PartialMessage<UnarchiveChatRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UnarchiveChatRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "chat_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnarchiveChatRequest {
+    return new UnarchiveChatRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnarchiveChatRequest {
+    return new UnarchiveChatRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnarchiveChatRequest {
+    return new UnarchiveChatRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnarchiveChatRequest | PlainMessage<UnarchiveChatRequest> | undefined, b: UnarchiveChatRequest | PlainMessage<UnarchiveChatRequest> | undefined): boolean {
+    return proto3.util.equals(UnarchiveChatRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UnarchiveChatResponse
+ */
+export class UnarchiveChatResponse extends Message$1<UnarchiveChatResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  constructor(data?: PartialMessage<UnarchiveChatResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UnarchiveChatResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnarchiveChatResponse {
+    return new UnarchiveChatResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnarchiveChatResponse {
+    return new UnarchiveChatResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnarchiveChatResponse {
+    return new UnarchiveChatResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnarchiveChatResponse | PlainMessage<UnarchiveChatResponse> | undefined, b: UnarchiveChatResponse | PlainMessage<UnarchiveChatResponse> | undefined): boolean {
+    return proto3.util.equals(UnarchiveChatResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.PinMessageRequest
+ */
+export class PinMessageRequest extends Message$1<PinMessageRequest> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string chat_id = 2;
+   */
+  chatId = "";
+
+  /**
+   * @generated from field: string message_id = 3;
+   */
+  messageId = "";
+
+  constructor(data?: PartialMessage<PinMessageRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.PinMessageRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "chat_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "message_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PinMessageRequest {
+    return new PinMessageRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PinMessageRequest {
+    return new PinMessageRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PinMessageRequest {
+    return new PinMessageRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PinMessageRequest | PlainMessage<PinMessageRequest> | undefined, b: PinMessageRequest | PlainMessage<PinMessageRequest> | undefined): boolean {
+    return proto3.util.equals(PinMessageRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.PinMessageResponse
+ */
+export class PinMessageResponse extends Message$1<PinMessageResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  constructor(data?: PartialMessage<PinMessageResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.PinMessageResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PinMessageResponse {
+    return new PinMessageResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PinMessageResponse {
+    return new PinMessageResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PinMessageResponse {
+    return new PinMessageResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PinMessageResponse | PlainMessage<PinMessageResponse> | undefined, b: PinMessageResponse | PlainMessage<PinMessageResponse> | undefined): boolean {
+    return proto3.util.equals(PinMessageResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UnPinMessageRequest
+ */
+export class UnPinMessageRequest extends Message$1<UnPinMessageRequest> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string chat_id = 2;
+   */
+  chatId = "";
+
+  /**
+   * @generated from field: string message_id = 3;
+   */
+  messageId = "";
+
+  constructor(data?: PartialMessage<UnPinMessageRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UnPinMessageRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "chat_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "message_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnPinMessageRequest {
+    return new UnPinMessageRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnPinMessageRequest {
+    return new UnPinMessageRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnPinMessageRequest {
+    return new UnPinMessageRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnPinMessageRequest | PlainMessage<UnPinMessageRequest> | undefined, b: UnPinMessageRequest | PlainMessage<UnPinMessageRequest> | undefined): boolean {
+    return proto3.util.equals(UnPinMessageRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UnPinMessageResponse
+ */
+export class UnPinMessageResponse extends Message$1<UnPinMessageResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  constructor(data?: PartialMessage<UnPinMessageResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UnPinMessageResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnPinMessageResponse {
+    return new UnPinMessageResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnPinMessageResponse {
+    return new UnPinMessageResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnPinMessageResponse {
+    return new UnPinMessageResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnPinMessageResponse | PlainMessage<UnPinMessageResponse> | undefined, b: UnPinMessageResponse | PlainMessage<UnPinMessageResponse> | undefined): boolean {
+    return proto3.util.equals(UnPinMessageResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetPinnedMessagesRequest
+ */
+export class GetPinnedMessagesRequest extends Message$1<GetPinnedMessagesRequest> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string chat_id = 2;
+   */
+  chatId = "";
+
+  constructor(data?: PartialMessage<GetPinnedMessagesRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetPinnedMessagesRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "chat_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetPinnedMessagesRequest {
+    return new GetPinnedMessagesRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetPinnedMessagesRequest {
+    return new GetPinnedMessagesRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetPinnedMessagesRequest {
+    return new GetPinnedMessagesRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetPinnedMessagesRequest | PlainMessage<GetPinnedMessagesRequest> | undefined, b: GetPinnedMessagesRequest | PlainMessage<GetPinnedMessagesRequest> | undefined): boolean {
+    return proto3.util.equals(GetPinnedMessagesRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetPinnedMessagesResponse
+ */
+export class GetPinnedMessagesResponse extends Message$1<GetPinnedMessagesResponse> {
+  /**
+   * @generated from field: repeated messenger.Message messages = 1;
+   */
+  messages: Message[] = [];
+
+  constructor(data?: PartialMessage<GetPinnedMessagesResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetPinnedMessagesResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "messages", kind: "message", T: Message, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetPinnedMessagesResponse {
+    return new GetPinnedMessagesResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetPinnedMessagesResponse {
+    return new GetPinnedMessagesResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetPinnedMessagesResponse {
+    return new GetPinnedMessagesResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetPinnedMessagesResponse | PlainMessage<GetPinnedMessagesResponse> | undefined, b: GetPinnedMessagesResponse | PlainMessage<GetPinnedMessagesResponse> | undefined): boolean {
+    return proto3.util.equals(GetPinnedMessagesResponse, a, b);
   }
 }
 
@@ -10449,6 +11177,614 @@ export class RevokeDeviceRequest extends Message$1<RevokeDeviceRequest> {
 
   static equals(a: RevokeDeviceRequest | PlainMessage<RevokeDeviceRequest> | undefined, b: RevokeDeviceRequest | PlainMessage<RevokeDeviceRequest> | undefined): boolean {
     return proto3.util.equals(RevokeDeviceRequest, a, b);
+  }
+}
+
+/**
+ * empty — user_id extracted from JWT context
+ *
+ * @generated from message messenger.GetProfileRequest
+ */
+export class GetProfileRequest extends Message$1<GetProfileRequest> {
+  constructor(data?: PartialMessage<GetProfileRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetProfileRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetProfileRequest {
+    return new GetProfileRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetProfileRequest {
+    return new GetProfileRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetProfileRequest {
+    return new GetProfileRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetProfileRequest | PlainMessage<GetProfileRequest> | undefined, b: GetProfileRequest | PlainMessage<GetProfileRequest> | undefined): boolean {
+    return proto3.util.equals(GetProfileRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetProfileResponse
+ */
+export class GetProfileResponse extends Message$1<GetProfileResponse> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string username = 2;
+   */
+  username = "";
+
+  /**
+   * @generated from field: string email = 3;
+   */
+  email = "";
+
+  /**
+   * @generated from field: string avatar_url = 4;
+   */
+  avatarUrl = "";
+
+  /**
+   * @generated from field: string full_avatar_url = 5;
+   */
+  fullAvatarUrl = "";
+
+  /**
+   * @generated from field: string bio = 6;
+   */
+  bio = "";
+
+  /**
+   * @generated from field: string status = 7;
+   */
+  status = "";
+
+  /**
+   * "en", "ru", etc.
+   *
+   * @generated from field: string locale = 8;
+   */
+  locale = "";
+
+  /**
+   * @generated from field: bool is_super_admin = 9;
+   */
+  isSuperAdmin = false;
+
+  /**
+   * @generated from field: string created_at = 10;
+   */
+  createdAt = "";
+
+  /**
+   * @generated from field: string last_seen_at = 11;
+   */
+  lastSeenAt = "";
+
+  constructor(data?: PartialMessage<GetProfileResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetProfileResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "full_avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "bio", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "locale", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "is_super_admin", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "last_seen_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetProfileResponse {
+    return new GetProfileResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetProfileResponse {
+    return new GetProfileResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetProfileResponse {
+    return new GetProfileResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetProfileResponse | PlainMessage<GetProfileResponse> | undefined, b: GetProfileResponse | PlainMessage<GetProfileResponse> | undefined): boolean {
+    return proto3.util.equals(GetProfileResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UpdateProfileV2Request
+ */
+export class UpdateProfileV2Request extends Message$1<UpdateProfileV2Request> {
+  /**
+   * optional: change username
+   *
+   * @generated from field: string username = 1;
+   */
+  username = "";
+
+  /**
+   * @generated from field: string bio = 2;
+   */
+  bio = "";
+
+  /**
+   * @generated from field: string status = 3;
+   */
+  status = "";
+
+  /**
+   * "en", "ru"
+   *
+   * @generated from field: string locale = 4;
+   */
+  locale = "";
+
+  constructor(data?: PartialMessage<UpdateProfileV2Request>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UpdateProfileV2Request";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "bio", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "locale", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateProfileV2Request {
+    return new UpdateProfileV2Request().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateProfileV2Request {
+    return new UpdateProfileV2Request().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateProfileV2Request {
+    return new UpdateProfileV2Request().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateProfileV2Request | PlainMessage<UpdateProfileV2Request> | undefined, b: UpdateProfileV2Request | PlainMessage<UpdateProfileV2Request> | undefined): boolean {
+    return proto3.util.equals(UpdateProfileV2Request, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UpdateProfileV2Response
+ */
+export class UpdateProfileV2Response extends Message$1<UpdateProfileV2Response> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string message = 2;
+   */
+  message = "";
+
+  /**
+   * @generated from field: messenger.GetProfileResponse profile = 3;
+   */
+  profile?: GetProfileResponse;
+
+  constructor(data?: PartialMessage<UpdateProfileV2Response>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UpdateProfileV2Response";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "profile", kind: "message", T: GetProfileResponse },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateProfileV2Response {
+    return new UpdateProfileV2Response().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateProfileV2Response {
+    return new UpdateProfileV2Response().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateProfileV2Response {
+    return new UpdateProfileV2Response().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateProfileV2Response | PlainMessage<UpdateProfileV2Response> | undefined, b: UpdateProfileV2Response | PlainMessage<UpdateProfileV2Response> | undefined): boolean {
+    return proto3.util.equals(UpdateProfileV2Response, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UpdateAvatarV2Request
+ */
+export class UpdateAvatarV2Request extends Message$1<UpdateAvatarV2Request> {
+  /**
+   * @generated from field: string avatar_url = 1;
+   */
+  avatarUrl = "";
+
+  /**
+   * @generated from field: string full_avatar_url = 2;
+   */
+  fullAvatarUrl = "";
+
+  constructor(data?: PartialMessage<UpdateAvatarV2Request>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UpdateAvatarV2Request";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "full_avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateAvatarV2Request {
+    return new UpdateAvatarV2Request().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateAvatarV2Request {
+    return new UpdateAvatarV2Request().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateAvatarV2Request {
+    return new UpdateAvatarV2Request().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateAvatarV2Request | PlainMessage<UpdateAvatarV2Request> | undefined, b: UpdateAvatarV2Request | PlainMessage<UpdateAvatarV2Request> | undefined): boolean {
+    return proto3.util.equals(UpdateAvatarV2Request, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UpdateAvatarV2Response
+ */
+export class UpdateAvatarV2Response extends Message$1<UpdateAvatarV2Response> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string message = 2;
+   */
+  message = "";
+
+  /**
+   * @generated from field: string avatar_url = 3;
+   */
+  avatarUrl = "";
+
+  /**
+   * @generated from field: string full_avatar_url = 4;
+   */
+  fullAvatarUrl = "";
+
+  constructor(data?: PartialMessage<UpdateAvatarV2Response>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UpdateAvatarV2Response";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "full_avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateAvatarV2Response {
+    return new UpdateAvatarV2Response().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateAvatarV2Response {
+    return new UpdateAvatarV2Response().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateAvatarV2Response {
+    return new UpdateAvatarV2Response().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateAvatarV2Response | PlainMessage<UpdateAvatarV2Response> | undefined, b: UpdateAvatarV2Response | PlainMessage<UpdateAvatarV2Response> | undefined): boolean {
+    return proto3.util.equals(UpdateAvatarV2Response, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.DeleteProfileV2Request
+ */
+export class DeleteProfileV2Request extends Message$1<DeleteProfileV2Request> {
+  /**
+   * confirm deletion
+   *
+   * @generated from field: string password = 1;
+   */
+  password = "";
+
+  constructor(data?: PartialMessage<DeleteProfileV2Request>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.DeleteProfileV2Request";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "password", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteProfileV2Request {
+    return new DeleteProfileV2Request().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteProfileV2Request {
+    return new DeleteProfileV2Request().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteProfileV2Request {
+    return new DeleteProfileV2Request().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteProfileV2Request | PlainMessage<DeleteProfileV2Request> | undefined, b: DeleteProfileV2Request | PlainMessage<DeleteProfileV2Request> | undefined): boolean {
+    return proto3.util.equals(DeleteProfileV2Request, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.DeleteProfileV2Response
+ */
+export class DeleteProfileV2Response extends Message$1<DeleteProfileV2Response> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string message = 2;
+   */
+  message = "";
+
+  constructor(data?: PartialMessage<DeleteProfileV2Response>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.DeleteProfileV2Response";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteProfileV2Response {
+    return new DeleteProfileV2Response().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteProfileV2Response {
+    return new DeleteProfileV2Response().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteProfileV2Response {
+    return new DeleteProfileV2Response().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteProfileV2Response | PlainMessage<DeleteProfileV2Response> | undefined, b: DeleteProfileV2Response | PlainMessage<DeleteProfileV2Response> | undefined): boolean {
+    return proto3.util.equals(DeleteProfileV2Response, a, b);
+  }
+}
+
+/**
+ * empty — user_id from JWT
+ *
+ * @generated from message messenger.GetUserSettingsRequest
+ */
+export class GetUserSettingsRequest extends Message$1<GetUserSettingsRequest> {
+  constructor(data?: PartialMessage<GetUserSettingsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetUserSettingsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetUserSettingsRequest {
+    return new GetUserSettingsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetUserSettingsRequest {
+    return new GetUserSettingsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetUserSettingsRequest {
+    return new GetUserSettingsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetUserSettingsRequest | PlainMessage<GetUserSettingsRequest> | undefined, b: GetUserSettingsRequest | PlainMessage<GetUserSettingsRequest> | undefined): boolean {
+    return proto3.util.equals(GetUserSettingsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetUserSettingsResponse
+ */
+export class GetUserSettingsResponse extends Message$1<GetUserSettingsResponse> {
+  /**
+   * @generated from field: string locale = 1;
+   */
+  locale = "";
+
+  /**
+   * @generated from field: string theme_id = 2;
+   */
+  themeId = "";
+
+  /**
+   * @generated from field: bool push_enabled = 3;
+   */
+  pushEnabled = false;
+
+  /**
+   * extensible key-value
+   *
+   * @generated from field: map<string, string> custom = 4;
+   */
+  custom: { [key: string]: string } = {};
+
+  constructor(data?: PartialMessage<GetUserSettingsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetUserSettingsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "locale", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "theme_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "push_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 4, name: "custom", kind: "map", K: 9 /* ScalarType.STRING */, V: {kind: "scalar", T: 9 /* ScalarType.STRING */} },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetUserSettingsResponse {
+    return new GetUserSettingsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetUserSettingsResponse {
+    return new GetUserSettingsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetUserSettingsResponse {
+    return new GetUserSettingsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetUserSettingsResponse | PlainMessage<GetUserSettingsResponse> | undefined, b: GetUserSettingsResponse | PlainMessage<GetUserSettingsResponse> | undefined): boolean {
+    return proto3.util.equals(GetUserSettingsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UpdateUserSettingsRequest
+ */
+export class UpdateUserSettingsRequest extends Message$1<UpdateUserSettingsRequest> {
+  /**
+   * @generated from field: string locale = 1;
+   */
+  locale = "";
+
+  /**
+   * @generated from field: string theme_id = 2;
+   */
+  themeId = "";
+
+  /**
+   * @generated from field: bool push_enabled = 3;
+   */
+  pushEnabled = false;
+
+  /**
+   * @generated from field: map<string, string> custom = 4;
+   */
+  custom: { [key: string]: string } = {};
+
+  constructor(data?: PartialMessage<UpdateUserSettingsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UpdateUserSettingsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "locale", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "theme_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "push_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 4, name: "custom", kind: "map", K: 9 /* ScalarType.STRING */, V: {kind: "scalar", T: 9 /* ScalarType.STRING */} },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateUserSettingsRequest {
+    return new UpdateUserSettingsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateUserSettingsRequest {
+    return new UpdateUserSettingsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateUserSettingsRequest {
+    return new UpdateUserSettingsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateUserSettingsRequest | PlainMessage<UpdateUserSettingsRequest> | undefined, b: UpdateUserSettingsRequest | PlainMessage<UpdateUserSettingsRequest> | undefined): boolean {
+    return proto3.util.equals(UpdateUserSettingsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UpdateUserSettingsResponse
+ */
+export class UpdateUserSettingsResponse extends Message$1<UpdateUserSettingsResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string message = 2;
+   */
+  message = "";
+
+  constructor(data?: PartialMessage<UpdateUserSettingsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UpdateUserSettingsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateUserSettingsResponse {
+    return new UpdateUserSettingsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateUserSettingsResponse {
+    return new UpdateUserSettingsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateUserSettingsResponse {
+    return new UpdateUserSettingsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateUserSettingsResponse | PlainMessage<UpdateUserSettingsResponse> | undefined, b: UpdateUserSettingsResponse | PlainMessage<UpdateUserSettingsResponse> | undefined): boolean {
+    return proto3.util.equals(UpdateUserSettingsResponse, a, b);
   }
 }
 

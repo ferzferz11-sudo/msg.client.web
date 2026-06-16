@@ -3,7 +3,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddContactRequest, AddContactResponse, AddFavoriteRequest, AddFavoriteResponse, AddParticipantRequest, AddParticipantResponse, AdminUpdatePasswordRequest, AdminUpdatePasswordResponse, AIChatRequest, AIChatResponse, AIChatSettings, AuthResponse, AuthResponseV2, BotCommandRequest, BotCommandResponse, CallMessage, ClientListRequest, ClientListResponse, CreateAgentRequest, CreateAgentResponse, CreateDirectChatRequest, CreateDirectChatResponse, CreateGroupChatRequest, CreateGroupChatResponse, CreateHermesSessionRequest, CreateHermesSessionResponse, CreateOwlChatRequest, CreateOwlChatResponse, CreateSecretChatRequest, CreateSecretChatResponse, DeleteAgentRequest, DeleteAgentResponse, DeleteChatRequest, DeleteChatResponse, DeleteDeviceRequest, DeleteDeviceResponse, DeleteDraftRequest, DeleteDraftResponse, DeleteHermesSessionRequest, DeleteHermesSessionResponse, DeleteMessagesRequest, DeleteMessagesResponse, DeleteOwlChatRequest, DeleteOwlChatResponse, DeleteProfileRequest, DeleteProfileResponse, DeleteThemeRequest, DeleteThemeResponse, DeployAgentTaskRequest, DeployAgentTaskResponse, DeployAgentTaskStreamResponse, EditMessageRequest, EditMessageResponse, ExchangeSecretKeyRequest, ExchangeSecretKeyResponse, GetAIChatHistoryRequest, GetAIChatHistoryResponse, GetAIChatSettingsRequest, GetAIChatsRequest, GetAIChatsResponse, GetAllChatsRequest, GetAllChatsResponse, GetAllUsersRequest, GetAllUsersResponse, GetBotCommandsRequest, GetBotCommandsResponse, GetChatListVersionRequest, GetChatListVersionResponse, GetChatsRequest, GetChatsResponse, GetContactsRequest, GetContactsResponse, GetDevicesRequest, GetDevicesResponse, GetDraftRequest, GetDraftResponse, GetFavoritesRequest, GetFavoritesResponse, GetFCMLogsRequest, GetFCMLogsResponse, GetFreeModelsRequest, GetFreeModelsResponse, GetHermesSettingsRequest, GetHermesSettingsResponse, GetHistoryRequest, GetHistoryResponse, GetMutedChatsRequest, GetMutedChatsResponse, GetNotificationHistoryRequest, GetNotificationHistoryResponse, GetOrchestratorHistoryRequest, GetOrchestratorHistoryResponse, GetOwlHistoryRequest, GetOwlHistoryResponse, GetOwlSettingsRequest, GetOwlSettingsResponse, GetRemoteAgentStatusRequest, GetRemoteAgentStatusResponse, GetSecretChatKeyRequest, GetSecretChatKeyResponse, GetThemesRequest, GetThemesResponse, GetUnreadCountRequest, GetUnreadCountResponse, GetUserAvatarRequest, GetUserAvatarResponse, GetUserIdRequest, GetUserIdResponse, GetUserProfileRequest, GetUserProfileResponse, ListAgentPresetsRequest, ListAgentPresetsResponse, ListAgentsRequest, ListAgentsResponse, ListRemoteAgentsRequest, ListRemoteAgentsResponse, ListUserAgentsRequest, ListUserAgentsResponse, MarkNotificationReadRequest, MarkNotificationReadResponse, MarkReadRequest, MarkReadResponse, Message, OrchestratorRequest, OrchestratorResponse, OWLRequest, OWLResponse, OWLStatusRequest, OWLStatusResponse, PipelineRequest, PipelineResponse, ReactionRequest, ReactionResponse, RefreshTokenRequest, RefreshTokenResponse, RemoveContactRequest, RemoveContactResponse, RemoveFavoriteRequest, RemoveFavoriteResponse, RemoveFreeModelRequest, RemoveFreeModelResponse, RemoveParticipantRequest, RemoveParticipantResponse, RenameAIChatRequest, RenameAIChatResponse, RequestPasswordResetRequest, RequestPasswordResetResponse, ResetPasswordRequest, ResetPasswordResponse, RevokeDeviceRequest, SaveDraftRequest, SaveDraftResponse, SaveThemeRequest, SaveThemeResponse, ServerNotification, SetCurrentThemeRequest, SetCurrentThemeResponse, SetFreeModelRequest, SetFreeModelResponse, SetMutedChatRequest, SetMutedChatResponse, SignInRequest, SignInRequestV2, SignOutRequest, SignUpRequest, SignUpRequestV2, SubscribeNotificationsRequest, TokenRequest, TokenResponse, TypingRequest, TypingSignal, UpdateAgentRequest, UpdateAgentResponse, UpdateAIChatSettingsRequest, UpdateAIChatSettingsResponse, UpdateAvatarRequest, UpdateAvatarResponse, UpdateChatAvatarRequest, UpdateChatAvatarResponse, UpdateChatNameRequest, UpdateChatNameResponse, UpdateChatSettingsRequest, UpdateChatSettingsResponse, UpdateHermesSettingsRequest, UpdateHermesSettingsResponse, UpdateOwlSettingsRequest, UpdateOwlSettingsResponse, UpdatePasswordRequest, UpdatePasswordResponse, UpdateProfileRequest, UpdateProfileResponse, UpdateUsernameRequest, UpdateUsernameResponse } from "./messenger_pb.js";
+import { AddContactRequest, AddContactResponse, AddFavoriteRequest, AddFavoriteResponse, AddParticipantRequest, AddParticipantResponse, AdminUpdatePasswordRequest, AdminUpdatePasswordResponse, AIChatRequest, AIChatResponse, AIChatSettings, ArchiveChatRequest, ArchiveChatResponse, AuthResponse, AuthResponseV2, BotCommandRequest, BotCommandResponse, CallMessage, ClientListRequest, ClientListResponse, CreateAgentRequest, CreateAgentResponse, CreateDirectChatRequest, CreateDirectChatResponse, CreateGroupChatRequest, CreateGroupChatResponse, CreateHermesSessionRequest, CreateHermesSessionResponse, CreateOwlChatRequest, CreateOwlChatResponse, CreateSecretChatRequest, CreateSecretChatResponse, DeleteAgentRequest, DeleteAgentResponse, DeleteChatRequest, DeleteChatResponse, DeleteDeviceRequest, DeleteDeviceResponse, DeleteDraftRequest, DeleteDraftResponse, DeleteHermesSessionRequest, DeleteHermesSessionResponse, DeleteMessagesRequest, DeleteMessagesResponse, DeleteOwlChatRequest, DeleteOwlChatResponse, DeleteProfileRequest, DeleteProfileResponse, DeleteProfileV2Request, DeleteProfileV2Response, DeleteThemeRequest, DeleteThemeResponse, DeployAgentTaskRequest, DeployAgentTaskResponse, DeployAgentTaskStreamResponse, EditMessageRequest, EditMessageResponse, ExchangeSecretKeyRequest, ExchangeSecretKeyResponse, GetAIChatHistoryRequest, GetAIChatHistoryResponse, GetAIChatSettingsRequest, GetAIChatsRequest, GetAIChatsResponse, GetAllChatsRequest, GetAllChatsResponse, GetAllUsersRequest, GetAllUsersResponse, GetBotCommandsRequest, GetBotCommandsResponse, GetChatListVersionRequest, GetChatListVersionResponse, GetChatsRequest, GetChatsResponse, GetContactsRequest, GetContactsResponse, GetDevicesRequest, GetDevicesResponse, GetDraftRequest, GetDraftResponse, GetFavoritesRequest, GetFavoritesResponse, GetFCMLogsRequest, GetFCMLogsResponse, GetFreeModelsRequest, GetFreeModelsResponse, GetHermesSettingsRequest, GetHermesSettingsResponse, GetHistoryRequest, GetHistoryResponse, GetMutedChatsRequest, GetMutedChatsResponse, GetNotificationHistoryRequest, GetNotificationHistoryResponse, GetOrchestratorHistoryRequest, GetOrchestratorHistoryResponse, GetOwlHistoryRequest, GetOwlHistoryResponse, GetOwlSettingsRequest, GetOwlSettingsResponse, GetPinnedMessagesRequest, GetPinnedMessagesResponse, GetProfileRequest, GetProfileResponse, GetRemoteAgentStatusRequest, GetRemoteAgentStatusResponse, GetSecretChatKeyRequest, GetSecretChatKeyResponse, GetThemesRequest, GetThemesResponse, GetUnreadCountRequest, GetUnreadCountResponse, GetUserAvatarRequest, GetUserAvatarResponse, GetUserIdRequest, GetUserIdResponse, GetUserProfileRequest, GetUserProfileResponse, GetUserSettingsRequest, GetUserSettingsResponse, ListAgentPresetsRequest, ListAgentPresetsResponse, ListAgentsRequest, ListAgentsResponse, ListRemoteAgentsRequest, ListRemoteAgentsResponse, ListUserAgentsRequest, ListUserAgentsResponse, MarkNotificationReadRequest, MarkNotificationReadResponse, MarkReadRequest, MarkReadResponse, Message, OrchestratorRequest, OrchestratorResponse, OWLRequest, OWLResponse, OWLStatusRequest, OWLStatusResponse, PinChatRequest, PinChatResponse, PinMessageRequest, PinMessageResponse, PipelineRequest, PipelineResponse, ReactionRequest, ReactionResponse, RefreshTokenRequest, RefreshTokenResponse, RemoveContactRequest, RemoveContactResponse, RemoveFavoriteRequest, RemoveFavoriteResponse, RemoveFreeModelRequest, RemoveFreeModelResponse, RemoveParticipantRequest, RemoveParticipantResponse, RenameAIChatRequest, RenameAIChatResponse, RequestPasswordResetRequest, RequestPasswordResetResponse, ResetPasswordRequest, ResetPasswordResponse, RevokeDeviceRequest, SaveDraftRequest, SaveDraftResponse, SaveThemeRequest, SaveThemeResponse, SearchChatsRequest, SearchChatsResponse, ServerNotification, SetCurrentThemeRequest, SetCurrentThemeResponse, SetFreeModelRequest, SetFreeModelResponse, SetMutedChatRequest, SetMutedChatResponse, SignInRequest, SignInRequestV2, SignOutRequest, SignUpRequest, SignUpRequestV2, SubscribeNotificationsRequest, TokenRequest, TokenResponse, TypingRequest, TypingSignal, UnarchiveChatRequest, UnarchiveChatResponse, UnPinChatRequest, UnPinChatResponse, UnPinMessageRequest, UnPinMessageResponse, UpdateAgentRequest, UpdateAgentResponse, UpdateAIChatSettingsRequest, UpdateAIChatSettingsResponse, UpdateAvatarRequest, UpdateAvatarResponse, UpdateAvatarV2Request, UpdateAvatarV2Response, UpdateChatAvatarRequest, UpdateChatAvatarResponse, UpdateChatNameRequest, UpdateChatNameResponse, UpdateChatSettingsRequest, UpdateChatSettingsResponse, UpdateHermesSettingsRequest, UpdateHermesSettingsResponse, UpdateOwlSettingsRequest, UpdateOwlSettingsResponse, UpdatePasswordRequest, UpdatePasswordResponse, UpdateProfileRequest, UpdateProfileResponse, UpdateProfileV2Request, UpdateProfileV2Response, UpdateUsernameRequest, UpdateUsernameResponse, UpdateUserSettingsRequest, UpdateUserSettingsResponse } from "./messenger_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -490,6 +490,82 @@ export const ChatService = {
       kind: MethodKind.Unary,
     },
     /**
+     * ChatList v2
+     *
+     * @generated from rpc messenger.ChatService.PinChat
+     */
+    pinChat: {
+      name: "PinChat",
+      I: PinChatRequest,
+      O: PinChatResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc messenger.ChatService.UnPinChat
+     */
+    unPinChat: {
+      name: "UnPinChat",
+      I: UnPinChatRequest,
+      O: UnPinChatResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc messenger.ChatService.SearchChats
+     */
+    searchChats: {
+      name: "SearchChats",
+      I: SearchChatsRequest,
+      O: SearchChatsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc messenger.ChatService.ArchiveChat
+     */
+    archiveChat: {
+      name: "ArchiveChat",
+      I: ArchiveChatRequest,
+      O: ArchiveChatResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc messenger.ChatService.UnarchiveChat
+     */
+    unarchiveChat: {
+      name: "UnarchiveChat",
+      I: UnarchiveChatRequest,
+      O: UnarchiveChatResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * Pin Message
+     *
+     * @generated from rpc messenger.ChatService.PinMessage
+     */
+    pinMessage: {
+      name: "PinMessage",
+      I: PinMessageRequest,
+      O: PinMessageResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc messenger.ChatService.UnPinMessage
+     */
+    unPinMessage: {
+      name: "UnPinMessage",
+      I: UnPinMessageRequest,
+      O: UnPinMessageResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc messenger.ChatService.GetPinnedMessages
+     */
+    getPinnedMessages: {
+      name: "GetPinnedMessages",
+      I: GetPinnedMessagesRequest,
+      O: GetPinnedMessagesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
      * Secret Chats (E2EE)
      *
      * @generated from rpc messenger.ChatService.CreateSecretChat
@@ -961,6 +1037,69 @@ export const AuthService = {
       name: "RevokeDevice",
       I: RevokeDeviceRequest,
       O: AuthResponse,
+      kind: MethodKind.Unary,
+    },
+  }
+} as const;
+
+/**
+ * @generated from service messenger.ProfileService
+ */
+export const ProfileService = {
+  typeName: "messenger.ProfileService",
+  methods: {
+    /**
+     * @generated from rpc messenger.ProfileService.GetProfile
+     */
+    getProfile: {
+      name: "GetProfile",
+      I: GetProfileRequest,
+      O: GetProfileResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc messenger.ProfileService.UpdateProfile
+     */
+    updateProfile: {
+      name: "UpdateProfile",
+      I: UpdateProfileV2Request,
+      O: UpdateProfileV2Response,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc messenger.ProfileService.UpdateAvatar
+     */
+    updateAvatar: {
+      name: "UpdateAvatar",
+      I: UpdateAvatarV2Request,
+      O: UpdateAvatarV2Response,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc messenger.ProfileService.DeleteProfile
+     */
+    deleteProfile: {
+      name: "DeleteProfile",
+      I: DeleteProfileV2Request,
+      O: DeleteProfileV2Response,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc messenger.ProfileService.GetUserSettings
+     */
+    getUserSettings: {
+      name: "GetUserSettings",
+      I: GetUserSettingsRequest,
+      O: GetUserSettingsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc messenger.ProfileService.UpdateUserSettings
+     */
+    updateUserSettings: {
+      name: "UpdateUserSettings",
+      I: UpdateUserSettingsRequest,
+      O: UpdateUserSettingsResponse,
       kind: MethodKind.Unary,
     },
   }

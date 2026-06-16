@@ -130,6 +130,12 @@ const translations: Record<string, Record<Lang, string>> = {
   online: { en: 'online', ru: 'в сети' },
   offline: { en: 'offline', ru: 'не в сети' },
   retry: { en: 'Retrying... ({attempt}/3)', ru: 'Повторное подключение ({attempt}/3)...' },
+  noChats: { en: 'No chats yet', ru: 'Нет чатов' },
+  chat: { en: 'Chat', ru: 'Чат' },
+  loadingMessages: { en: 'Loading messages...', ru: 'Загрузка сообщений...' },
+  noMessages: { en: 'No messages yet. Write the first one!', ru: 'Нет сообщений. Напишите первое!' },
+  messageRead: { en: 'Read', ru: 'Прочитано' },
+  messageDelivered: { en: 'Delivered', ru: 'Доставлено' },
 }
 
 export function t(key: string, lang: Lang = 'ru', replacements?: Record<string, string | number>): string {

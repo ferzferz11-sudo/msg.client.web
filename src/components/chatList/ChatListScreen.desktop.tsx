@@ -11,6 +11,7 @@ import { ChatScreen } from '@/components/chat/ChatScreen'
 import { useChats } from '@/hooks/useChats'
 import { useChatStore } from '@/store/chatStore'
 import { useAuthStore } from '@/store/authStore'
+import { t } from '@/shared/types'
 
 interface ChatListScreenProps {
   onChatSelect: (chatId: string) => void
@@ -123,9 +124,9 @@ export function ChatListScreen({ onChatSelect, onLogout }: ChatListScreenProps) 
             }}
           >
             <div style={{ fontSize: 48 }}>💬</div>
-            <div style={{ fontSize: 18, fontWeight: 500 }}>Выберите чат</div>
+            <div style={{ fontSize: 18, fontWeight: 500 }}>{t('selectChat')}</div>
             <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.2)' }}>
-              Выберите чат из списка слева, чтобы начать общение
+              {t('selectChatHint')}
             </div>
           </div>
         )}
