@@ -1392,8 +1392,7 @@ class GrpcClient {
   // --- HTTP Methods ---
 
   async fetchServerInfo(): Promise<Record<string, string>> {
-    const baseUrl = import.meta.env.VITE_API_URL || '/messenger'
-    const response = await fetch(`${baseUrl}/info`)
+    const response = await fetch('/info')
     if (!response.ok) {
       throw new Error(`Failed to fetch server info: ${response.status}`)
     }
@@ -1403,8 +1402,7 @@ class GrpcClient {
 
   async checkHealth(): Promise<boolean> {
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || '/messenger'
-      const response = await fetch(`${baseUrl}/health`, {
+      const response = await fetch('/health', {
         method: 'GET',
         signal: AbortSignal.timeout(5000),
       })
