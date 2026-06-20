@@ -14,7 +14,14 @@ rsync -avz --delete -e ssh dist/ ${REMOTE_HOST}:${REMOTE_DIR}/dist/
 echo "==> Reloading nginx..."
 ssh ${REMOTE_HOST} "nginx -t && systemctl reload nginx"
 
-echo "==> Starting envoy container..."
-ssh ${REMOTE_HOST} "docker start envoy-grpc-web 2>/dev/null || echo 'envoy container not found, skipping'"
+echo "==> Restarting envoy container..."
+ssh ${REMOTE_HOST} "
+  sudo docker rm -f envoy-grpc-web 2>/dev/null || true
+  sudo docker run -d --name envoy-grpc-web --network host \
+    -v ${REMOTE_DIR}/envoy.yaml:/etc/envoy/envoy.yaml:ro \
+    envoyproxy/envoy:v1.31-latest
+  sleep 2
+  sudo docker logs envoy-grpc-web --tail 3 2>&1
+"
 
 echo "==> Done! https://13.140.25.249/web/"
