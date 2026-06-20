@@ -142,7 +142,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             marginBottom: 16,
           }}
         >
-          🦞
+          <img src="/logo.png" alt="Lava" style={{ width: 56, height: 56, borderRadius: 14 }} />
         </div>
 
         {/* App name */}

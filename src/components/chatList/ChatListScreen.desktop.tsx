@@ -94,7 +94,7 @@ export function ChatListScreen({ onChatSelect, onLogout }: ChatListScreenProps) 
           }}
         >
           <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>
-            🦞 Lava
+            <img src="/logo.png" alt="Lava" style={{ height: 28, width: 28, borderRadius: 6 }} /> Lava
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {user && (

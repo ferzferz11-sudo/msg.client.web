@@ -106,7 +106,7 @@ export const ChatService = {
      * @generated from rpc messenger.ChatService.GetChats
      */
     getChats: {
-      name: "GetChats",
+      name: "GetChatsV2",
       I: GetChatsRequest,
       O: GetChatsResponse,
       kind: MethodKind.Unary,

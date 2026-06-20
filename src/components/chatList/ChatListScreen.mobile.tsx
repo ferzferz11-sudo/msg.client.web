@@ -106,7 +106,7 @@ function ChatListHeader({ onSearch, onProfile, onArchive }: {
         Профиль
       </button>
       <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>
-        🦞 Лава
+        <img src="/logo.png" alt="Lava" style={{ height: 22, width: 22, borderRadius: 4 }} /> Лава
       </span>
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={onSearch} style={{
