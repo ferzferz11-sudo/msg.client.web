@@ -1,5 +1,45 @@
 # Changelog
 
+## v1.1.4 (2026-06-21)
+
+Hotfix: GetChatsV2 RPC name.
+
+### Исправления
+
+- **GetChatsV2**: вызывает `getChatsV2` вместо `getChats` (сервер не реализует GetChats)
+
+---
+
+## v1.1.3 (2026-06-21)
+
+AI v2 images, HTTP uploads, typing stream, secret chat E2EE.
+
+### AI v2
+
+- `chatWithAIV2`: base64→Uint8Array конвертация для images, обработка imageUrl из response
+- `AIMessage`: добавлено поле `imageUrl` для генерации изображений (Reve)
+
+### HTTP Uploads
+
+- `uploadAvatar(avatar, avatarFull?)` — загрузка аватара
+- `uploadImage(file)` — загрузка изображения
+- `uploadFile(file)` — загрузка файла
+- `uploadAudio(file)` — загрузка аудио
+- `uploadBackground(file)` — загрузка фона
+
+### Streams
+
+- `sendTyping(roomId, username, userId, isTyping)` — BiDi Typing stream
+- `callSession(messages)` — BiDi CallSession (WebRTC signaling)
+
+### Secret Chat (E2EE)
+
+- `createSecretChat(targetUsername, targetUserId, publicKey)` — создание секретного чата
+- `exchangeSecretKey(chatId, publicKey)` — обмен ключами
+- `getSecretChatKey(chatId)` — получение публичного ключа пира
+
+---
+
 ## v1.1.2 (2026-06-21)
 
 Синхронизация proto с сервером v1.3.0.18 + cursor pagination + AI v2 RPCs.
