@@ -612,7 +612,7 @@ class GrpcClient {
     if (!this.chatClient) throw new Error('Not connected')
     return withRetry(
       async () => {
-        const response = await this.chatClient.getChats({
+        const response = await this.chatClient.getChatsV2({
           userId,
           username: username || '',
           limit: options?.limit ?? 100,
