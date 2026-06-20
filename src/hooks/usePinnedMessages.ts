@@ -5,12 +5,14 @@
 import { useState, useCallback } from 'react'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useErrorStore } from '@/store/errorStore'
+import { useAuthStore } from '@/store/authStore'
 import type { Message } from '@/shared/types'
 
 export function usePinnedMessages(chatId: string) {
   const [pinnedMessages, setPinnedMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const addError = useErrorStore((s) => s.addError)
+  const user = useAuthStore((s) => s.user)
 
   const loadPinnedMessages = useCallback(async () => {
     if (!chatId) return
@@ -27,28 +29,28 @@ export function usePinnedMessages(chatId: string) {
   }, [chatId, addError])
 
   const pinMessage = useCallback(async (messageId: string) => {
-    if (!chatId) return false
+    if (!chatId || !user) return false
     try {
-      const success = await grpcClient.pinMessage(chatId, messageId)
+      const success = await grpcClient.pinMessage(user.id, chatId, messageId)
       if (success) await loadPinnedMessages()
       return success
     } catch (err) {
       addError({ message: 'Не удалось закрепить сообщение', type: 'network' })
       return false
     }
-  }, [chatId, loadPinnedMessages, addError])
+  }, [user, chatId, loadPinnedMessages, addError])
 
   const unpinMessage = useCallback(async (messageId: string) => {
-    if (!chatId) return false
+    if (!chatId || !user) return false
     try {
-      const success = await grpcClient.unPinMessage(chatId, messageId)
+      const success = await grpcClient.unPinMessage(user.id, chatId, messageId)
       if (success) await loadPinnedMessages()
       return success
     } catch (err) {
       addError({ message: 'Не удалось открепить сообщение', type: 'network' })
       return false
     }
-  }, [chatId, loadPinnedMessages, addError])
+  }, [user, chatId, loadPinnedMessages, addError])
 
   return {
     pinnedMessages,

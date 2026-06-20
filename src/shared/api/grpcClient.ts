@@ -880,15 +880,15 @@ class GrpcClient {
 
   // --- ChatList V2 Methods ---
 
-  async pinChat(chatId: string): Promise<boolean> {
+  async pinChat(userId: string, chatId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.pinChat({ chatId })
+    const result = await this.chatClient.pinChat({ userId, chatId })
     return result.success ?? false
   }
 
-  async unPinChat(chatId: string): Promise<boolean> {
+  async unPinChat(userId: string, chatId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.unPinChat({ chatId })
+    const result = await this.chatClient.unPinChat({ userId, chatId })
     return result.success ?? false
   }
 
@@ -898,15 +898,15 @@ class GrpcClient {
     return (result.chats || []).map(protoToChat)
   }
 
-  async archiveChat(chatId: string): Promise<boolean> {
+  async archiveChat(userId: string, chatId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.archiveChat({ chatId })
+    const result = await this.chatClient.archiveChat({ userId, chatId })
     return result.success ?? false
   }
 
-  async unarchiveChat(chatId: string): Promise<boolean> {
+  async unarchiveChat(userId: string, chatId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.unarchiveChat({ chatId })
+    const result = await this.chatClient.unarchiveChat({ userId, chatId })
     return result.success ?? false
   }
 
@@ -918,15 +918,15 @@ class GrpcClient {
 
   // --- Pin Message Methods ---
 
-  async pinMessage(chatId: string, messageId: string): Promise<boolean> {
+  async pinMessage(userId: string, chatId: string, messageId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.pinMessage({ chatId, messageId })
+    const result = await this.chatClient.pinMessage({ userId, chatId, messageId })
     return result.success ?? false
   }
 
-  async unPinMessage(chatId: string, messageId: string): Promise<boolean> {
+  async unPinMessage(userId: string, chatId: string, messageId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.unPinMessage({ chatId, messageId })
+    const result = await this.chatClient.unPinMessage({ userId, chatId, messageId })
     return result.success ?? false
   }
 
@@ -978,15 +978,18 @@ class GrpcClient {
 
   // --- Theme Methods ---
 
-  async getThemes(userId: string): Promise<CustomTheme[]> {
+  async getThemes(username: string, userId: string): Promise<{ currentThemeId: string; themes: CustomTheme[] }> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.getThemes({ userId })
-    return (result.themes || []).map(protoToTheme)
+    const result = await this.chatClient.getThemes({ username, userId })
+    return {
+      currentThemeId: result.currentThemeId ?? '',
+      themes: (result.customThemes || []).map(protoToTheme),
+    }
   }
 
-  async saveTheme(userId: string, name: string, colors: Partial<CustomTheme>): Promise<boolean> {
+  async saveTheme(username: string, userId: string, theme: Partial<CustomTheme>): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.saveTheme({ userId, name, colors })
+    const result = await this.chatClient.saveTheme({ username, theme: theme as any, userId })
     return result.success ?? false
   }
 
@@ -1069,15 +1072,15 @@ class GrpcClient {
     return result.success ?? false
   }
 
-  async addParticipant(chatId: string, userId: string, newParticipantId: string): Promise<boolean> {
+  async addParticipant(chatId: string, username: string, userId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.addParticipant({ chatId, userId, newParticipantId })
+    const result = await this.chatClient.addParticipant({ chatId, username, userId })
     return result.success ?? false
   }
 
-  async removeParticipant(chatId: string, userId: string, participantId: string): Promise<boolean> {
+  async removeParticipant(chatId: string, username: string, userId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.removeParticipant({ chatId, userId, participantId })
+    const result = await this.chatClient.removeParticipant({ chatId, username, userId })
     return result.success ?? false
   }
 
@@ -1386,9 +1389,9 @@ class GrpcClient {
     return result.success ?? false
   }
 
-  async getDevices(): Promise<any[]> {
-    if (!this.authClient) throw new Error('Not connected')
-    const result = await this.authClient.getDevices({})
+  async getDevices(userId: string): Promise<any[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getDevices({ userId })
     return result.devices || []
   }
 

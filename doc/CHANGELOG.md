@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.1.1 (2026-06-21)
+
+Исправления proto field mismatches + пагинация + автономный аудит.
+
+### Исправления gRPC (proto field mismatches)
+
+- **pinChat/unPinChat/archiveChat/unarchiveChat**: добавлен `userId` в запрос (сервер требует)
+- **pinMessage/unPinMessage**: добавлен `userId` в запрос
+- **addParticipant/removeParticipant**: исправлены имена полей — `chatId, username, userId` (было `chatId, userId, newParticipantId`)
+- **getDevices**: перенесён из `authClient` на `chatClient`, принимает `userId`
+- **getThemes**: возвращает `{ currentThemeId, themes }`, принимает `(username, userId)`, читает `result.customThemes`
+- **saveTheme**: принимает `(username, userId, theme)`, отправляет `{ username, theme, userId }`
+
+### Исправления хуков
+
+- **useChatListV2**: pinChat/unpinChat/archiveChat/unarchiveChat передают `user.id`
+- **useDevices**: передаёт `user.id` в `getDevices`
+- **usePinnedMessages**: передаёт `user.id` в pinMessage/unPinMessage
+- **useChatMessages.loadMore**: фильтрация дубликатов при пагинации
+
+---
+
 ## v1.1.0 (2026-06-20)
 
 Массовое исправление багов + Telegram Web UI + серверная интеграция.

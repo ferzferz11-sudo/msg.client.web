@@ -220,17 +220,21 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
       )
 
       if (olderMsgs.length > 0) {
-        prependMessages(chatId, olderMsgs)
-        oldestMessageIdRef.current = olderMsgs[0].id
+        const existingIds = new Set(messages.map((m) => m.id))
+        const newMsgs = olderMsgs.filter((m) => !existingIds.has(m.id))
+        if (newMsgs.length > 0) {
+          prependMessages(chatId, newMsgs)
+          oldestMessageIdRef.current = newMsgs[0].id
+        }
       }
 
-      setHasMore(more)
+      setHasMore(more && olderMsgs.length > 0)
     } catch (err) {
       console.error('Failed to load more messages:', err)
     } finally {
       setIsLoadingMore(false)
     }
-  }, [chatId, isLoadingMore, hasMore, prependMessages])
+  }, [chatId, isLoadingMore, hasMore, messages, prependMessages])
 
   // Send message
   const sendMessage = useCallback(

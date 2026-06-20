@@ -65,48 +65,52 @@ export function useChatListV2() {
   }, [loadChats, filter])
 
   const pinChat = useCallback(async (chatId: string) => {
+    if (!user) return false
     try {
-      const success = await grpcClient.pinChat(chatId)
+      const success = await grpcClient.pinChat(user.id, chatId)
       if (success) updateChat(chatId, { isPinned: true, pinnedAt: Date.now() })
       return success
     } catch (err) {
       addError({ message: 'Не удалось закрепить чат', type: 'network' })
       return false
     }
-  }, [updateChat, addError])
+  }, [user, updateChat, addError])
 
   const unpinChat = useCallback(async (chatId: string) => {
+    if (!user) return false
     try {
-      const success = await grpcClient.unPinChat(chatId)
+      const success = await grpcClient.unPinChat(user.id, chatId)
       if (success) updateChat(chatId, { isPinned: false, pinnedAt: 0 })
       return success
     } catch (err) {
       addError({ message: 'Не удалось открепить чат', type: 'network' })
       return false
     }
-  }, [updateChat, addError])
+  }, [user, updateChat, addError])
 
   const archiveChat = useCallback(async (chatId: string) => {
+    if (!user) return false
     try {
-      const success = await grpcClient.archiveChat(chatId)
+      const success = await grpcClient.archiveChat(user.id, chatId)
       if (success) updateChat(chatId, { isArchived: true })
       return success
     } catch (err) {
       addError({ message: 'Не удалось архивировать чат', type: 'network' })
       return false
     }
-  }, [updateChat, addError])
+  }, [user, updateChat, addError])
 
   const unarchiveChat = useCallback(async (chatId: string) => {
+    if (!user) return false
     try {
-      const success = await grpcClient.unarchiveChat(chatId)
+      const success = await grpcClient.unarchiveChat(user.id, chatId)
       if (success) updateChat(chatId, { isArchived: false })
       return success
     } catch (err) {
       addError({ message: 'Не удалось разархивировать чат', type: 'network' })
       return false
     }
-  }, [updateChat, addError])
+  }, [user, updateChat, addError])
 
   const setMutedChat = useCallback(async (chatId: string, muted: boolean) => {
     try {
