@@ -8,9 +8,10 @@ function isMobile(): boolean {
   return typeof window !== 'undefined' && window.innerWidth < 768
 }
 
-interface ChatScreenProps {
+export interface ChatScreenProps {
   chatId: string
   onBack: () => void
+  onPinnedClick?: () => void
 }
 
 function createLazyLoader(

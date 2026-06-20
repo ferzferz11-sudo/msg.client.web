@@ -2,6 +2,49 @@
 
 ---
 
+## v0.6.0 (2026-06-19) — Адаптация к серверу v1.2.0.7
+
+### Критические исправления
+
+- **AuthResponseV2** — исправлены имена полей: `expiresAt` вместо `accessExpiresAt`/`refreshExpiresAt`, `userId` вместо `user.user_id`
+- **SignInV2/SignUpV2 запрос** — исправлены поля device: `platform: 'web'` вместо `deviceType`, убран `clientVersion`
+- **AuthScreen** — убрана проверка `result.user` (сервер может не возвращать user объект)
+- **gRPC-web proxy** — добавлены все новые методы (ChatList V2, Pin Message, AI Chat, Notifications, Devices, Password, Profile)
+- **grpcClient** — поддержка snake_case и camelCase полей в ответах
+
+### Новые типы и интерфейсы
+
+- **Chat** — добавлены поля: `isPinned`, `isMuted`, `isArchived`, `pinnedAt`, `fullAvatarUrl`, `lastMessageUsername`, `lastMessageHasImage`, `allowMembersToAdd`, `isSecret`, `e2eeReady`
+- **protoToChat** — маппинг всех новых полей
+
+### Новые методы grpcClient
+
+- ChatList V2: `pinChat`, `unPinChat`, `searchChats`, `archiveChat`, `unarchiveChat`, `getChatListVersion`
+- Pin Message: `pinMessage`, `unPinMessage`, `getPinnedMessages`
+- AI Chat: `getAIChats`, `renameAIChat`
+- Notifications: `subscribeNotifications`, `getNotificationHistory`, `markNotificationsRead`, `getUnreadCount`
+- Devices: `deleteOtherDevices`, `getDevices`
+- Password: `requestPasswordReset`, `resetPassword`
+- Contacts: `getContacts`, `addContact`, `removeContact`
+- Profile: `deleteProfile`
+
+### Новые хуки
+
+- `useChatListV2`, `usePinnedMessages`, `useNotifications`, `useAIChats`, `useProfile`, `useContacts`, `useDevices`
+
+### Новые экраны (созданы, но не интегрированы в App.tsx)
+
+- ProfileScreen, SettingsScreen, ContactsScreen, SearchScreen, ArchiveScreen, PinnedMessagesScreen, AIChatsScreen, NotificationsScreen
+- Не интегрированы из-за проблемы с vite билдом (Screen lazy loading conflict)
+
+### Обновлённые компоненты
+
+- **ChatList.mobile** — показывает 📌 isPinned, 🔇 isMuted, 📷 lastMessageHasImage, lastMessageUsername
+- **ChatScreen.mobile** — кнопка 📌 Закреплённые, показ isMuted, isSecret/E2EE
+- **ChatListScreen.mobile** — кнопки Профиль, 🔍 Поиск, 📦 Архив
+
+---
+
 ## v0.5.0 (2026-06-16) — Фаза 8: Интеграция списка чатов и сообщений
 
 ### Новое: Реальные данные чатов и сообщений

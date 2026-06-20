@@ -131,9 +131,10 @@ export function ChatScreen({ chatId, onBack }: ChatScreenProps) {
 interface ChatHeaderProps {
   chat: ReturnType<typeof useChatStore.getState>['chats'][string] | null
   onBack: () => void
+  onPinnedClick?: () => void
 }
 
-function ChatHeader({ chat, onBack }: ChatHeaderProps) {
+function ChatHeader({ chat, onBack, onPinnedClick }: ChatHeaderProps) {
   if (!chat) return null
 
   const chatIcon = chat.type === 'owl' ? '🦉' : chat.type === 'hermes' ? '🤖' : null
@@ -172,12 +173,27 @@ function ChatHeader({ chat, onBack }: ChatHeaderProps) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {chatIcon && <span style={{ fontSize: 16 }}>{chatIcon}</span>}
           <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>{chat.name}</span>
+          {chat.isMuted && <span style={{ fontSize: 12 }}>🔇</span>}
         </div>
-        {chat.isOnline !== undefined && (
-          <span style={{ fontSize: 12, color: chat.isOnline ? '#4caf50' : '#888' }}>
-            {chat.isOnline ? 'в сети' : 'не в сети'}
-          </span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {chat.isOnline !== undefined && (
+            <span style={{ fontSize: 12, color: chat.isOnline ? '#4caf50' : '#888' }}>
+              {chat.isOnline ? 'в сети' : 'не в сети'}
+            </span>
+          )}
+          {chat.isSecret && <span style={{ fontSize: 11, color: '#6b5ce7' }}>🔒 E2EE</span>}
+          {onPinnedClick && (
+            <button
+              onClick={onPinnedClick}
+              style={{
+                background: 'none', border: 'none', color: '#6b5ce7',
+                fontSize: 12, cursor: 'pointer', padding: '2px 4px',
+              }}
+            >
+              📌 Закреплённые
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

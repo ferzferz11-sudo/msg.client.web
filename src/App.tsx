@@ -28,14 +28,12 @@ export default function App() {
 
   useIOSKeyboard()
 
-  // Register Service Worker for PWA
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {})
     }
   }, [])
 
-  // Handle navigation messages from Service Worker
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       const handleMessage = (event: MessageEvent) => {
@@ -51,7 +49,6 @@ export default function App() {
     }
   }, [])
 
-  // Restore session on mount
   useEffect(() => {
     const tokensStr = localStorage.getItem('auth_tokens')
     const userStr = localStorage.getItem('auth_user')
@@ -60,13 +57,10 @@ export default function App() {
       try {
         const tokens = JSON.parse(tokensStr)
         const user = JSON.parse(userStr)
-        // Check if refresh token is still valid
         const now = Math.floor(Date.now() / 1000)
         if (tokens.refreshExpiresAt > now) {
-          // Connect gRPC client with saved tokens
           const getTokens = () => useAuthStore.getState().tokens
           grpcClient.connect(undefined, getTokens)
-          // Restore session
           setTokens({
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
@@ -76,7 +70,6 @@ export default function App() {
           })
           setCurrentScreen('chatList')
         } else {
-          // Refresh token expired — clear session
           localStorage.removeItem('auth_tokens')
           localStorage.removeItem('auth_user')
         }
@@ -109,15 +102,11 @@ export default function App() {
     setActiveChatId(null)
   }, [])
 
-  // Show loading spinner while restoring session
   if (isLoading) {
     return (
       <div style={{
-        width: '100%',
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        width: '100%', height: '100vh',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: '#1a1a2e',
       }}>
         <div style={{ color: '#fff', fontSize: 18 }}>Загрузка...</div>
@@ -125,35 +114,25 @@ export default function App() {
     )
   }
 
-  // Show auth screen if not authenticated
   if (!isAuthenticated || currentScreen === 'auth') {
     return <AuthScreen onAuthSuccess={handleAuthSuccess} />
   }
 
-  // Desktop: ChatListScreen manages its own navigation (sidebar + main area)
   if (!isMobile()) {
     return (
       <div style={{
-        width: '100%',
-        height: '100vh',
-        overflow: 'hidden',
-        background: '#1a1a2e',
+        width: '100%', height: '100vh', overflow: 'hidden', background: '#1a1a2e',
       }}>
         <ChatListScreen onChatSelect={handleChatSelect} onLogout={handleLogout} />
       </div>
     )
   }
 
-  // Mobile: screen-based navigation
   return (
-    <div
-      style={{
-        width: '100%',
-        height: 'var(--viewport-available-height, 100dvh)',
-        overflow: 'hidden',
-        background: '#1a1a2e',
-      }}
-    >
+    <div style={{
+      width: '100%', height: 'var(--viewport-available-height, 100dvh)',
+      overflow: 'hidden', background: '#1a1a2e',
+    }}>
       {currentScreen === 'chatList' && (
         <div key="list" className="screen-enter" style={{ width: '100%', height: '100%' }}>
           <ChatListScreen onChatSelect={handleChatSelect} onLogout={handleLogout} />

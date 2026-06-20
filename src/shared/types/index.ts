@@ -15,6 +15,17 @@ export interface Chat {
   isOnline?: boolean
   activeAgentId?: string
   agentMode?: string
+  // ChatList v2 fields
+  isPinned?: boolean
+  isMuted?: boolean
+  isArchived?: boolean
+  pinnedAt?: number
+  fullAvatarUrl?: string
+  lastMessageUsername?: string
+  lastMessageHasImage?: boolean
+  allowMembersToAdd?: boolean
+  isSecret?: boolean
+  e2eeReady?: boolean
 }
 
 export interface Message {

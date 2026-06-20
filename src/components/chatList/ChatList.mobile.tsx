@@ -185,6 +185,7 @@ function ChatListItem({ chat, onChatClick }: ChatListItemProps) {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         cursor: 'pointer',
         WebkitTapHighlightColor: 'rgba(255,255,255,0.05)',
+        opacity: chat.isMuted ? 0.7 : 1,
       }}
     >
       {/* Avatar */}
@@ -222,15 +223,21 @@ function ChatListItem({ chat, onChatClick }: ChatListItemProps) {
       {/* Content */}
       <div style={{ flex: 1, marginLeft: 12, minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <span style={{ fontSize: 16, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {chat.name}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: 1 }}>
+            {chat.isPinned && <span style={{ fontSize: 12, flexShrink: 0 }}>📌</span>}
+            <span style={{ fontSize: 16, fontWeight: 600, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {chat.name}
+            </span>
+            {chat.isMuted && <span style={{ fontSize: 12, flexShrink: 0 }}>🔇</span>}
+          </div>
           <span style={{ fontSize: 12, color: chat.unreadCount > 0 ? '#6b5ce7' : '#888', flexShrink: 0, marginLeft: 8 }}>
             {formatTime(chat.lastMessageTime)}
           </span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 14, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+            {chat.lastMessageHasImage && <span style={{ marginRight: 4 }}>📷</span>}
+            {chat.lastMessageUsername && <span style={{ color: '#aaa' }}>{chat.lastMessageUsername}: </span>}
             {chat.lastMessageText || t('noMessages')}
           </span>
           {chat.unreadCount > 0 && (

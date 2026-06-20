@@ -154,6 +154,17 @@ function protoToChat(chat: any): Chat {
     isOnline: chat.isOnline || false,
     activeAgentId: chat.activeAgentId || '',
     agentMode: chat.agentMode || 'single',
+    // ChatList v2 fields
+    isPinned: chat.isPinned || false,
+    isMuted: chat.isMuted || false,
+    isArchived: chat.isArchived || false,
+    pinnedAt: chat.pinnedAt ? Number(chat.pinnedAt) : 0,
+    fullAvatarUrl: chat.fullAvatarUrl || '',
+    lastMessageUsername: chat.lastMessageUsername || '',
+    lastMessageHasImage: chat.lastMessageHasImage || false,
+    allowMembersToAdd: chat.allowMembersToAdd || false,
+    isSecret: chat.isSecret || false,
+    e2eeReady: chat.e2eeReady || false,
   }
 }
 
@@ -293,8 +304,8 @@ class GrpcClient {
     message: string
     accessToken: string
     refreshToken: string
-    accessExpiresAt: number
-    refreshExpiresAt: number
+    expiresAt: number
+    userId: string
     user: User
   }> {
     if (!this.authClient) throw new Error('Not connected')
@@ -308,9 +319,8 @@ class GrpcClient {
           device: {
             deviceId: deviceInfo.deviceId,
             deviceName: deviceInfo.deviceName,
-            deviceType: deviceInfo.deviceType,
+            platform: 'web',
           },
-          clientVersion: 'web-0.4.0',
         })
         if (!result || !result.success) {
           throw new Error(result?.message || 'Ошибка авторизации')
@@ -318,11 +328,11 @@ class GrpcClient {
         return {
           success: true,
           message: result.message ?? '',
-          accessToken: result.accessToken ?? '',
-          refreshToken: result.refreshToken ?? '',
-          accessExpiresAt: Number(result.accessExpiresAt ?? 0),
-          refreshExpiresAt: Number(result.refreshExpiresAt ?? 0),
-          user: result.user ? protoToUser(result.user) : { id: '', username, email: '', avatarUrl: '', bio: '', status: '', createdAt: '', lastSeenAt: '' },
+          accessToken: result.accessToken ?? result.access_token ?? '',
+          refreshToken: result.refreshToken ?? result.refresh_token ?? '',
+          expiresAt: Number(result.expiresAt ?? result.expires_at ?? 0),
+          userId: result.userId ?? result.user_id ?? '',
+          user: result.user ? protoToUser(result.user) : { id: result.userId ?? result.user_id ?? '', username, email: '', avatarUrl: '', bio: '', status: '', createdAt: '', lastSeenAt: '' },
         }
       },
       { maxRetries: 2, baseDelay: 1000 },
@@ -334,8 +344,8 @@ class GrpcClient {
     message: string
     accessToken: string
     refreshToken: string
-    accessExpiresAt: number
-    refreshExpiresAt: number
+    expiresAt: number
+    userId: string
     user: User
   }> {
     if (!this.authClient) throw new Error('Not connected')
@@ -350,9 +360,8 @@ class GrpcClient {
           device: {
             deviceId: deviceInfo.deviceId,
             deviceName: deviceInfo.deviceName,
-            deviceType: deviceInfo.deviceType,
+            platform: 'web',
           },
-          clientVersion: 'web-0.4.0',
         })
         if (!result || !result.success) {
           throw new Error(result?.message || 'Ошибка регистрации')
@@ -360,11 +369,11 @@ class GrpcClient {
         return {
           success: true,
           message: result.message ?? '',
-          accessToken: result.accessToken ?? '',
-          refreshToken: result.refreshToken ?? '',
-          accessExpiresAt: Number(result.accessExpiresAt ?? 0),
-          refreshExpiresAt: Number(result.refreshExpiresAt ?? 0),
-          user: result.user ? protoToUser(result.user) : { id: '', username, email, avatarUrl: '', bio: '', status: '', createdAt: '', lastSeenAt: '' },
+          accessToken: result.accessToken ?? result.access_token ?? '',
+          refreshToken: result.refreshToken ?? result.refresh_token ?? '',
+          expiresAt: Number(result.expiresAt ?? result.expires_at ?? 0),
+          userId: result.userId ?? result.user_id ?? '',
+          user: result.user ? protoToUser(result.user) : { id: result.userId ?? result.user_id ?? '', username, email, avatarUrl: '', bio: '', status: '', createdAt: '', lastSeenAt: '' },
         }
       },
       { maxRetries: 2, baseDelay: 1000 },
@@ -393,7 +402,7 @@ class GrpcClient {
 
   // --- ProfileService V2 Methods (JWT auth) ---
 
-  async getProfile(): Promise<User & { bio: string; status: string; locale: string; isSuperAdmin: boolean }> {
+  async getProfile(): Promise<User & { bio: string; status: string; locale: string; isSuperAdmin: boolean; fullAvatarUrl: string }> {
     if (!this.profileClient) throw new Error('Not connected')
     const result = await this.profileClient.getProfile({})
     return {
@@ -401,6 +410,7 @@ class GrpcClient {
       username: result.username || '',
       email: result.email || '',
       avatarUrl: result.avatarUrl || '',
+      fullAvatarUrl: result.fullAvatarUrl || '',
       bio: result.bio || '',
       status: result.status || '',
       locale: result.locale || 'ru',
@@ -449,11 +459,21 @@ class GrpcClient {
 
   // --- Chat Methods ---
 
-  async getChats(userId: string, username?: string): Promise<Chat[]> {
+  async getChats(userId: string, username?: string, options?: {
+    limit?: number
+    offset?: number
+    filter?: 'all' | 'pinned' | 'archived' | 'muted'
+  }): Promise<Chat[]> {
     if (!this.chatClient) throw new Error('Not connected')
     return withRetry(
       async () => {
-        const response = await this.chatClient.getChats({ userId, username: username || '' })
+        const response = await this.chatClient.getChatsV2({
+          userId,
+          username: username || '',
+          limit: options?.limit ?? 100,
+          offset: options?.offset ?? 0,
+          filter: options?.filter ?? 'all',
+        })
         return (response.chats || []).map(protoToChat)
       },
       { maxRetries: 3, baseDelay: 500 },
@@ -665,6 +685,170 @@ class GrpcClient {
       },
       { maxRetries: 2, baseDelay: 300 },
     )
+  }
+
+  // --- ChatList V2 Methods ---
+
+  async pinChat(chatId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.pinChat({ chatId })
+    return result.success ?? false
+  }
+
+  async unPinChat(chatId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.unPinChat({ chatId })
+    return result.success ?? false
+  }
+
+  async searchChats(query: string, limit = 50, offset = 0): Promise<Chat[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.searchChats({ query, limit, offset })
+    return (result.chats || []).map(protoToChat)
+  }
+
+  async archiveChat(chatId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.archiveChat({ chatId })
+    return result.success ?? false
+  }
+
+  async unarchiveChat(chatId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.unarchiveChat({ chatId })
+    return result.success ?? false
+  }
+
+  async getChatListVersion(): Promise<number> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getChatListVersion({})
+    return Number(result.version ?? 0)
+  }
+
+  // --- Pin Message Methods ---
+
+  async pinMessage(chatId: string, messageId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.pinMessage({ chatId, messageId })
+    return result.success ?? false
+  }
+
+  async unPinMessage(chatId: string, messageId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.unPinMessage({ chatId, messageId })
+    return result.success ?? false
+  }
+
+  async getPinnedMessages(chatId: string): Promise<Message[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getPinnedMessages({ chatId })
+    return (result.messages || []).map(protoToMessage)
+  }
+
+  // --- AI Chat Methods ---
+
+  async getAIChats(): Promise<Chat[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getAIChats({})
+    return (result.chats || []).map(protoToChat)
+  }
+
+  async renameAIChat(chatId: string, newName: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.renameAIChat({ chatId, newName })
+    return result.success ?? false
+  }
+
+  // --- Notification Methods ---
+
+  async subscribeNotifications(callback: (notification: any) => void): Promise<() => void> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const controller = new AbortController()
+    const stream = this.chatClient.subscribeNotifications({}, { signal: controller.signal })
+    ;(async () => {
+      try {
+        for await (const msg of stream) {
+          callback(msg)
+        }
+      } catch (err) {
+        // Stream ended or error
+      }
+    })()
+    return () => controller.abort()
+  }
+
+  async getNotificationHistory(limit = 50): Promise<any[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getNotificationHistory({ limit })
+    return result.notifications || []
+  }
+
+  async markNotificationsRead(notificationIds: string[]): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.markNotificationsRead({ notificationIds })
+    return result.success ?? false
+  }
+
+  async getUnreadCount(): Promise<number> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getUnreadCount({})
+    return Number(result.count ?? 0)
+  }
+
+  // --- Device Methods ---
+
+  async deleteOtherDevices(): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.deleteOtherDevices({})
+    return result.success ?? false
+  }
+
+  async getDevices(): Promise<any[]> {
+    if (!this.authClient) throw new Error('Not connected')
+    const result = await this.authClient.getDevices({})
+    return result.devices || []
+  }
+
+  // --- Password Methods ---
+
+  async requestPasswordReset(email: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.requestPasswordReset({ email })
+    return result.success ?? false
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.resetPassword({ token, newPassword })
+    return result.success ?? false
+  }
+
+  // --- Contact Methods ---
+
+  async getContacts(): Promise<any[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getContacts({})
+    return result.contacts || []
+  }
+
+  async addContact(userId: string, username: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.addContact({ userId, username })
+    return result.success ?? false
+  }
+
+  async removeContact(userId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.removeContact({ userId })
+    return result.success ?? false
+  }
+
+  // --- Delete Profile ---
+
+  async deleteProfile(): Promise<boolean> {
+    if (!this.profileClient) throw new Error('Not connected')
+    const result = await this.profileClient.deleteProfile({})
+    return result.success ?? false
   }
 }
 

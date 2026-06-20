@@ -9,9 +9,13 @@ import { useChatStore } from '@/store/chatStore'
 
 interface ChatListScreenProps {
   onChatSelect: (chatId: string) => void
+  onLogout?: () => void
+  onSearch?: () => void
+  onProfile?: () => void
+  onArchive?: () => void
 }
 
-export function ChatListScreen({ onChatSelect }: ChatListScreenProps) {
+export function ChatListScreen({ onChatSelect, onSearch, onProfile, onArchive }: ChatListScreenProps) {
   const { chats, isLoadingChats, openChat } = useChats()
   const setActiveChatId = useChatStore((s) => s.setActiveChatId)
 
@@ -22,7 +26,7 @@ export function ChatListScreen({ onChatSelect }: ChatListScreenProps) {
   }
 
   return (
-    <Screen header={<ChatListHeader />}>
+    <Screen header={<ChatListHeader onSearch={onSearch} onProfile={onProfile} onArchive={onArchive} />}>
       <ChatList
         chats={chats}
         isLoading={isLoadingChats}
@@ -34,7 +38,11 @@ export function ChatListScreen({ onChatSelect }: ChatListScreenProps) {
 
 // --- Header ---
 
-function ChatListHeader() {
+function ChatListHeader({ onSearch, onProfile, onArchive }: {
+  onSearch?: () => void
+  onProfile?: () => void
+  onArchive?: () => void
+}) {
   return (
     <div
       className="safe-top"
@@ -50,21 +58,27 @@ function ChatListHeader() {
         borderBottom: '1px solid rgba(255,255,255,0.08)',
       }}
     >
-      <span
-        style={{
-          fontSize: 13,
-          fontWeight: 600,
-          color: '#6b5ce7',
-          textTransform: 'uppercase',
-          letterSpacing: 0.5,
-        }}
-      >
-        Чаты
-      </span>
+      <button onClick={onProfile} style={{
+        color: '#6b5ce7', fontSize: 13, fontWeight: 600,
+        background: 'none', border: 'none', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: 0.5,
+      }}>
+        Профиль
+      </button>
       <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>
         🦞 Лава
       </span>
-      <div style={{ width: 40 }} /> {/* Spacer for balance */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button onClick={onSearch} style={{
+          color: '#6b5ce7', fontSize: 16, background: 'none', border: 'none', cursor: 'pointer',
+        }}>
+          🔍
+        </button>
+        <button onClick={onArchive} style={{
+          color: '#6b5ce7', fontSize: 16, background: 'none', border: 'none', cursor: 'pointer',
+        }}>
+          📦
+        </button>
+      </div>
     </div>
   )
 }

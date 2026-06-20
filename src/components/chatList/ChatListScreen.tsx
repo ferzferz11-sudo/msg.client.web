@@ -8,9 +8,12 @@ function isMobile(): boolean {
   return typeof window !== 'undefined' && window.innerWidth < 768
 }
 
-interface ChatListScreenProps {
+export interface ChatListScreenProps {
   onChatSelect: (chatId: string) => void
   onLogout?: () => void
+  onSearch?: () => void
+  onProfile?: () => void
+  onArchive?: () => void
 }
 
 function createLazyLoader(

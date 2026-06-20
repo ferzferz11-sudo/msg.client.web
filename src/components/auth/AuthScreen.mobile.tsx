@@ -58,12 +58,12 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         ? await grpcClient.signUpV2(username.trim(), password, email.trim())
         : await grpcClient.signInV2(username.trim(), password)
 
-      if (result.success && result.accessToken && result.user) {
+      if (result.success && result.accessToken) {
         setTokens({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
-          accessExpiresAt: result.accessExpiresAt,
-          refreshExpiresAt: result.refreshExpiresAt,
+          accessExpiresAt: result.expiresAt,
+          refreshExpiresAt: result.expiresAt,
           user: result.user,
         })
         onAuthSuccess()
