@@ -1117,7 +1117,12 @@ class GrpcClient {
     const request: any = {
       sessionId: params.sessionId || '',
       message: params.message,
-      images: params.images || [],
+      images: (params.images || []).map((b64) => {
+        const binary = atob(b64)
+        const bytes = new Uint8Array(binary.length)
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+        return bytes
+      }),
       agentId: params.agentId || '',
       toolCalls: params.toolCalls || [],
     }
@@ -1130,6 +1135,7 @@ class GrpcClient {
     let hasRagContext = false
     let modelUsed = ''
     let tokenCount = 0
+    let imageUrl = ''
 
     try {
       for await (const chunk of stream) {
@@ -1141,6 +1147,7 @@ class GrpcClient {
         if (chunk.hasRagContext) hasRagContext = chunk.hasRagContext
         if (chunk.modelUsed) modelUsed = chunk.modelUsed
         if (chunk.tokenCount) tokenCount = chunk.tokenCount
+        if (chunk.imageUrl) imageUrl = chunk.imageUrl
 
         if (chunk.error) {
           throw new Error(chunk.error)
@@ -1158,6 +1165,7 @@ class GrpcClient {
           hasRagContext,
           modelUsed,
           tokenCount,
+          imageUrl: imageUrl || undefined,
         }
 
         if (chunk.finished) break
@@ -1305,26 +1313,6 @@ class GrpcClient {
     }
   }
 
-  // --- Secret Chat Methods ---
-
-  async createSecretChat(userId: string, otherUserId: string): Promise<string> {
-    if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.createSecretChat({ userId, otherUserId })
-    return result.chatId || result.chat_id || ''
-  }
-
-  async exchangeSecretKey(chatId: string, userId: string, publicKey: string): Promise<boolean> {
-    if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.exchangeSecretKey({ chatId, userId, publicKey })
-    return result.success ?? false
-  }
-
-  async getSecretChatKey(chatId: string, userId: string): Promise<string> {
-    if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.getSecretChatKey({ chatId, userId })
-    return result.publicKey || result.public_key || ''
-  }
-
   // --- Bot Command Methods ---
 
   async processBotCommand(userId: string, command: string, args: string): Promise<string> {
@@ -1462,6 +1450,119 @@ class GrpcClient {
     } catch {
       return false
     }
+  }
+
+  // --- Upload Methods ---
+
+  private async uploadFile(endpoint: string, fieldName: string, file: File): Promise<string> {
+    const tokens = this._getTokens?.()
+    const formData = new FormData()
+    formData.append(fieldName, file)
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tokens?.accessToken || ''}` },
+      body: formData,
+    })
+    if (!response.ok) throw new Error(`Upload failed: ${response.status}`)
+    const data = await response.json()
+    return data.url || ''
+  }
+
+  async uploadAvatar(avatar: File, avatarFull?: File): Promise<{ avatarUrl: string; fullAvatarUrl: string }> {
+    const tokens = this._getTokens?.()
+    const formData = new FormData()
+    formData.append('avatar', avatar)
+    if (avatarFull) formData.append('avatar_full', avatarFull)
+    const response = await fetch('/upload-avatar', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${tokens?.accessToken || ''}` },
+      body: formData,
+    })
+    if (!response.ok) throw new Error(`Avatar upload failed: ${response.status}`)
+    const data = await response.json()
+    return { avatarUrl: data.url || '', fullAvatarUrl: data.full_url || data.url || '' }
+  }
+
+  async uploadImage(file: File): Promise<string> {
+    return this.uploadFile('/upload-image', 'image', file)
+  }
+
+  async uploadFile_(file: File): Promise<string> {
+    return this.uploadFile('/upload-file', 'file', file)
+  }
+
+  async uploadAudio(file: File): Promise<string> {
+    return this.uploadFile('/upload-audio', 'audio', file)
+  }
+
+  async uploadBackground(file: File): Promise<string> {
+    return this.uploadFile('/upload-background', 'background', file)
+  }
+
+  // --- Typing Stream ---
+
+  async *sendTyping(roomId: string, username: string, userId: string, isTyping: boolean): AsyncGenerator<{ roomId: string; username: string; isTyping: boolean }> {
+    if (!this.chatClient) throw new Error('Not connected')
+
+    const controller = new AbortController()
+    const inputStream = {
+      [Symbol.asyncIterator]() {
+        let sent = false
+        return {
+          next(): Promise<IteratorResult<any>> {
+            if (!sent) {
+              sent = true
+              return Promise.resolve({ value: { roomId, username, isTyping, userId }, done: false })
+            }
+            return new Promise<IteratorResult<any>>(() => {})
+          },
+        }
+      },
+    }
+
+    const stream = this.chatClient.typing(inputStream, { signal: controller.signal })
+    try {
+      for await (const signal of stream) {
+        yield { roomId: signal.roomId, username: signal.username, isTyping: signal.isTyping }
+      }
+    } finally {
+      controller.abort()
+    }
+  }
+
+  // --- Call Session (WebRTC Signaling) ---
+
+  async *callSession(messages: AsyncIterable<any>): AsyncGenerator<any> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const stream = this.chatClient.callSession(messages)
+    for await (const msg of stream) {
+      yield msg
+    }
+  }
+
+  // --- Secret Chat (E2EE) ---
+
+  async createSecretChat(targetUsername: string, targetUserId: string, publicKey: string): Promise<string> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.createSecretChat({
+      targetUsername,
+      targetUserId,
+      publicKey,
+      clientVersion: '1.1.2',
+    })
+    return result.chatId ?? ''
+  }
+
+  async exchangeSecretKey(chatId: string, publicKey: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.exchangeSecretKey({ chatId, publicKey })
+    return result.success ?? false
+  }
+
+  async getSecretChatKey(chatId: string): Promise<string> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getSecretChatKey({ chatId })
+    return result.peerPublicKey ?? ''
   }
 }
 

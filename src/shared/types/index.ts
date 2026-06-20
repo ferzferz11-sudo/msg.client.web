@@ -130,6 +130,7 @@ export interface AIMessage {
   toolCalls?: AIToolCall[]
   toolResults?: AIToolResult[]
   hasRagContext?: boolean
+  imageUrl?: string
   timestamp: number
   isStreaming?: boolean
 }

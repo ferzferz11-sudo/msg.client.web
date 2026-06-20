@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.1.2 (2026-06-21)
+
+Синхронизация proto с сервером v1.3.0.18 + cursor pagination + AI v2 RPCs.
+
+### Proto sync (messenger.proto v1.3.0.18)
+
+- **GetChatsV2**: cursor-based pagination (`cursor` field, `nextCursor`, `hasMore` в ответе)
+- **AI v2 RPCs**: chatWithAIV2, createAIAgent, updateAIAgent, deleteAIAgent, getAIAgent, listAIAgents, cloneAIAgent, listAITools, rateAIAgent, getAIAgentReviews, listMarketplaceAgents, getAIAgentStats, shareAIAgent, installAIAgent, getAIUsageStats — все 15 RPCs теперь в proto
+- **ChatWithAIV2Request**: `images` (repeated bytes), `toolCalls` (ToolCallV2[])
+- **ChatWithAIV2Response**: `agentId`, `agentName`, `toolCalls`, `hasRagContext`, `modelUsed`, `tokenCount`, `imageUrl`
+- **UserInfo**: добавлены `userId` (field 6) и `isSuperAdmin` (field 7)
+- **Drafts**: поле `draftText` (was `text`) в SaveDraftRequest/GetDraftResponse
+- **SetCurrentTheme**: добавлено `username` в запрос
+
+### Исправления
+
+- `grpcClient.saveDraft`: поле `draftText` вместо `text`
+- `grpcClient.getChats`: возврат `{ chats, nextCursor, hasMore }` вместо `Chat[]`
+- `grpcClient.setCurrentTheme`: добавлен параметр `username`
+- `protoToDraft`: чтение `draftText` вместо `text`
+- `useChatListV2`: cursor-based пагинация
+- `useChats`: деструктуризация `result.chats`
+
+---
+
 ## v1.1.1 (2026-06-21)
 
 Исправления proto field mismatches + пагинация + автономный аудит.
