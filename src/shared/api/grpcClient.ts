@@ -437,7 +437,8 @@ class GrpcClient {
     message: string
     accessToken: string
     refreshToken: string
-    expiresAt: number
+    accessExpiresAt: number
+    refreshExpiresAt: number
     userId: string
     user: User
   }> {
@@ -463,7 +464,8 @@ class GrpcClient {
           message: result.message ?? '',
           accessToken: result.accessToken ?? result.access_token ?? '',
           refreshToken: result.refreshToken ?? result.refresh_token ?? '',
-          expiresAt: Number(result.expiresAt ?? result.expires_at ?? 0),
+          accessExpiresAt: Number(result.accessExpiresAt ?? result.access_expires_at ?? 0),
+          refreshExpiresAt: Number(result.refreshExpiresAt ?? result.refresh_expires_at ?? 0),
           userId: result.userId ?? result.user_id ?? '',
           user: result.user ? protoToUser(result.user) : { id: result.userId ?? result.user_id ?? '', username, email: '', avatarUrl: '', bio: '', status: '', createdAt: '', lastSeenAt: '' },
         }
@@ -477,7 +479,8 @@ class GrpcClient {
     message: string
     accessToken: string
     refreshToken: string
-    expiresAt: number
+    accessExpiresAt: number
+    refreshExpiresAt: number
     userId: string
     user: User
   }> {
@@ -504,7 +507,8 @@ class GrpcClient {
           message: result.message ?? '',
           accessToken: result.accessToken ?? result.access_token ?? '',
           refreshToken: result.refreshToken ?? result.refresh_token ?? '',
-          expiresAt: Number(result.expiresAt ?? result.expires_at ?? 0),
+          accessExpiresAt: Number(result.accessExpiresAt ?? result.access_expires_at ?? 0),
+          refreshExpiresAt: Number(result.refreshExpiresAt ?? result.refresh_expires_at ?? 0),
           userId: result.userId ?? result.user_id ?? '',
           user: result.user ? protoToUser(result.user) : { id: result.userId ?? result.user_id ?? '', username, email, avatarUrl: '', bio: '', status: '', createdAt: '', lastSeenAt: '' },
         }

@@ -62,8 +62,8 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         setTokens({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
-          accessExpiresAt: result.expiresAt,
-          refreshExpiresAt: result.expiresAt,
+          accessExpiresAt: result.accessExpiresAt,
+          refreshExpiresAt: result.refreshExpiresAt,
           user: result.user,
         })
         onAuthSuccess()

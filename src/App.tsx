@@ -96,8 +96,7 @@ export default function App() {
 
   const checkServerHealth = useCallback(async () => {
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || '/messenger'
-      const response = await fetch(`${baseUrl}/health`, {
+      const response = await fetch('/health', {
         method: 'GET',
         signal: AbortSignal.timeout(5000),
       })
