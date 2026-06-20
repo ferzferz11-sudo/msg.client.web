@@ -331,6 +331,55 @@ const translations: Record<string, Record<Lang, string>> = {
   noMessages: { en: 'No messages yet. Write the first one!', ru: 'Нет сообщений. Напишите первое!' },
   messageRead: { en: 'Read', ru: 'Прочитано' },
   messageDelivered: { en: 'Delivered', ru: 'Доставлено' },
+  // Chat
+  reaction: { en: 'Reaction', ru: 'Реакция' },
+  reply: { en: 'Reply', ru: 'Ответить' },
+  edit: { en: 'Edit', ru: 'Редактировать' },
+  delete: { en: 'Delete', ru: 'Удалить' },
+  cancel: { en: 'Cancel', ru: 'Отмена' },
+  selected: { en: 'selected', ru: 'выбрано' },
+  editing: { en: 'Editing', ru: 'Редактирование' },
+  editingMessage: { en: 'Edit message...', ru: 'Редактировать сообщение...' },
+  replyTo: { en: 'Reply to {user}', ru: 'Ответ: {user}' },
+  // Settings
+  settings: { en: 'Settings', ru: 'Настройки' },
+  username: { en: 'Username', ru: 'Имя пользователя' },
+  changeUsername: { en: 'Change username', ru: 'Сменить имя пользователя' },
+  changePassword: { en: 'Change password', ru: 'Сменить пароль' },
+  currentPassword: { en: 'Current password', ru: 'Текущий пароль' },
+  newPassword: { en: 'New password', ru: 'Новый пароль' },
+  save: { en: 'Save', ru: 'Сохранить' },
+  deleteAccount: { en: 'Delete account', ru: 'Удалить аккаунт' },
+  deleteAccountConfirm: { en: 'This action is irreversible. All data will be deleted.', ru: 'Это действие необратимо. Все данные будут удалены.' },
+  dangerZone: { en: 'Danger Zone', ru: 'Опасная зона' },
+  language: { en: 'Language', ru: 'Язык' },
+  devices: { en: 'Devices', ru: 'Устройства' },
+  version: { en: 'Version', ru: 'Версия' },
+  // Contacts
+  contacts: { en: 'Contacts', ru: 'Контакты' },
+  directory: { en: 'Directory', ru: 'Каталог' },
+  searchUsers: { en: 'Search users...', ru: 'Поиск пользователей...' },
+  addContact: { en: 'Add contact', ru: 'Добавить контакт' },
+  removeContact: { en: 'Remove contact', ru: 'Удалить контакт' },
+  // Search
+  searchChats: { en: 'Search chats...', ru: 'Поиск чатов...' },
+  // Notifications
+  notifications: { en: 'Notifications', ru: 'Уведомления' },
+  noNotifications: { en: 'No notifications', ru: 'Нет уведомлений' },
+  // Archive
+  archive: { en: 'Archive', ru: 'Архив' },
+  noArchivedChats: { en: 'No archived chats', ru: 'Нет архивированных чатов' },
+  // Pinned
+  pinnedMessages: { en: 'Pinned Messages', ru: 'Закреплённые сообщения' },
+  noPinnedMessages: { en: 'No pinned messages', ru: 'Нет закреплённых сообщений' },
+  // General
+  back: { en: 'Back', ru: 'Назад' },
+  search: { en: 'Search', ru: 'Поиск' },
+  more: { en: 'More', ru: 'Ещё' },
+  attachFile: { en: 'Attach file', ru: 'Прикрепить файл' },
+  send: { en: 'Send', ru: 'Отправить' },
+  networkError: { en: 'No internet connection', ru: 'Нет подключения к интернету' },
+  sessionExpired: { en: 'Session expired. Please sign in again.', ru: 'Сессия истекла. Войдите снова.' },
 }
 
 export function t(key: string, lang: Lang = 'ru', replacements?: Record<string, string | number>): string {

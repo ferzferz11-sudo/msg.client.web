@@ -1,8 +1,5 @@
 import React, { Suspense, lazy } from 'react'
-
-function isMobile(): boolean {
-  return typeof window !== 'undefined' && window.innerWidth < 768
-}
+import { isMobile } from '@/shared/utils'
 
 export interface AIChatsScreenProps {
   onBack: () => void

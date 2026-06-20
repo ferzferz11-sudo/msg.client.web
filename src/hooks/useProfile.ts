@@ -132,9 +132,9 @@ export function useProfile() {
     }
   }, [profile, addError])
 
-  const deleteProfile = useCallback(async (_password?: string) => {
+  const deleteProfile = useCallback(async (password?: string) => {
     try {
-      const success = await grpcClient.deleteProfile()
+      const success = await grpcClient.deleteProfile(password)
       if (success) {
         useAuthStore.getState().logout()
       }

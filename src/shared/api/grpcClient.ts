@@ -141,7 +141,8 @@ function createAuthInterceptor(
             useAuthStore.getState().updateAccessToken(newTokens)
             req.header.set('Authorization', `Bearer ${newTokens.accessToken}`)
           }
-        } catch {
+        } catch (err) {
+          console.error('[Auth] Token refresh failed:', err)
           useAuthStore.getState().logout()
           useErrorStore.getState().addError({
             message: 'Сессия истекла. Войдите снова.',
@@ -331,7 +332,14 @@ function handleChatMessage(msg: any, callback: StreamCallback): void {
   if (text.startsWith('CHAT_DELETED:')) return
   if (text === 'REGISTRATION_SUCCESS') return
   if (text === 'USER_NOT_FOUND') return
-  if (text === 'SERVER_SHUTTINGDOWN') return
+  if (text === 'SERVER_SHUTTINGDOWN') {
+    callback({ type: 'error', error: 'SERVER_SHUTTINGDOWN' })
+    return
+  }
+  if (text.startsWith('FORCE_DISCONNECT:')) {
+    callback({ type: 'error', error: text })
+    return
+  }
   callback({ type: 'message', message: protoToMessage(msg) })
 }
 
@@ -711,7 +719,19 @@ class GrpcClient {
             }
             if (!authSent && jwtToken) {
               authSent = true
-              return Promise.resolve({ value: { jwtToken, roomId }, done: false })
+              const deviceInfo = getDeviceInfo()
+              const userId = useAuthStore.getState().user?.id || ''
+              return Promise.resolve({
+                value: {
+                  jwtToken,
+                  roomId,
+                  userId,
+                  clientVersion: '1.0.0',
+                  deviceId: deviceInfo.deviceId,
+                  deviceName: deviceInfo.deviceName,
+                },
+                done: false,
+              })
             }
             return new Promise<IteratorResult<any>>((resolve) => {
               sendResolve = resolve
@@ -755,7 +775,12 @@ class GrpcClient {
   // --- Send Message via ephemeral BiDi stream ---
   // Opens a new Chat stream, sends auth + message, waits for the echoed response, then closes.
 
-  async sendMessage(roomId: string, content: string, userId: string): Promise<Message> {
+  async sendMessage(
+    roomId: string,
+    content: string,
+    userId: string,
+    replyTo?: { messageId: string; user: string; text: string },
+  ): Promise<Message> {
     if (!this.chatClient) throw new Error('Not connected')
 
     return withRetry(
@@ -781,10 +806,24 @@ class GrpcClient {
         const controller = new AbortController()
         const stream = this.chatClient.chat(inputStream, { signal: controller.signal })
 
-        sendQueue.push({ jwtToken, roomId })
+        const deviceInfo = getDeviceInfo()
+        sendQueue.push({
+          jwtToken,
+          roomId,
+          userId,
+          clientVersion: '1.0.0',
+          deviceId: deviceInfo.deviceId,
+          deviceName: deviceInfo.deviceName,
+        })
 
         const localId = `local-${Date.now()}`
-        sendQueue.push({ roomId, text: content, userId, id: localId })
+        const msg: any = { roomId, text: content, userId, id: localId }
+        if (replyTo) {
+          msg.repliedToMessageId = replyTo.messageId
+          msg.repliedToUser = replyTo.user
+          msg.repliedToText = replyTo.text
+        }
+        sendQueue.push(msg)
 
         let savedMessage: Message | null = null
 
@@ -821,21 +860,21 @@ class GrpcClient {
 
   // --- Message Operations ---
 
-  async setReaction(messageId: string, roomId: string, userId: string, emoji: string): Promise<boolean> {
+  async setReaction(messageId: string, _roomId: string, userId: string, emoji: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.setReaction({ messageId, roomId, userId, emoji })
+    const result = await this.chatClient.setReaction({ messageId, reaction: { user: userId, emoji } })
     return result.success ?? false
   }
 
-  async deleteMessages(messageIds: string[], roomId: string, userId: string): Promise<boolean> {
+  async deleteMessages(messageIds: string[], _roomId: string, userId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.deleteMessages({ messageIds, roomId, userId })
+    const result = await this.chatClient.deleteMessages({ messages: messageIds.map((id) => ({ id })), requesterUsername: userId })
     return result.success ?? false
   }
 
-  async editMessage(messageId: string, roomId: string, userId: string, newText: string): Promise<boolean> {
+  async editMessage(messageId: string, _roomId: string, _userId: string, newText: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.editMessage({ messageId, roomId, userId, newText })
+    const result = await this.chatClient.editMessage({ messageId, text: newText })
     return result.success ?? false
   }
 
@@ -1196,7 +1235,7 @@ class GrpcClient {
 
   async listAITools(): Promise<ToolInfoV2[]> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.listAIAgents({})
+    const result = await this.chatClient.listAITools({})
     return (result.tools || []).map(protoToToolInfo)
   }
 
@@ -1312,8 +1351,10 @@ class GrpcClient {
         for await (const msg of stream) {
           callback(protoToNotification(msg))
         }
-      } catch {
-        // Stream ended or error
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          console.warn('[Notifications] Stream ended:', err)
+        }
       }
     })()
     return () => controller.abort()
@@ -1367,7 +1408,7 @@ class GrpcClient {
 
   // --- Contact Methods ---
 
-  async getContacts(): Promise<any[]> {
+  async getContacts(): Promise<string[]> {
     if (!this.chatClient) throw new Error('Not connected')
     const result = await this.chatClient.getContacts({})
     return result.contacts || []
@@ -1375,21 +1416,21 @@ class GrpcClient {
 
   async addContact(userId: string, username: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.addContact({ userId, username })
+    const result = await this.chatClient.addContact({ username: userId, contactUsername: username, userId })
     return result.success ?? false
   }
 
   async removeContact(userId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.removeContact({ userId })
+    const result = await this.chatClient.removeContact({ contactUsername: userId })
     return result.success ?? false
   }
 
   // --- Delete Profile ---
 
-  async deleteProfile(): Promise<boolean> {
+  async deleteProfile(password?: string): Promise<boolean> {
     if (!this.profileClient) throw new Error('Not connected')
-    const result = await this.profileClient.deleteProfile({})
+    const result = await this.profileClient.deleteProfile({ password: password || '' })
     return result.success ?? false
   }
 

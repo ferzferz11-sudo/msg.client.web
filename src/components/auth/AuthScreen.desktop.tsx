@@ -77,6 +77,22 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         {lang === 'ru' ? 'EN' : 'RU'}
       </button>
 
+      {/* Logo */}
+      <div
+        style={{
+          width: 80,
+          height: 80,
+          borderRadius: 20,
+          background: 'linear-gradient(135deg, #6b5ce7, #8b7cf7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 16px',
+        }}
+      >
+        <img src="/logo.png" alt="Lavender" style={{ width: 56, height: 56, borderRadius: 14 }} />
+      </div>
+
       <h2 style={{ color: '#fff', marginBottom: 8 }}>{t('appName', lang)}</h2>
       <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 32 }}>
         {isSignUp ? t('signupTitle', lang) : t('loginTitle', lang)}

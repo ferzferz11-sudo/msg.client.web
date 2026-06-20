@@ -9,13 +9,10 @@ import { AuthScreen } from '@/components/auth/AuthScreen'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
 import { useAuthStore } from '@/store/authStore'
+import { isMobile } from '@/shared/utils'
 import '@/styles/global.css'
 
 type Screen = 'auth' | 'chatList' | 'chat'
-
-function isMobile(): boolean {
-  return typeof window !== 'undefined' && window.innerWidth < 768
-}
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth')
@@ -33,7 +30,9 @@ export default function App() {
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {})
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch((err) => {
+        console.warn('[SW] Registration failed:', err)
+      })
     }
   }, [])
 

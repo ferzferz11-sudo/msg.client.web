@@ -151,7 +151,8 @@ export function useChatListV2() {
       const version = await grpcClient.getChatListVersion()
       setChatListVersion(version)
       return version
-    } catch {
+    } catch (err) {
+      console.warn('[ChatList] Failed to get version:', err)
       return 0
     }
   }, [])

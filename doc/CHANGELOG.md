@@ -1,6 +1,47 @@
 # Changelog
 
-## v1.0.0 (2026-06-20)
+## v1.1.0 (2026-06-20)
+
+Массовое исправление багов + Telegram Web UI + серверная интеграция.
+
+### Исправления gRPC (критические)
+
+- **setReaction**: исправлены поля запроса — `reaction: { user, emoji }` вместо плоских полей
+- **deleteMessages**: исправлен формат — `messages: [{ id }], requesterUsername`
+- **editMessage**: исправлен формат — `messageId, text` (без лишних `roomId`/`userId`)
+- **listAITools**: вызывал `listAIAgents` — теперь вызывает `listAITools`
+- **getContacts**: возвращает `string[]` (usernames), useContacts резолвит в `Contact[]`
+- **addContact/removeContact**: исправлены поля под proto (`contactUsername`, `username`)
+- **deleteProfile**: передаёт пароль в `DeleteProfileV2Request` (сервер требует)
+- **sendMessage**: поддержка reply — `repliedToMessageId/User/Text`
+- **Chat stream auth**: добавлены `userId`, `deviceId`, `deviceName` в первое сообщение
+- **SERVER_SHUTTINGDOWN**: теперь эмитит событие для UI вместо тихого игнора
+
+### Исправления хуков
+
+- **useChatMessages**: `editMessage`/`deleteMessages`/`toggleReaction` вызывают бэкенд gRPC
+- **useChats**: `createNewChat` резолвит `user2Id` через `getUserId` (был хардкод `'user-2-id'`)
+- **usePushNotifications**: реальный userId из `authStore` (был хардкод `'user-1'`)
+- **useProfile**: пароль передаётся в `deleteProfile`
+- **chatStore.setChats**: не затирает загруженные сообщения при обновлении списка чатов
+
+### Telegram Web UI
+
+- **Chat (desktop + mobile)**: тёмная тема Telegram — цвета `#0E1621`/`#17212B`/`#2B5278`/`#182533`
+- Пузыри сообщений: мои справа, чужие слева, скругления как в Telegram
+- Read receipts: SVG иконки ✓/✓✓ в стиле Telegram
+- Контекстные меню и reaction picker в стиле Telegram
+- Заголовок чата: круглый аватар, имя, статус онлайн/typing
+- Область ввода: скруглённое поле, кнопка скрепки, кнопка отправки/голоса
+- Логотип добавлен на экран логина (desktop)
+
+### Технический долг
+
+- `isMobile()` вынесен в `shared/utils.ts`, удалено 7 дублей
+- Пустые `catch` — добавлено логирование в 5 критических мест (auth refresh, notifications, SW)
+- Локализация: 40+ ключей translations, заменены хардкоды в ChatScreen
+- Удалены мёртвые стабы `src/gen/`
+- Исправлен redundant ternary в AuthScreen.mobile
 
 Полная переработка клиента под сервер Lavender v1.3.0.15.
 

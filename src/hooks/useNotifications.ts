@@ -64,8 +64,8 @@ export function useNotifications() {
     try {
       const count = await grpcClient.getUnreadCount()
       setUnreadCount(count)
-    } catch {
-      // silent
+    } catch (err) {
+      console.warn('[Notifications] Failed to refresh unread count:', err)
     }
   }, [])
 

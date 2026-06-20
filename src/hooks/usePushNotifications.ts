@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { grpcClient } from '@/shared/api/grpcClient'
+import { useAuthStore } from '@/store/authStore'
 
 // --- Types ---
 
@@ -159,8 +160,9 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
       // Step 5: Register token with backend via gRPC
       // Uses ChatService.RegisterToken from messenger.proto
+      const userId = useAuthStore.getState().user?.id || ''
       await grpcClient.registerPushToken(
-        'user-1',
+        userId,
         subscriptionInfo.endpoint,
         true // pushEnabled
       )

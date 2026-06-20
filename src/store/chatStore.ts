@@ -64,19 +64,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setChats: (chats) => {
     const chatMap: Record<string, Chat> = {}
-    const msgMap: Record<string, Message> = {}
-    const chatMsgMap: Record<string, string[]> = {}
 
     for (const chat of chats) {
       chatMap[chat.id] = chat
-      chatMsgMap[chat.id] = []
     }
 
-    set((state) => ({
-      chats: { ...state.chats, ...chatMap },
-      messages: { ...state.messages, ...msgMap },
-      chatMessages: { ...state.chatMessages, ...chatMsgMap },
-    }))
+    set((state) => {
+      const newChatMessages = { ...state.chatMessages }
+      for (const chat of chats) {
+        if (!(chat.id in newChatMessages)) {
+          newChatMessages[chat.id] = []
+        }
+      }
+      return {
+        chats: { ...state.chats, ...chatMap },
+        chatMessages: newChatMessages,
+      }
+    })
   },
 
   addChat: (chat) => {

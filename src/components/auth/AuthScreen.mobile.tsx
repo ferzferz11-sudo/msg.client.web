@@ -68,7 +68,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         })
         onAuthSuccess()
       } else {
-        setError(result.message || (isSignUp ? t('authError', lang) : t('authError', lang)))
+        setError(result.message || t('authError', lang))
       }
     } catch (err: any) {
       setError(err.message || t('connectionError', lang))

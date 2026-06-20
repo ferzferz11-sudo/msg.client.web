@@ -240,19 +240,24 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
       setSendingMessage(true)
       clearDraft()
       try {
+        const replyTo = replyToMessage
+          ? { messageId: replyToMessage.id, user: replyToMessage.user, text: replyToMessage.text }
+          : undefined
         const message = await grpcClient.sendMessage(
           chatId,
           content.trim(),
-          userIdRef.current
+          userIdRef.current,
+          replyTo,
         )
         addMessage(message)
+        setReplyToMessage(null)
       } catch (err) {
         console.error('Failed to send message:', err)
       } finally {
         setSendingMessage(false)
       }
     },
-    [chatId, addMessage, setSendingMessage, clearDraft]
+    [chatId, addMessage, setSendingMessage, clearDraft, replyToMessage, setReplyToMessage]
   )
 
   // Edit message
@@ -260,7 +265,10 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     async (messageId: string, newText: string) => {
       if (!chatId || !newText.trim()) return
       try {
-        updateMessage(messageId, { text: newText })
+        const success = await grpcClient.editMessage(messageId, chatId, userIdRef.current, newText)
+        if (success) {
+          updateMessage(messageId, { text: newText, isEdited: true })
+        }
         setEditingMessageId(null)
         setEditingText('')
       } catch (err) {
@@ -275,8 +283,11 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     async (messageIds: string[]) => {
       if (!chatId || messageIds.length === 0) return
       try {
-        for (const id of messageIds) {
-          removeMessageFromChat(chatId, id)
+        const success = await grpcClient.deleteMessages(messageIds, chatId, userIdRef.current)
+        if (success) {
+          for (const id of messageIds) {
+            removeMessageFromChat(chatId, id)
+          }
         }
         setSelectedMessages([])
         setIsSelecting(false)
@@ -287,26 +298,17 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     [chatId, removeMessageFromChat]
   )
 
-  // Toggle reaction
+  // Toggle reaction — server upserts, broadcast updates all clients
   const toggleReaction = useCallback(
     async (messageId: string, emoji: string) => {
-      const msg = useChatStore.getState().messages[messageId]
-      if (!msg) return
-      const reactions = msg.reactions || {}
-      const current = reactions[emoji] || []
-      const username = user?.username || ''
-      const updated = current.includes(username)
-        ? current.filter((u: string) => u !== username)
-        : [...current, username]
-      const newReactions = { ...reactions }
-      if (updated.length === 0) {
-        delete newReactions[emoji]
-      } else {
-        newReactions[emoji] = updated
+      if (!chatId || !user?.username) return
+      try {
+        await grpcClient.setReaction(messageId, chatId, userIdRef.current, emoji)
+      } catch (err) {
+        console.error('Failed to set reaction:', err)
       }
-      updateMessage(messageId, { reactions: newReactions })
     },
-    [user, updateMessage]
+    [chatId, user]
   )
 
   // Selection helpers

@@ -28,8 +28,23 @@ export function useContacts() {
   const loadContacts = useCallback(async () => {
     setIsLoading(true)
     try {
-      const result = await grpcClient.getContacts()
-      setContacts(result)
+      const usernames = await grpcClient.getContacts()
+      const allUsers = await grpcClient.getAllUsers()
+      const userMap = new Map(allUsers.map((u) => [u.username, u]))
+      const resolved: Contact[] = usernames.map((name) => {
+        const u = userMap.get(name)
+        return {
+          id: u?.id || '',
+          username: name,
+          email: u?.email || '',
+          avatarUrl: u?.avatarUrl || '',
+          bio: u?.bio || '',
+          status: u?.status || '',
+          isOnline: false,
+          createdAt: u?.createdAt || '',
+        }
+      })
+      setContacts(resolved)
     } catch (err) {
       console.error('Failed to load contacts:', err)
     } finally {
