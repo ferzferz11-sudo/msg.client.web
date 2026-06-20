@@ -37,6 +37,7 @@ interface ChatState {
   addMessage: (message: Message) => void
   updateMessage: (messageId: string, updates: Partial<Message>) => void
   prependMessages: (chatId: string, messages: Message[]) => void
+  removeMessage: (chatId: string, messageId: string) => void
 
   // Actions — Loading
   setLoadingChats: (loading: boolean) => void
@@ -204,6 +205,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
         chatMessages: {
           ...state.chatMessages,
           [chatId]: [...uniqueNewIds, ...existingIds],
+        },
+      }
+    })
+  },
+
+  removeMessage: (chatId, messageId) => {
+    set((state) => {
+      const { [messageId]: _removed, ...restMessages } = state.messages
+      const existingIds = state.chatMessages[chatId] || []
+      return {
+        messages: restMessages,
+        chatMessages: {
+          ...state.chatMessages,
+          [chatId]: existingIds.filter((id) => id !== messageId),
         },
       }
     })

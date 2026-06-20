@@ -1,16 +1,11 @@
-// ============================================
-// ChatListScreen — Desktop (Sidebar + Main Area)
-// ============================================
-// Two-panel layout: chat list on the left,
-// selected chat or placeholder on the right.
-// ============================================
-
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { ChatList } from '@/components/chatList/ChatList'
 import { ChatScreen } from '@/components/chat/ChatScreen'
 import { useChats } from '@/hooks/useChats'
+import { useChatListV2 } from '@/hooks/useChatListV2'
 import { useChatStore } from '@/store/chatStore'
 import { useAuthStore } from '@/store/authStore'
+import { grpcClient } from '@/shared/api/grpcClient'
 import { t } from '@/shared/types'
 
 interface ChatListScreenProps {
@@ -21,8 +16,42 @@ interface ChatListScreenProps {
 export function ChatListScreen({ onChatSelect, onLogout }: ChatListScreenProps) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const { chats, isLoadingChats, openChat } = useChats()
+  const { pinChat, unpinChat, archiveChat, setMutedChat, deleteChat } = useChatListV2()
   const setActiveChatIdInStore = useChatStore((s) => s.setActiveChatId)
+  const updateChat = useChatStore((s) => s.updateChat)
   const user = useAuthStore((s) => s.user)
+  const [typingChats, setTypingChats] = useState<Record<string, boolean>>({})
+  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  const handleTypingEvent = useCallback((event: { type: string; chatId?: string; userId?: string; isTyping?: boolean }) => {
+    if (event.type !== 'typing' || !event.chatId) return
+    if (event.userId === user?.id) return
+    const chatId = event.chatId
+    const timerMap = typingTimersRef.current
+
+    if (timerMap.has(chatId)) {
+      clearTimeout(timerMap.get(chatId)!)
+      timerMap.delete(chatId)
+    }
+
+    setTypingChats((prev) => ({ ...prev, [chatId]: event.isTyping || false }))
+
+    if (event.isTyping) {
+      const timer = setTimeout(() => {
+        setTypingChats((prev) => ({ ...prev, [chatId]: false }))
+        timerMap.delete(chatId)
+      }, 3000)
+      timerMap.set(chatId, timer)
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    const cleanup = grpcClient.openReceiveStream('__global_typing__', handleTypingEvent)
+    return () => {
+      cleanup()
+      typingTimersRef.current.forEach((t) => clearTimeout(t))
+    }
+  }, [handleTypingEvent])
 
   const handleChatClick = useCallback((chatId: string) => {
     openChat(chatId)
@@ -35,9 +64,12 @@ export function ChatListScreen({ onChatSelect, onLogout }: ChatListScreenProps) 
     setActiveChatId(null)
   }, [])
 
+  const handleMarkRead = useCallback((chatId: string) => {
+    updateChat(chatId, { unreadCount: 0 })
+  }, [updateChat])
+
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      {/* Sidebar — Chat List */}
       <div
         style={{
           width: 320,
@@ -50,7 +82,6 @@ export function ChatListScreen({ onChatSelect, onLogout }: ChatListScreenProps) 
           overflow: 'hidden',
         }}
       >
-        {/* Sidebar Header */}
         <div
           style={{
             display: 'flex',
@@ -96,18 +127,26 @@ export function ChatListScreen({ onChatSelect, onLogout }: ChatListScreenProps) 
           </div>
         </div>
 
-        {/* Chat List */}
         <div style={{ flex: 1, overflow: 'hidden' }}>
           <ChatList
             chats={chats}
             isLoading={isLoadingChats}
             onChatClick={handleChatClick}
             activeChatId={activeChatId}
+            typingChats={typingChats}
+            onPin={pinChat}
+            onUnpin={unpinChat}
+            onArchive={archiveChat}
+            onMute={(chatId) => {
+              const chat = chats.find((c) => c.id === chatId)
+              if (chat) setMutedChat(chatId, !chat.isMuted)
+            }}
+            onDelete={deleteChat}
+            onMarkRead={handleMarkRead}
           />
         </div>
       </div>
 
-      {/* Main Area — Chat or Placeholder */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#1a1a2e' }}>
         {activeChatId ? (
           <ChatScreen chatId={activeChatId} onBack={handleBack} />

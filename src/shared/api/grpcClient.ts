@@ -13,7 +13,25 @@
 
 import { createClient, type Transport } from '@connectrpc/connect'
 import { createGrpcWebTransport } from '@connectrpc/connect-web'
-import type { Chat, Message, StreamCallback, User, TokenPair, DeviceInfo } from '@/shared/types'
+import type {
+  Chat,
+  Message,
+  StreamCallback,
+  User,
+  TokenPair,
+  DeviceInfo,
+  Draft,
+  CustomTheme,
+  UserProfile,
+  AgentInfoV2,
+  ToolInfoV2,
+  AgentReviewInfo,
+  UsageStatInfo,
+  ServerNotification,
+  FreeModelInfo,
+  AIMessage,
+  AIToolResult,
+} from '@/shared/types'
 import { useAuthStore } from '@/store/authStore'
 import { useErrorStore } from '@/store/errorStore'
 import { AuthService, ChatService, ProfileService } from './gen/proto/messenger_connect'
@@ -154,7 +172,6 @@ function protoToChat(chat: any): Chat {
     isOnline: chat.isOnline || false,
     activeAgentId: chat.activeAgentId || '',
     agentMode: chat.agentMode || 'single',
-    // ChatList v2 fields
     isPinned: chat.isPinned || false,
     isMuted: chat.isMuted || false,
     isArchived: chat.isArchived || false,
@@ -181,24 +198,140 @@ function protoToMessage(msg: any): Message {
     repliedToUser: msg.repliedToUser || '',
     repliedToText: msg.repliedToText || '',
     agentId: msg.agentId || '',
+    reactions: (msg.reactions || []).map((r: any) => ({ user: r.user || '', emoji: r.emoji || '' })),
+    imageUrl: msg.imageUrl || '',
+    imageUrls: msg.imageUrls || [],
+    isEdited: msg.edited || false,
+    userId: msg.userId || '',
+    voiceUrl: msg.voiceUrl || '',
+    duration: msg.duration || 0,
+  }
+}
+
+function protoToAgentInfoV2(a: any): AgentInfoV2 {
+  return {
+    id: a.id || '',
+    name: a.name || '',
+    description: a.description || '',
+    providerType: a.providerType || a.provider_type || '',
+    model: a.model || '',
+    systemPrompt: a.systemPrompt || a.system_prompt || '',
+    toolsEnabled: a.toolsEnabled || a.tools_enabled || false,
+    ragEnabled: a.ragEnabled || a.rag_enabled || false,
+    isPreset: a.isPreset || a.is_preset || false,
+    isPublic: a.isPublic || a.is_public || false,
+    maxTokens: a.maxTokens || a.max_tokens || 0,
+    temperature: a.temperature || 0,
+    createdBy: a.createdBy || a.created_by || '',
+    capabilities: a.capabilities || { supportsImages: false, supportsTools: false, supportsStreaming: false, maxTokens: 0 },
+    installCount: a.installCount || a.install_count || 0,
+    avgRating: a.avgRating || a.avg_rating || 0,
+    reviewCount: a.reviewCount || a.review_count || 0,
+    tags: a.tags || [],
+    originalAgentId: a.originalAgentId || a.original_agent_id || '',
+    version: a.version || '',
+    shareCode: a.shareCode || a.share_code || '',
+    emoji: a.emoji || '',
+  }
+}
+
+function protoToNotification(n: any): ServerNotification {
+  return {
+    id: n.id || '',
+    type: n.type || '',
+    title: n.title || '',
+    message: n.message || '',
+    timestamp: n.timestamp?.toDate?.()?.toISOString() || new Date().toISOString(),
+    metadata: n.metadata || {},
+    isRead: n.isRead || n.is_read || false,
+  }
+}
+
+function protoToFreeModel(m: any): FreeModelInfo {
+  return {
+    modelId: m.modelId || m.model_id || '',
+    displayName: m.displayName || m.display_name || '',
+    sortOrder: m.sortOrder || m.sort_order || 0,
+  }
+}
+
+function protoToReview(r: any): AgentReviewInfo {
+  return {
+    id: r.id || '',
+    agentId: r.agentId || r.agent_id || '',
+    userId: r.userId || r.user_id || '',
+    username: r.username || '',
+    rating: r.rating || 0,
+    review: r.review || '',
+    createdAt: r.createdAt?.toDate?.()?.toISOString() || '',
+  }
+}
+
+function protoToUsageStat(s: any): UsageStatInfo {
+  return {
+    agentId: s.agentId || s.agent_id || '',
+    agentName: s.agentName || s.agent_name || '',
+    tokenCount: s.tokenCount || s.token_count || 0,
+    requestCount: s.requestCount || s.request_count || 0,
+    lastUsed: s.lastUsed?.toDate?.()?.toISOString() || '',
+  }
+}
+
+function protoToToolInfo(t: any): ToolInfoV2 {
+  return {
+    name: t.name || '',
+    description: t.description || '',
+    parametersSchema: t.parametersSchema || t.parameters_schema || '',
+    requiredRole: t.requiredRole || t.required_role || '',
+  }
+}
+
+function protoToDraft(d: any): Draft {
+  return {
+    text: d.text || '',
+    repliedToMessageId: d.repliedToMessageId || '',
+    repliedToUser: d.repliedToUser || '',
+    repliedToText: d.repliedToText || '',
+    hasDraft: d.text ? d.text.length > 0 : false,
+  }
+}
+
+function protoToTheme(t: any): CustomTheme {
+  return {
+    id: t.id || '',
+    name: t.name || '',
+    primaryColor: t.primaryColor || t.primary_color || '',
+    onPrimaryColor: t.onPrimaryColor || t.on_primary_color || '',
+    surfaceColor: t.surfaceColor || t.surface_color || '',
+    onSurfaceColor: t.onSurfaceColor || t.on_surface_color || '',
+    backgroundColor: t.backgroundColor || t.background_color || '',
+    textPrimaryColor: t.textPrimaryColor || t.text_primary_color || '',
+    textSecondaryColor: t.textSecondaryColor || t.text_secondary_color || '',
+    isDark: t.isDark || t.is_dark || false,
+    chatBackgroundImageUrl: t.chatBackgroundImageUrl || t.chat_background_image_url || '',
+    chatListBackgroundImageUrl: t.chatListBackgroundImageUrl || t.chat_list_background_image_url || '',
+    bottomPanelColor: t.bottomPanelColor || t.bottom_panel_color || '',
+    onBottomPanelColor: t.onBottomPanelColor || t.on_bottom_panel_color || '',
+    surfaceContainer: t.surfaceContainer || t.surface_container || '',
+    outgoingBubbleColor: t.outgoingBubbleColor || t.outgoing_bubble_color || '',
+    incomingBubbleColor: t.incomingBubbleColor || t.incoming_bubble_color || '',
+    outgoingTextColor: t.outgoingTextColor || t.outgoing_text_color || '',
+    incomingTextColor: t.incomingTextColor || t.incoming_text_color || '',
   }
 }
 
 function handleChatMessage(msg: any, callback: StreamCallback): void {
   if (!msg || !msg.user) return
   const text = msg.text || ''
-  if (
-    text.startsWith('SERVER_INFO:') ||
-    text === 'AUTH_FAILED' ||
-    text.startsWith('DEPRECATED:') ||
-    text === 'SET_SUPER_ADMIN' ||
-    text.startsWith('CLEAR_CACHE:') ||
-    text.startsWith('CHAT_DELETED:') ||
-    text === 'REGISTRATION_SUCCESS' ||
-    text === 'USER_NOT_FOUND'
-  ) {
-    return
-  }
+  if (text.startsWith('SERVER_INFO:')) return
+  if (text === 'AUTH_FAILED') return
+  if (text.startsWith('DEPRECATED:')) return
+  if (text === 'SET_SUPER_ADMIN') return
+  if (text.startsWith('CLEAR_CACHE:')) return
+  if (text.startsWith('CHAT_DELETED:')) return
+  if (text === 'REGISTRATION_SUCCESS') return
+  if (text === 'USER_NOT_FOUND') return
+  if (text === 'SERVER_SHUTTINGDOWN') return
   callback({ type: 'message', message: protoToMessage(msg) })
 }
 
@@ -576,7 +709,6 @@ class GrpcClient {
               authSent = true
               return Promise.resolve({ value: { jwtToken, roomId }, done: false })
             }
-            // Keep stream open, waiting for close
             return new Promise<IteratorResult<any>>((resolve) => {
               sendResolve = resolve
             })
@@ -636,7 +768,6 @@ class GrpcClient {
                 if (sendQueue.length > 0) {
                   return Promise.resolve({ value: sendQueue.shift()!, done: false })
                 }
-                // No more items — keep waiting (stream stays open until abort)
                 return new Promise<IteratorResult<any>>(() => {})
               },
             }
@@ -646,14 +777,11 @@ class GrpcClient {
         const controller = new AbortController()
         const stream = this.chatClient.chat(inputStream, { signal: controller.signal })
 
-        // Push auth message — the stream's next() will pick it up
         sendQueue.push({ jwtToken, roomId })
 
-        // Push the actual message
         const localId = `local-${Date.now()}`
         sendQueue.push({ roomId, text: content, userId, id: localId })
 
-        // Wait for the echoed message from server
         let savedMessage: Message | null = null
 
         try {
@@ -685,6 +813,26 @@ class GrpcClient {
       },
       { maxRetries: 2, baseDelay: 300 },
     )
+  }
+
+  // --- Message Operations ---
+
+  async setReaction(messageId: string, roomId: string, userId: string, emoji: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.setReaction({ messageId, roomId, userId, emoji })
+    return result.success ?? false
+  }
+
+  async deleteMessages(messageIds: string[], roomId: string, userId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.deleteMessages({ messageIds, roomId, userId })
+    return result.success ?? false
+  }
+
+  async editMessage(messageId: string, roomId: string, userId: string, newText: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.editMessage({ messageId, roomId, userId, newText })
+    return result.success ?? false
   }
 
   // --- ChatList V2 Methods ---
@@ -745,6 +893,151 @@ class GrpcClient {
     return (result.messages || []).map(protoToMessage)
   }
 
+  // --- Draft Methods ---
+
+  async saveDraft(userId: string, roomId: string, text: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.saveDraft({ userId, roomId, text })
+    return result.success ?? false
+  }
+
+  async getDraft(userId: string, roomId: string): Promise<Draft> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getDraft({ userId, roomId })
+    return protoToDraft(result)
+  }
+
+  async deleteDraft(userId: string, roomId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.deleteDraft({ userId, roomId })
+    return result.success ?? false
+  }
+
+  // --- Favorite Methods ---
+
+  async addFavorite(userId: string, messageId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.addFavorite({ userId, messageId })
+    return result.success ?? false
+  }
+
+  async removeFavorite(userId: string, messageId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.removeFavorite({ userId, messageId })
+    return result.success ?? false
+  }
+
+  async getFavorites(userId: string): Promise<Message[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getFavorites({ userId })
+    return (result.messages || []).map(protoToMessage)
+  }
+
+  // --- Theme Methods ---
+
+  async getThemes(userId: string): Promise<CustomTheme[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getThemes({ userId })
+    return (result.themes || []).map(protoToTheme)
+  }
+
+  async saveTheme(userId: string, name: string, colors: Partial<CustomTheme>): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.saveTheme({ userId, name, colors })
+    return result.success ?? false
+  }
+
+  async setCurrentTheme(userId: string, themeId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.setCurrentTheme({ userId, themeId })
+    return result.success ?? false
+  }
+
+  async deleteTheme(userId: string, themeId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.deleteTheme({ userId, themeId })
+    return result.success ?? false
+  }
+
+  // --- Muted Methods ---
+
+  async getMutedChats(userId: string): Promise<string[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getMutedChats({ userId })
+    return result.roomIds || result.room_ids || []
+  }
+
+  async setMutedChat(userId: string, roomId: string, muted: boolean): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.setMutedChat({ userId, roomId, muted })
+    return result.success ?? false
+  }
+
+  // --- User Methods ---
+
+  async getAllUsers(): Promise<User[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getAllUsers({})
+    return (result.users || []).map(protoToUser)
+  }
+
+  async getUserProfile(userIdOrUsername: string): Promise<UserProfile> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getUserProfile({ userId: userIdOrUsername })
+    return {
+      username: result.username || '',
+      bio: result.bio || '',
+      status: result.status || '',
+      avatarUrl: result.avatarUrl || result.avatar_url || '',
+      lastSeenAt: result.lastSeenAt?.toDate?.()?.toISOString() || '',
+      fullAvatarUrl: result.fullAvatarUrl || result.full_avatar_url || '',
+    }
+  }
+
+  async getUserId(username: string): Promise<string> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getUserId({ username })
+    return result.userId || result.user_id || ''
+  }
+
+  async updateUsername(userId: string, newUsername: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.updateUsername({ userId, newUsername })
+    return result.success ?? false
+  }
+
+  async updatePassword(userId: string, oldPassword: string, newPassword: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.updatePassword({ userId, oldPassword, newPassword })
+    return result.success ?? false
+  }
+
+  // --- Chat Management Methods ---
+
+  async updateChatName(chatId: string, userId: string, newName: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.updateChatName({ chatId, userId, newName })
+    return result.success ?? false
+  }
+
+  async updateChatAvatar(chatId: string, userId: string, avatarUrl: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.updateChatAvatar({ chatId, userId, avatarUrl })
+    return result.success ?? false
+  }
+
+  async addParticipant(chatId: string, userId: string, newParticipantId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.addParticipant({ chatId, userId, newParticipantId })
+    return result.success ?? false
+  }
+
+  async removeParticipant(chatId: string, userId: string, participantId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.removeParticipant({ chatId, userId, participantId })
+    return result.success ?? false
+  }
+
   // --- AI Chat Methods ---
 
   async getAIChats(): Promise<Chat[]> {
@@ -759,28 +1052,273 @@ class GrpcClient {
     return result.success ?? false
   }
 
+  // --- AI V2 Methods ---
+
+  async *chatWithAIV2(params: {
+    sessionId?: string
+    message: string
+    images?: string[]
+    agentId?: string
+    toolCalls?: AIToolResult[]
+  }): AsyncGenerator<AIMessage> {
+    if (!this.chatClient) throw new Error('Not connected')
+
+    const controller = new AbortController()
+    const request: any = {
+      sessionId: params.sessionId || '',
+      message: params.message,
+      images: params.images || [],
+      agentId: params.agentId || '',
+      toolCalls: params.toolCalls || [],
+    }
+
+    const stream = this.chatClient.chatWithAIV2(request, { signal: controller.signal })
+
+    let fullContent = ''
+    let agentId = ''
+    let agentName = ''
+    let hasRagContext = false
+    let modelUsed = ''
+    let tokenCount = 0
+
+    try {
+      for await (const chunk of stream) {
+        if (controller.signal.aborted) break
+
+        if (chunk.token) fullContent += chunk.token
+        if (chunk.agentId) agentId = chunk.agentId
+        if (chunk.agentName) agentName = chunk.agentName
+        if (chunk.hasRagContext) hasRagContext = chunk.hasRagContext
+        if (chunk.modelUsed) modelUsed = chunk.modelUsed
+        if (chunk.tokenCount) tokenCount = chunk.tokenCount
+
+        if (chunk.error) {
+          throw new Error(chunk.error)
+        }
+
+        yield {
+          id: `ai-${Date.now()}`,
+          role: 'assistant',
+          content: fullContent,
+          agentId,
+          agentName,
+          timestamp: Date.now(),
+          isStreaming: !chunk.finished,
+          toolCalls: chunk.toolCalls || undefined,
+          hasRagContext,
+          modelUsed,
+          tokenCount,
+        }
+
+        if (chunk.finished) break
+      }
+    } catch (err) {
+      if (!controller.signal.aborted) {
+        throw err
+      }
+    } finally {
+      controller.abort()
+    }
+  }
+
+  async getAIAgent(agentId: string): Promise<AgentInfoV2> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getAIAgent({ agentId })
+    return protoToAgentInfoV2(result.agent || result)
+  }
+
+  async listAIAgents(includePublic = true): Promise<AgentInfoV2[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.listAIAgents({ includePublic })
+    return (result.agents || []).map(protoToAgentInfoV2)
+  }
+
+  async createAIAgent(params: {
+    name: string
+    description?: string
+    providerType?: string
+    model?: string
+    systemPrompt?: string
+    toolsEnabled?: boolean
+    ragEnabled?: boolean
+    maxTokens?: number
+    temperature?: number
+    tags?: string[]
+  }): Promise<string> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.createAIAgent({
+      name: params.name,
+      description: params.description || '',
+      providerType: params.providerType || '',
+      model: params.model || '',
+      systemPrompt: params.systemPrompt || '',
+      toolsEnabled: params.toolsEnabled ?? false,
+      ragEnabled: params.ragEnabled ?? false,
+      maxTokens: params.maxTokens || 0,
+      temperature: params.temperature || 0,
+      tags: params.tags || [],
+    })
+    return result.agentId || result.agent_id || ''
+  }
+
+  async updateAIAgent(agentId: string, updates: Partial<{
+    name: string
+    description: string
+    providerType: string
+    model: string
+    systemPrompt: string
+    toolsEnabled: boolean
+    ragEnabled: boolean
+    maxTokens: number
+    temperature: number
+    tags: string[]
+  }>): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.updateAIAgent({ agentId, ...updates })
+    return result.success ?? false
+  }
+
+  async deleteAIAgent(agentId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.deleteAIAgent({ agentId })
+    return result.success ?? false
+  }
+
+  async cloneAIAgent(agentId: string, newName: string): Promise<string> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.cloneAIAgent({ agentId, newName })
+    return result.agentId || result.agent_id || ''
+  }
+
+  async listAITools(): Promise<ToolInfoV2[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.listAIAgents({})
+    return (result.tools || []).map(protoToToolInfo)
+  }
+
+  // --- AI Marketplace Methods ---
+
+  async listMarketplaceAgents(query = '', limit = 50, offset = 0): Promise<{ agents: AgentInfoV2[]; total: number }> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.listMarketplaceAgents({ query, limit, offset })
+    return {
+      agents: (result.agents || []).map(protoToAgentInfoV2),
+      total: result.total || 0,
+    }
+  }
+
+  async rateAIAgent(agentId: string, rating: number, review: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.rateAIAgent({ agentId, rating, review })
+    return result.success ?? false
+  }
+
+  async getAIAgentReviews(agentId: string): Promise<AgentReviewInfo[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getAIAgentReviews({ agentId })
+    return (result.reviews || []).map(protoToReview)
+  }
+
+  async getAIAgentStats(agentId: string): Promise<{
+    installCount: number
+    avgRating: number
+    reviewCount: number
+  }> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getAIAgentStats({ agentId })
+    return {
+      installCount: result.installCount || result.install_count || 0,
+      avgRating: result.avgRating || result.avg_rating || 0,
+      reviewCount: result.reviewCount || result.review_count || 0,
+    }
+  }
+
+  async shareAIAgent(agentId: string): Promise<string> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.shareAIAgent({ agentId })
+    return result.shareCode || result.share_code || ''
+  }
+
+  async installAIAgent(shareCode: string): Promise<string> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.installAIAgent({ shareCode })
+    return result.agentId || result.agent_id || ''
+  }
+
+  async getAIUsageStats(): Promise<{ stats: UsageStatInfo[]; totalTokens: number; totalRequests: number }> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getAIUsageStats({})
+    return {
+      stats: (result.stats || []).map(protoToUsageStat),
+      totalTokens: result.totalTokens || result.total_tokens || 0,
+      totalRequests: result.totalRequests || result.total_requests || 0,
+    }
+  }
+
+  // --- Secret Chat Methods ---
+
+  async createSecretChat(userId: string, otherUserId: string): Promise<string> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.createSecretChat({ userId, otherUserId })
+    return result.chatId || result.chat_id || ''
+  }
+
+  async exchangeSecretKey(chatId: string, userId: string, publicKey: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.exchangeSecretKey({ chatId, userId, publicKey })
+    return result.success ?? false
+  }
+
+  async getSecretChatKey(chatId: string, userId: string): Promise<string> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getSecretChatKey({ chatId, userId })
+    return result.publicKey || result.public_key || ''
+  }
+
+  // --- Bot Command Methods ---
+
+  async processBotCommand(userId: string, command: string, args: string): Promise<string> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.processBotCommand({ userId, command, args })
+    return result.response || ''
+  }
+
+  async getBotCommands(): Promise<{ command: string; description: string }[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getBotCommands({})
+    return result.commands || []
+  }
+
+  // --- Free Model Methods ---
+
+  async getFreeModels(): Promise<FreeModelInfo[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getFreeModels({})
+    return (result.models || []).map(protoToFreeModel)
+  }
+
   // --- Notification Methods ---
 
-  async subscribeNotifications(callback: (notification: any) => void): Promise<() => void> {
+  async subscribeNotifications(callback: (notification: ServerNotification) => void): Promise<() => void> {
     if (!this.chatClient) throw new Error('Not connected')
     const controller = new AbortController()
     const stream = this.chatClient.subscribeNotifications({}, { signal: controller.signal })
     ;(async () => {
       try {
         for await (const msg of stream) {
-          callback(msg)
+          callback(protoToNotification(msg))
         }
-      } catch (err) {
+      } catch {
         // Stream ended or error
       }
     })()
     return () => controller.abort()
   }
 
-  async getNotificationHistory(limit = 50): Promise<any[]> {
+  async getNotificationHistory(limit = 50): Promise<ServerNotification[]> {
     if (!this.chatClient) throw new Error('Not connected')
     const result = await this.chatClient.getNotificationHistory({ limit })
-    return result.notifications || []
+    return (result.notifications || []).map(protoToNotification)
   }
 
   async markNotificationsRead(notificationIds: string[]): Promise<boolean> {
@@ -849,6 +1387,31 @@ class GrpcClient {
     if (!this.profileClient) throw new Error('Not connected')
     const result = await this.profileClient.deleteProfile({})
     return result.success ?? false
+  }
+
+  // --- HTTP Methods ---
+
+  async fetchServerInfo(): Promise<Record<string, string>> {
+    const baseUrl = import.meta.env.VITE_API_URL || '/messenger'
+    const response = await fetch(`${baseUrl}/info`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch server info: ${response.status}`)
+    }
+    const data = await response.json()
+    return data.services || {}
+  }
+
+  async checkHealth(): Promise<boolean> {
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL || '/messenger'
+      const response = await fetch(`${baseUrl}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+      })
+      return response.ok
+    } catch {
+      return false
+    }
   }
 }
 

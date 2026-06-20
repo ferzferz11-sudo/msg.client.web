@@ -108,6 +108,28 @@ export function useChatListV2() {
     }
   }, [updateChat, addError])
 
+  const setMutedChat = useCallback(async (chatId: string, muted: boolean) => {
+    try {
+      const success = await grpcClient.setMutedChat(user?.id || '', chatId, muted)
+      if (success) updateChat(chatId, { isMuted: muted })
+      return success
+    } catch (err) {
+      addError({ message: muted ? 'Не удалось отключить уведомления' : 'Не удалось включить уведомления', type: 'network' })
+      return false
+    }
+  }, [user, updateChat, addError])
+
+  const deleteChat = useCallback(async (chatId: string) => {
+    try {
+      const success = await grpcClient.deleteChat(chatId, user?.username || '', user?.id || '')
+      if (success) useChatStore.getState().removeChat(chatId)
+      return success
+    } catch (err) {
+      addError({ message: 'Не удалось удалить чат', type: 'network' })
+      return false
+    }
+  }, [user, addError])
+
   const searchChats = useCallback(async (query: string) => {
     if (!user) return []
     setSearchQuery(query)
@@ -158,6 +180,8 @@ export function useChatListV2() {
     unpinChat,
     archiveChat,
     unarchiveChat,
+    setMutedChat,
+    deleteChat,
     searchChats,
     getChatListVersion,
   }

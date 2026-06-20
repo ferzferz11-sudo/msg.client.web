@@ -2,6 +2,11 @@
 // Lavender Messenger — Shared Types
 // ============================================
 
+export interface Reaction {
+  user: string
+  emoji: string
+}
+
 export interface Chat {
   id: string
   name: string
@@ -15,7 +20,6 @@ export interface Chat {
   isOnline?: boolean
   activeAgentId?: string
   agentMode?: string
-  // ChatList v2 fields
   isPinned?: boolean
   isMuted?: boolean
   isArchived?: boolean
@@ -30,9 +34,9 @@ export interface Chat {
 
 export interface Message {
   id: string
-  roomId: string  // room_id in proto
-  user: string  // user in proto
-  text: string  // text in proto
+  roomId: string
+  user: string
+  text: string
   createdAt: string
   isOutgoing: boolean
   isRead: boolean
@@ -40,6 +44,14 @@ export interface Message {
   repliedToUser?: string
   repliedToText?: string
   agentId?: string
+  reactions?: Record<string, string[]>
+  isEdited?: boolean
+  imageUrl?: string
+  imageUrls?: string[]
+  userId?: string
+  voiceUrl?: string
+  duration?: number
+  isSuperAdmin?: boolean
 }
 
 export interface User {
@@ -51,6 +63,15 @@ export interface User {
   status?: string
   createdAt?: string
   lastSeenAt?: string
+}
+
+export interface UserProfile {
+  username: string
+  bio: string
+  status: string
+  avatarUrl: string
+  lastSeenAt: string
+  fullAvatarUrl: string
 }
 
 export interface AIChatSettings {
@@ -71,6 +92,169 @@ export interface Agent {
   systemPrompt: string
   model: string
   emoji: string
+}
+
+export interface AIAgentV2 {
+  id: string
+  name: string
+  description: string
+  providerType: string
+  model: string
+  systemPrompt: string
+  toolsEnabled: boolean
+  ragEnabled: boolean
+  isPreset: boolean
+  isPublic: boolean
+  maxTokens: number
+  temperature: number
+  createdBy: string
+  capabilities?: AgentCapabilitiesV2
+  installCount: number
+  avgRating: number
+  reviewCount: number
+  tags: string[]
+  shareCode: string
+  emoji: string
+  originalAgentId?: string
+  version?: string
+}
+
+export interface AIMessage {
+  id: string
+  role: 'user' | 'assistant' | 'tool'
+  content: string
+  agentId?: string
+  agentName?: string
+  modelUsed?: string
+  tokenCount?: number
+  toolCalls?: AIToolCall[]
+  toolResults?: AIToolResult[]
+  hasRagContext?: boolean
+  timestamp: number
+  isStreaming?: boolean
+}
+
+export interface AIToolCall {
+  id: string
+  name: string
+  arguments: Record<string, unknown>
+}
+
+export interface AIToolResult {
+  id: string
+  name: string
+  arguments: Record<string, unknown>
+  result: string
+}
+
+export interface AIMarketplaceAgent {
+  id: string
+  name: string
+  description: string
+  providerType: string
+  model: string
+  isPublic: boolean
+  avgRating: number
+  reviewCount: number
+  installCount: number
+  tags: string[]
+  createdBy: string
+  emoji: string
+}
+
+export interface AIUsageStat {
+  agentId: string
+  agentName: string
+  requests: number
+  tokens: number
+}
+
+export interface AIUsageStatsResponse {
+  stats: AIUsageStat[]
+  totalTokens: number
+  totalRequests: number
+}
+
+export type AgentInfoV2 = AIAgentV2
+export type ToolCallV2 = AIToolResult
+export type ToolCallRequestV2 = AIToolCall
+
+export interface Draft {
+  text: string
+  repliedToMessageId?: string
+  repliedToUser?: string
+  repliedToText?: string
+  hasDraft: boolean
+}
+
+export interface CustomTheme {
+  id: string
+  name: string
+  primaryColor: string
+  onPrimaryColor: string
+  surfaceColor: string
+  onSurfaceColor: string
+  backgroundColor: string
+  textPrimaryColor: string
+  textSecondaryColor: string
+  isDark: boolean
+  chatBackgroundImageUrl?: string
+  chatListBackgroundImageUrl?: string
+  bottomPanelColor: string
+  onBottomPanelColor: string
+  surfaceContainer: string
+  outgoingBubbleColor: string
+  incomingBubbleColor: string
+  outgoingTextColor: string
+  incomingTextColor: string
+}
+
+export interface AgentCapabilitiesV2 {
+  supportsImages: boolean
+  supportsTools: boolean
+  supportsStreaming: boolean
+  maxTokens: number
+}
+
+export interface ToolInfoV2 {
+  name: string
+  description: string
+  parametersSchema: string
+  requiredRole: string
+}
+
+export interface AgentReviewInfo {
+  id: string
+  agentId: string
+  userId: string
+  username: string
+  rating: number
+  review: string
+  createdAt: string
+}
+
+export interface UsageStatInfo {
+  agentId: string
+  agentName: string
+  tokenCount: number
+  requestCount: number
+  lastUsed: string
+}
+
+export interface ServerNotification {
+  id: string
+  type: string
+  title: string
+  message: string
+  timestamp: string
+  metadata: Record<string, string>
+  isRead: boolean
+}
+
+export interface FreeModelInfo {
+  modelId: string
+  displayName: string
+  sortOrder: number
 }
 
 // Auth V2 types

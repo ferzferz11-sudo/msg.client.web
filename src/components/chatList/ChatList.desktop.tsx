@@ -1,18 +1,9 @@
-// ============================================
-// ChatList — Desktop (Sidebar)
-// ============================================
-// Compact chat items for sidebar display.
-// ============================================
-
+import { useState, useRef, useCallback, useEffect } from 'react'
 import type { Chat } from '@/shared/types'
 import { t } from '@/shared/types'
+import type { ChatListProps } from '@/components/chatList/ChatList'
 
-interface ChatListProps {
-  chats: Chat[]
-  isLoading: boolean
-  onChatClick: (chatId: string) => void
-  activeChatId?: string | null
-}
+interface DesktopChatListProps extends ChatListProps {}
 
 function formatTime(dateStr: string): string {
   const date = new Date(dateStr)
@@ -47,7 +38,33 @@ function getChatIcon(type: Chat['type']): string {
   }
 }
 
-export function ChatList({ chats, isLoading, onChatClick, activeChatId }: ChatListProps) {
+export function ChatList({
+  chats, isLoading, onChatClick, activeChatId, typingChats,
+  onPin, onUnpin, onArchive, onMute, onDelete, onMarkRead,
+}: DesktopChatListProps) {
+  const [contextMenu, setContextMenu] = useState<{ chat: Chat; x: number; y: number } | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const closeContextMenu = useCallback(() => setContextMenu(null), [])
+
+  useEffect(() => {
+    if (!contextMenu) return
+    const handleClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        closeContextMenu()
+      }
+    }
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeContextMenu()
+    }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [contextMenu, closeContextMenu])
+
   if (isLoading) {
     return (
       <div style={{
@@ -94,11 +111,16 @@ export function ChatList({ chats, isLoading, onChatClick, activeChatId }: ChatLi
         const isActive = chat.id === activeChatId
         const color = getChatColor(chat.type)
         const icon = getChatIcon(chat.type)
+        const isTyping = typingChats?.[chat.id] || false
 
         return (
           <div
             key={chat.id}
             onClick={() => onChatClick(chat.id)}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              setContextMenu({ chat, x: e.clientX, y: e.clientY })
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -107,6 +129,7 @@ export function ChatList({ chats, isLoading, onChatClick, activeChatId }: ChatLi
               background: isActive ? 'rgba(107, 92, 231, 0.15)' : 'transparent',
               borderLeft: isActive ? '3px solid #6b5ce7' : '3px solid transparent',
               transition: 'background 0.1s',
+              opacity: chat.isMuted ? 0.7 : 1,
             }}
             onMouseEnter={(e) => {
               if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
@@ -115,7 +138,6 @@ export function ChatList({ chats, isLoading, onChatClick, activeChatId }: ChatLi
               if (!isActive) e.currentTarget.style.background = 'transparent'
             }}
           >
-            {/* Avatar */}
             <div
               style={{
                 width: 42,
@@ -147,7 +169,6 @@ export function ChatList({ chats, isLoading, onChatClick, activeChatId }: ChatLi
               )}
             </div>
 
-            {/* Content */}
             <div style={{ flex: 1, marginLeft: 12, minWidth: 0 }}>
               <div style={{
                 display: 'flex',
@@ -155,16 +176,20 @@ export function ChatList({ chats, isLoading, onChatClick, activeChatId }: ChatLi
                 alignItems: 'center',
                 marginBottom: 2,
               }}>
-                <span style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: '#fff',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {chat.name}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, flex: 1 }}>
+                  {chat.isPinned && <span style={{ fontSize: 11, flexShrink: 0 }}>📌</span>}
+                  <span style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: '#fff',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {chat.name}
+                  </span>
+                  {chat.isMuted && <span style={{ fontSize: 11, flexShrink: 0 }}>🔇</span>}
+                </div>
                 <span style={{
                   fontSize: 11,
                   color: chat.unreadCount > 0 ? '#6b5ce7' : 'rgba(255,255,255,0.3)',
@@ -179,16 +204,27 @@ export function ChatList({ chats, isLoading, onChatClick, activeChatId }: ChatLi
                 justifyContent: 'space-between',
                 alignItems: 'center',
               }}>
-                <span style={{
-                  fontSize: 12,
-                  color: 'rgba(255,255,255,0.4)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  flex: 1,
-                }}>
-                  {chat.lastMessageText || t('noMessages')}
-                </span>
+                {isTyping ? (
+                  <span style={{
+                    fontSize: 12,
+                    color: '#6b5ce7',
+                    flex: 1,
+                    fontStyle: 'italic',
+                  }}>
+                    печатает...
+                  </span>
+                ) : (
+                  <span style={{
+                    fontSize: 12,
+                    color: 'rgba(255,255,255,0.4)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    flex: 1,
+                  }}>
+                    {chat.lastMessageText || t('noMessages')}
+                  </span>
+                )}
                 {chat.unreadCount > 0 && (
                   <span style={{
                     background: '#6b5ce7',
@@ -211,6 +247,112 @@ export function ChatList({ chats, isLoading, onChatClick, activeChatId }: ChatLi
           </div>
         )
       })}
+
+      {contextMenu && (
+        <ContextMenu
+          ref={menuRef}
+          chat={contextMenu.chat}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={closeContextMenu}
+          onPin={() => { contextMenu.chat.isPinned ? onUnpin?.(contextMenu.chat.id) : onPin?.(contextMenu.chat.id); closeContextMenu() }}
+          onArchive={() => { onArchive?.(contextMenu.chat.id); closeContextMenu() }}
+          onMute={() => { onMute?.(contextMenu.chat.id); closeContextMenu() }}
+          onDelete={() => { onDelete?.(contextMenu.chat.id); closeContextMenu() }}
+          onMarkRead={() => { onMarkRead?.(contextMenu.chat.id); closeContextMenu() }}
+        />
+      )}
+    </div>
+  )
+}
+
+// --- Context Menu ---
+
+import { forwardRef } from 'react'
+
+interface ContextMenuProps {
+  chat: Chat
+  x: number
+  y: number
+  onClose: () => void
+  onPin: () => void
+  onArchive: () => void
+  onMute: () => void
+  onDelete: () => void
+  onMarkRead: () => void
+}
+
+const ContextMenu = forwardRef<HTMLDivElement, ContextMenuProps>(function ContextMenu(
+  { chat, x, y, onClose, onPin, onArchive, onMute, onDelete, onMarkRead },
+  ref
+) {
+  const adjustedStyle: React.CSSProperties = {
+    position: 'fixed',
+    left: x,
+    top: y,
+    zIndex: 1100,
+  }
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1099 }} />
+      <div
+        ref={ref}
+        style={{
+          ...adjustedStyle,
+          background: '#2a2a3e',
+          borderRadius: 10,
+          padding: '6px 0',
+          minWidth: 180,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <ContextMenuItem
+          icon={chat.isPinned ? '📌' : '📌'}
+          label={chat.isPinned ? 'Открепить' : 'Закрепить'}
+          onClick={onPin}
+        />
+        <ContextMenuItem icon="📦" label="Архивировать" onClick={onArchive} />
+        <ContextMenuItem
+          icon={chat.isMuted ? '🔔' : '🔇'}
+          label={chat.isMuted ? 'Включить уведомления' : 'Выключить уведомления'}
+          onClick={onMute}
+        />
+        {chat.unreadCount > 0 && (
+          <ContextMenuItem icon="✓" label="Отметить как прочитанное" onClick={onMarkRead} />
+        )}
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+        <ContextMenuItem icon="🗑️" label="Удалить" onClick={onDelete} destructive />
+      </div>
+    </>
+  )
+})
+
+function ContextMenuItem({ icon, label, onClick, destructive }: {
+  icon: string
+  label: string
+  onClick: () => void
+  destructive?: boolean
+}) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '8px 16px',
+        cursor: 'pointer',
+        fontSize: 13,
+        color: destructive ? '#e74c3c' : '#fff',
+        transition: 'background 0.1s',
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+    >
+      <span style={{ fontSize: 14, width: 20, textAlign: 'center' }}>{icon}</span>
+      <span>{label}</span>
     </div>
   )
 }

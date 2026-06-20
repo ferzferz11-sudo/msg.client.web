@@ -31,6 +31,7 @@ export function useProfile() {
   const [profile, setProfile] = useState<ProfileData | null>(null)
   const [settings, setSettings] = useState<UserSettings>({ locale: 'ru', themeId: '', pushEnabled: true })
   const [isLoading, setIsLoading] = useState(false)
+  const [serverInfo, setServerInfo] = useState<Record<string, string>>({})
   const addError = useErrorStore((s) => s.addError)
 
   const loadProfile = useCallback(async () => {
@@ -108,7 +109,30 @@ export function useProfile() {
     }
   }, [loadSettings, addError])
 
-  const deleteProfile = useCallback(async () => {
+  const updateUsername = useCallback(async (newUsername: string) => {
+    try {
+      const userId = useAuthStore.getState().user?.id || profile?.id || ''
+      const success = await grpcClient.updateUsername(userId, newUsername)
+      if (success) await loadProfile()
+      return success
+    } catch (err) {
+      addError({ message: 'Не удалось изменить имя пользователя', type: 'network' })
+      return false
+    }
+  }, [profile, loadProfile, addError])
+
+  const updatePassword = useCallback(async (oldPassword: string, newPassword: string) => {
+    try {
+      const userId = useAuthStore.getState().user?.id || profile?.id || ''
+      const success = await grpcClient.updatePassword(userId, oldPassword, newPassword)
+      return success
+    } catch (err) {
+      addError({ message: 'Не удалось изменить пароль', type: 'network' })
+      return false
+    }
+  }, [profile, addError])
+
+  const deleteProfile = useCallback(async (_password?: string) => {
     try {
       const success = await grpcClient.deleteProfile()
       if (success) {
@@ -121,20 +145,33 @@ export function useProfile() {
     }
   }, [addError])
 
+  const loadServerInfo = useCallback(async () => {
+    try {
+      const info = await grpcClient.fetchServerInfo()
+      setServerInfo(info)
+    } catch (err) {
+      console.error('Failed to load server info:', err)
+    }
+  }, [])
+
   useEffect(() => {
     loadProfile()
     loadSettings()
-  }, [loadProfile, loadSettings])
+    loadServerInfo()
+  }, [loadProfile, loadSettings, loadServerInfo])
 
   return {
     profile,
     settings,
     isLoading,
+    serverInfo,
     loadProfile,
     loadSettings,
     updateProfile,
     updateAvatar,
     updateSettings,
+    updateUsername,
+    updatePassword,
     deleteProfile,
   }
 }

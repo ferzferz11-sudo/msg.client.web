@@ -10,7 +10,7 @@ message Message {
   string text = 3;
   google.protobuf.Timestamp created_at = 4;
   repeated Reaction reactions = 5;
-  string password = 6; // Password for authentication (only in first/join message) — v1 legacy
+  string password = 6; // v1 legacy auth (deprecated, use JWT)
   string replied_to_message_id = 7; // ID of the message being replied to
   string replied_to_user = 8; // Username of the message being replied to
   string replied_to_text = 9; // Text of the message being replied to
@@ -24,7 +24,7 @@ message Message {
   bool is_super_admin = 16; // Whether the user is a super admin
   string voice_url = 17; // URL of the voice message audio file
   int32 duration = 18; // Duration of voice message in seconds
-  bool register = 19; // Flag to register a new user
+  bool register = 19; // v1 legacy registration flag (deprecated, use AuthServiceV2)
   string device_id = 21; // Device ID for tracking active sessions
   string device_name = 22; // Device name for displaying in settings
   string user_id = 23; // Stable user ID (UUID)
@@ -61,6 +61,8 @@ message UserInfo {
   string last_client_version = 3;
   google.protobuf.Timestamp last_seen_at = 4;
   string email = 5;
+  string user_id = 6;
+  bool is_super_admin = 7;
 }
 
 message GetAllUsersResponse {
@@ -137,12 +139,15 @@ message GetChatsRequest {
   string username = 1;
   string user_id = 2;
   int32 limit = 3;    // Pagination: max number of chats to return (0 = default 100)
-  int32 offset = 4;   // Pagination: skip N chats
+  int32 offset = 4;   // Pagination: skip N chats (deprecated, use cursor)
   string filter = 5;  // Filter: "all", "pinned", "archived", "muted"
+  string cursor = 6;  // Cursor-based pagination: token from previous response
 }
 
 message GetChatsResponse {
   repeated ChatInfo chats = 1;
+  string next_cursor = 2;  // Cursor for next page (empty if no more)
+  bool has_more = 3;       // Whether there are more results
 }
 
 message CreateDirectChatRequest {
@@ -773,6 +778,24 @@ service ChatService {
   rpc GetFreeModels(GetFreeModelsRequest) returns (GetFreeModelsResponse);
   rpc SetFreeModel(SetFreeModelRequest) returns (SetFreeModelResponse);
   rpc RemoveFreeModel(RemoveFreeModelRequest) returns (RemoveFreeModelResponse);
+
+  // === AI Services v2 ===
+  rpc ChatWithAIV2(ChatWithAIV2Request) returns (stream ChatWithAIV2Response);
+  rpc CreateAIAgent(CreateAIAgentRequest) returns (CreateAIAgentResponse);
+  rpc UpdateAIAgent(UpdateAIAgentRequest) returns (UpdateAIAgentResponse);
+  rpc DeleteAIAgent(DeleteAIAgentRequest) returns (DeleteAIAgentResponse);
+  rpc GetAIAgent(GetAIAgentRequest) returns (GetAIAgentResponse);
+  rpc ListAIAgents(ListAIAgentsRequest) returns (ListAIAgentsResponse);
+  rpc CloneAIAgent(CloneAIAgentRequest) returns (CloneAIAgentResponse);
+  rpc ListAITools(ListAIToolsRequest) returns (ListAIToolsResponse);
+  // === AI Marketplace ===
+  rpc RateAIAgent(RateAIAgentRequest) returns (RateAIAgentResponse);
+  rpc GetAIAgentReviews(GetAIAgentReviewsRequest) returns (GetAIAgentReviewsResponse);
+  rpc ListMarketplaceAgents(ListMarketplaceAgentsRequest) returns (ListMarketplaceAgentsResponse);
+  rpc GetAIAgentStats(GetAIAgentStatsRequest) returns (GetAIAgentStatsResponse);
+  rpc ShareAIAgent(ShareAIAgentRequest) returns (ShareAIAgentResponse);
+  rpc InstallAIAgent(InstallAIAgentRequest) returns (InstallAIAgentResponse);
+  rpc GetAIUsageStats(GetAIUsageStatsRequest) returns (GetAIUsageStatsResponse);
 }
 
 // ======= AI Pipeline Messages =======
@@ -866,6 +889,8 @@ message UnPinMessageResponse {
 message GetPinnedMessagesRequest {
   string user_id = 1;
   string chat_id = 2;
+  int32 limit = 3;
+  int32 offset = 4;
 }
 
 message GetPinnedMessagesResponse {
@@ -1601,6 +1626,258 @@ message UpdateUserSettingsRequest {
 message UpdateUserSettingsResponse {
   bool success = 1;
   string message = 2;
+}
+
+// ======= AI Services v2 Messages =======
+
+message ChatWithAIV2Request {
+  string session_id = 1;                // empty = create new chat
+  string message = 2;
+  repeated bytes images = 3;            // base64 images for multimodal
+  string agent_id = 4;                  // force specific agent
+  repeated ToolCallV2 tool_calls = 5;   // client-side tool results (for agentic loop)
+}
+
+message ChatWithAIV2Response {
+  string token = 1;
+  bool finished = 2;
+  string error = 3;
+  string agent_id = 4;                  // which agent answered
+  string agent_name = 5;                // display name
+  repeated ToolCallRequestV2 tool_calls = 6;  // tool execution requests
+  bool has_rag_context = 7;
+  string model_used = 8;
+  int32 token_count = 9;
+}
+
+message ToolCallV2 {
+  string id = 1;
+  string name = 2;
+  string arguments = 3;     // JSON string
+  string result = 4;
+}
+
+message ToolCallRequestV2 {
+  string id = 1;
+  string name = 2;
+  string arguments = 3;     // JSON Schema
+}
+
+message CreateAIAgentRequest {
+  string name = 1;
+  string description = 2;
+  string provider_type = 3;    // openrouter, mimo, webhook, websocket, subprocess, mcp
+  string provider_config = 4;  // JSON string
+  string system_prompt = 5;
+  string model = 6;
+  int32 max_tokens = 7;
+  float temperature = 8;
+  bool tools_enabled = 9;
+  repeated string tool_whitelist = 10;
+  bool rag_enabled = 11;
+  string rag_config = 12;      // JSON string
+  int32 rate_limit = 13;
+  bool is_public = 14;
+}
+
+message CreateAIAgentResponse {
+  bool success = 1;
+  string agent_id = 2;
+  string error = 3;
+}
+
+message UpdateAIAgentRequest {
+  string agent_id = 1;
+  string name = 2;
+  string description = 3;
+  string provider_config = 4;
+  string system_prompt = 5;
+  string model = 6;
+  int32 max_tokens = 7;
+  float temperature = 8;
+  bool tools_enabled = 9;
+  repeated string tool_whitelist = 10;
+  bool rag_enabled = 11;
+  string rag_config = 12;
+  int32 rate_limit = 13;
+  bool is_public = 14;
+}
+
+message UpdateAIAgentResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message DeleteAIAgentRequest {
+  string agent_id = 1;
+}
+
+message DeleteAIAgentResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+message GetAIAgentRequest {
+  string agent_id = 1;
+}
+
+message GetAIAgentResponse {
+  AgentInfoV2 agent = 1;
+}
+
+message AgentInfoV2 {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string provider_type = 4;
+  string model = 5;
+  string system_prompt = 6;
+  bool tools_enabled = 7;
+  bool rag_enabled = 8;
+  bool is_preset = 9;
+  bool is_public = 10;
+  int32 max_tokens = 11;
+  float temperature = 12;
+  string created_by = 13;
+  AgentCapabilitiesV2 capabilities = 14;
+  int32 install_count = 15;
+  float avg_rating = 16;
+  int32 review_count = 17;
+  repeated string tags = 18;
+  string original_agent_id = 19;
+  int32 version = 20;
+  string share_code = 21;
+}
+
+message AgentCapabilitiesV2 {
+  bool supports_images = 1;
+  bool supports_tools = 2;
+  bool supports_streaming = 3;
+  int32 max_tokens = 4;
+}
+
+message ListAIAgentsRequest {
+  bool include_public = 1;
+}
+
+message ListAIAgentsResponse {
+  repeated AgentInfoV2 agents = 1;
+}
+
+message CloneAIAgentRequest {
+  string agent_id = 1;
+  string new_name = 2;
+}
+
+message CloneAIAgentResponse {
+  bool success = 1;
+  string agent_id = 2;
+  string error = 3;
+}
+
+message ListAIToolsRequest {}
+
+message ListAIToolsResponse {
+  repeated ToolInfoV2 tools = 1;
+}
+
+message ToolInfoV2 {
+  string name = 1;
+  string description = 2;
+  string parameters_schema = 3;   // JSON Schema
+  string required_role = 4;
+}
+
+// === AI Marketplace Messages ===
+
+message RateAIAgentRequest {
+  string agent_id = 1;
+  int32 rating = 2;           // 1-5
+  string review = 3;          // optional text review
+}
+
+message RateAIAgentResponse {
+  bool success = 1;
+  string error = 2;
+  float avg_rating = 3;
+  int32 review_count = 4;
+}
+
+message GetAIAgentReviewsRequest {
+  string agent_id = 1;
+  int32 limit = 2;
+}
+
+message AgentReviewInfo {
+  string user_id = 1;
+  int32 rating = 2;
+  string review = 3;
+  string created_at = 4;
+}
+
+message GetAIAgentReviewsResponse {
+  repeated AgentReviewInfo reviews = 1;
+  float avg_rating = 2;
+  int32 review_count = 3;
+}
+
+message ListMarketplaceAgentsRequest {
+  string query = 1;           // search by name/description/tags
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListMarketplaceAgentsResponse {
+  repeated AgentInfoV2 agents = 1;
+  int32 total = 2;
+}
+
+message GetAIAgentStatsRequest {
+  string agent_id = 1;
+}
+
+message GetAIAgentStatsResponse {
+  int32 install_count = 1;
+  float avg_rating = 2;
+  int32 review_count = 3;
+  int32 total_tokens_used = 4;
+}
+
+message ShareAIAgentRequest {
+  string agent_id = 1;
+}
+
+message ShareAIAgentResponse {
+  bool success = 1;
+  string share_code = 2;
+  string error = 3;
+}
+
+message InstallAIAgentRequest {
+  string share_code = 1;
+  string new_name = 2;        // optional rename
+}
+
+message InstallAIAgentResponse {
+  bool success = 1;
+  string agent_id = 2;
+  string error = 3;
+}
+
+message GetAIUsageStatsRequest {}
+
+message UsageStatInfo {
+  string agent_id = 1;
+  int32 total_tokens = 2;
+  int32 request_count = 3;
+  string period_start = 4;
+  string agent_name = 5;
+}
+
+message GetAIUsageStatsResponse {
+  repeated UsageStatInfo stats = 1;
+  int32 total_tokens = 2;
+  int32 total_requests = 3;
 }
 
 service ProfileService {

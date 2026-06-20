@@ -6,6 +6,9 @@
 // - Opens a receive-only Chat stream via grpcClient for real-time messages
 // - Sends messages via grpcClient.sendMessage (ephemeral BiDi stream)
 // - Supports pagination (load more on scroll to top)
+// - Draft support with debounce save/load/delete
+// - Reactions, edit, delete, typing indicators
+// - Message selection mode
 // ============================================
 
 import { useEffect, useCallback, useRef, useState } from 'react'
@@ -14,12 +17,24 @@ import { grpcClient } from '@/shared/api/grpcClient'
 import { useAuthStore } from '@/store/authStore'
 import type { Message } from '@/shared/types'
 
-export function useChatMessages(chatId: string | null) {
+const DRAFT_DEBOUNCE_MS = 800
+const TYPING_TIMEOUT_MS = 3000
+
+interface UseChatMessagesOptions {
+  chatId: string | null
+  onServerShutdown?: () => void
+  onReconnecting?: (isReconnecting: boolean) => void
+  onStreamError?: (error: string) => void
+}
+
+export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onStreamError }: UseChatMessagesOptions) {
   const messages = useChatStore((s) => (chatId ? s.getChatMessages(chatId) : []))
   const isLoadingMessages = useChatStore((s) => s.isLoadingMessages)
   const isSendingMessage = useChatStore((s) => s.isSendingMessage)
   const setMessages = useChatStore((s) => s.setMessages)
   const addMessage = useChatStore((s) => s.addMessage)
+  const updateMessage = useChatStore((s) => s.updateMessage)
+  const removeMessageFromChat = useChatStore((s) => s.removeMessage)
   const prependMessages = useChatStore((s) => s.prependMessages)
   const setLoadingMessages = useChatStore((s) => s.setLoadingMessages)
   const setSendingMessage = useChatStore((s) => s.setSendingMessage)
@@ -31,11 +46,67 @@ export function useChatMessages(chatId: string | null) {
   const [hasMore, setHasMore] = useState(true)
   const oldestMessageIdRef = useRef<string | null>(null)
 
+  // Draft state
+  const [draft, setDraft] = useState('')
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Editing state
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [editingText, setEditingText] = useState('')
+
+  // Selection state
+  const [selectedMessages, setSelectedMessages] = useState<string[]>([])
+  const [isSelecting, setIsSelecting] = useState(false)
+
+  // Typing indicators
+  const [typingUsers, setTypingUsers] = useState<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  // Reply state
+  const [replyToMessage, setReplyToMessage] = useState<Message | null>(null)
+
   const chatIdRef = useRef(chatId)
   chatIdRef.current = chatId
 
   const userIdRef = useRef(user?.id || '')
   userIdRef.current = user?.id || ''
+
+  // Load draft when chat opens
+  useEffect(() => {
+    if (!chatId) return
+    const savedDraft = localStorage.getItem(`draft_${chatId}`) || ''
+    setDraft(savedDraft)
+    return () => {
+      setDraft('')
+      setEditingMessageId(null)
+      setEditingText('')
+      setSelectedMessages([])
+      setIsSelecting(false)
+      setReplyToMessage(null)
+    }
+  }, [chatId])
+
+  // Save draft with debounce
+  const updateDraft = useCallback((text: string) => {
+    setDraft(text)
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
+    if (chatIdRef.current) {
+      draftTimerRef.current = setTimeout(() => {
+        if (text.trim()) {
+          localStorage.setItem(`draft_${chatIdRef.current}`, text)
+        } else {
+          localStorage.removeItem(`draft_${chatIdRef.current}`)
+        }
+      }, DRAFT_DEBOUNCE_MS)
+    }
+  }, [])
+
+  // Clear draft on send
+  const clearDraft = useCallback(() => {
+    if (chatIdRef.current) {
+      localStorage.removeItem(`draft_${chatIdRef.current}`)
+    }
+    setDraft('')
+  }, [])
 
   // Load message history when chat opens
   useEffect(() => {
@@ -75,14 +146,51 @@ export function useChatMessages(chatId: string | null) {
     }
   }, [chatId, setMessages, setLoadingMessages, updateChat])
 
-  // Handle incoming stream events
+  const onServerShutdownRef = useRef(onServerShutdown)
+  const onReconnectingRef = useRef(onReconnecting)
+  const onStreamErrorRef = useRef(onStreamError)
+  onServerShutdownRef.current = onServerShutdown
+  onReconnectingRef.current = onReconnecting
+  onStreamErrorRef.current = onStreamError
+
   const handleStreamEvent = useCallback(
-    (event: { type: string; message?: Message }) => {
+    (event: { type: string; message?: Message; chatId?: string; userId?: string; isTyping?: boolean; error?: string }) => {
+      if (event.type === 'error') {
+        const errorMsg = event.error || ''
+        if (errorMsg.includes('SERVER_SHUTTINGDOWN')) {
+          onServerShutdownRef.current?.()
+          return
+        }
+        if (errorMsg.includes('UNAVAILABLE')) {
+          onStreamErrorRef.current?.(errorMsg)
+          return
+        }
+      }
       if (event.type === 'message' && event.message) {
-        // Only add if it belongs to the current chat
         if (event.message.roomId === chatIdRef.current) {
           addMessage(event.message)
         }
+      }
+      if (event.type === 'typing' && event.chatId === chatIdRef.current && event.userId !== userIdRef.current) {
+        const userId = event.userId || ''
+        setTypingUsers((prev) => {
+          const next = new Map(prev)
+          const existing = next.get(userId)
+          if (existing) clearTimeout(existing)
+          if (event.isTyping) {
+            const timer = setTimeout(() => {
+              setTypingUsers((current) => {
+                const updated = new Map(current)
+                updated.delete(userId)
+                return updated
+              })
+            }, TYPING_TIMEOUT_MS)
+            next.set(userId, timer)
+          } else {
+            next.delete(userId)
+          }
+          return next
+        })
       }
     },
     [addMessage]
@@ -130,6 +238,7 @@ export function useChatMessages(chatId: string | null) {
       if (!chatId || !content.trim()) return
 
       setSendingMessage(true)
+      clearDraft()
       try {
         const message = await grpcClient.sendMessage(
           chatId,
@@ -143,8 +252,92 @@ export function useChatMessages(chatId: string | null) {
         setSendingMessage(false)
       }
     },
-    [chatId, addMessage, setSendingMessage]
+    [chatId, addMessage, setSendingMessage, clearDraft]
   )
+
+  // Edit message
+  const editMessage = useCallback(
+    async (messageId: string, newText: string) => {
+      if (!chatId || !newText.trim()) return
+      try {
+        updateMessage(messageId, { text: newText })
+        setEditingMessageId(null)
+        setEditingText('')
+      } catch (err) {
+        console.error('Failed to edit message:', err)
+      }
+    },
+    [chatId, updateMessage]
+  )
+
+  // Delete messages
+  const deleteMessages = useCallback(
+    async (messageIds: string[]) => {
+      if (!chatId || messageIds.length === 0) return
+      try {
+        for (const id of messageIds) {
+          removeMessageFromChat(chatId, id)
+        }
+        setSelectedMessages([])
+        setIsSelecting(false)
+      } catch (err) {
+        console.error('Failed to delete messages:', err)
+      }
+    },
+    [chatId, removeMessageFromChat]
+  )
+
+  // Toggle reaction
+  const toggleReaction = useCallback(
+    async (messageId: string, emoji: string) => {
+      const msg = useChatStore.getState().messages[messageId]
+      if (!msg) return
+      const reactions = msg.reactions || {}
+      const current = reactions[emoji] || []
+      const username = user?.username || ''
+      const updated = current.includes(username)
+        ? current.filter((u: string) => u !== username)
+        : [...current, username]
+      const newReactions = { ...reactions }
+      if (updated.length === 0) {
+        delete newReactions[emoji]
+      } else {
+        newReactions[emoji] = updated
+      }
+      updateMessage(messageId, { reactions: newReactions })
+    },
+    [user, updateMessage]
+  )
+
+  // Selection helpers
+  const toggleSelectMessage = useCallback((messageId: string) => {
+    setSelectedMessages((prev) =>
+      prev.includes(messageId) ? prev.filter((id) => id !== messageId) : [...prev, messageId]
+    )
+  }, [])
+
+  const clearSelection = useCallback(() => {
+    setSelectedMessages([])
+    setIsSelecting(false)
+  }, [])
+
+  // Start editing
+  const startEditing = useCallback((messageId: string, text: string) => {
+    setEditingMessageId(messageId)
+    setEditingText(text)
+  }, [])
+
+  const cancelEditing = useCallback(() => {
+    setEditingMessageId(null)
+    setEditingText('')
+  }, [])
+
+  // Cleanup typing timers
+  useEffect(() => {
+    return () => {
+      typingUsers.forEach((timer) => clearTimeout(timer))
+    }
+  }, [typingUsers])
 
   return {
     messages,
@@ -154,5 +347,24 @@ export function useChatMessages(chatId: string | null) {
     hasMore,
     sendMessage,
     loadMore,
+    draft,
+    updateDraft,
+    clearDraft,
+    editingMessageId,
+    editingText,
+    setEditingText,
+    editMessage,
+    startEditing,
+    cancelEditing,
+    deleteMessages,
+    toggleReaction,
+    selectedMessages,
+    isSelecting,
+    setIsSelecting,
+    toggleSelectMessage,
+    clearSelection,
+    typingUsers,
+    replyToMessage,
+    setReplyToMessage,
   }
 }

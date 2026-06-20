@@ -1,15 +1,6 @@
 // ============================================
 // useGrpcStream — gRPC Stream Lifecycle Hook
 // ============================================
-// Manages server-side streaming with proper
-// cleanup on unmount and iOS background handling.
-//
-// Features:
-// - Opens stream on mount / chatId change
-// - Closes stream on unmount / chatId change
-// - Closes stream when app goes to background (visibilitychange)
-// - Reopens stream + fetches missed messages on foreground
-// ============================================
 
 import { useEffect, useRef, useCallback } from 'react'
 import type { StreamCallback, StreamEvent, Message } from '@/shared/types'
@@ -17,8 +8,9 @@ import type { StreamCallback, StreamEvent, Message } from '@/shared/types'
 interface UseGrpcStreamOptions {
   chatId: string
   onEvent: StreamCallback
-  /** Called when stream reconnects — returns missed messages */
   onMissedMessages?: (messages: Message[]) => void
+  onServerShutdown?: () => void
+  onReconnecting?: (isReconnecting: boolean) => void
   enabled?: boolean
 }
 
@@ -26,16 +18,25 @@ export function useGrpcStream({
   chatId,
   onEvent,
   onMissedMessages,
+  onServerShutdown,
+  onReconnecting,
   enabled = true,
 }: UseGrpcStreamOptions) {
   const cleanupRef = useRef<(() => void) | null>(null)
   const onEventRef = useRef(onEvent)
   const onMissedMessagesRef = useRef(onMissedMessages)
+  const onServerShutdownRef = useRef(onServerShutdown)
+  const onReconnectingRef = useRef(onReconnecting)
   const lastMessageTimestampRef = useRef<string | null>(null)
   const isHiddenRef = useRef(false)
+  const reconnectAttemptsRef = useRef(0)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isReconnectingRef = useRef(false)
 
   onEventRef.current = onEvent
   onMissedMessagesRef.current = onMissedMessages
+  onServerShutdownRef.current = onServerShutdown
+  onReconnectingRef.current = onReconnecting
 
   const handleEvent = useCallback((event: StreamEvent) => {
     if (event.type === 'message' && event.message) {
@@ -51,10 +52,55 @@ export function useGrpcStream({
       if (!grpcClient.isConnected()) return
       if (cleanupRef.current) return
 
-      const cleanup = grpcClient.openReceiveStream(chatId, handleEvent)
+      const cleanup = grpcClient.openReceiveStream(chatId, (event) => {
+        if (event.type === 'error') {
+          const errorMsg = event.error || ''
+          if (errorMsg.includes('UNAVAILABLE') || errorMsg.includes('SERVER_SHUTTINGDOWN')) {
+            if (errorMsg.includes('SERVER_SHUTTINGDOWN')) {
+              onServerShutdownRef.current?.()
+              return
+            }
+            if (!isReconnectingRef.current) {
+              startReconnect()
+            }
+            return
+          }
+        }
+        if (event.type === 'message' && event.message) {
+          reconnectAttemptsRef.current = 0
+          isReconnectingRef.current = false
+          onReconnectingRef.current?.(false)
+        }
+        handleEvent(event)
+      })
       cleanupRef.current = cleanup
     })
   }, [chatId, enabled, handleEvent])
+
+  const startReconnect = useCallback(() => {
+    if (isReconnectingRef.current) return
+    isReconnectingRef.current = true
+    onReconnectingRef.current?.(true)
+
+    const attempt = reconnectAttemptsRef.current
+    const delay = Math.min(1000 * Math.pow(2, attempt), 30000)
+
+    reconnectTimerRef.current = setTimeout(() => {
+      reconnectAttemptsRef.current++
+      closeStream()
+
+      import('@/shared/api/grpcClient').then(({ grpcClient }) => {
+        if (!grpcClient.isConnected()) {
+          isReconnectingRef.current = false
+          onReconnectingRef.current?.(false)
+          return
+        }
+        fetchMissedMessages().then(() => {
+          openStream()
+        })
+      })
+    }, delay)
+  }, [openStream])
 
   const closeStream = useCallback(() => {
     if (cleanupRef.current) {
@@ -79,21 +125,26 @@ export function useGrpcStream({
     }
   }, [chatId])
 
-  // Main effect: open/close stream on mount/unmount/chatId change
   useEffect(() => {
     if (!enabled || !chatId) {
       closeStream()
       return
     }
 
+    reconnectAttemptsRef.current = 0
+    isReconnectingRef.current = false
+    onReconnectingRef.current?.(false)
     openStream()
 
     return () => {
       closeStream()
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current)
+        reconnectTimerRef.current = null
+      }
     }
   }, [chatId, enabled, openStream, closeStream])
 
-  // iOS background/foreground handling
   useEffect(() => {
     if (!enabled || !chatId) return
 

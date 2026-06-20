@@ -1,11 +1,11 @@
-// ============================================
-// ChatListScreen — Mobile (iOS Native Style)
-// ============================================
-
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Screen } from '@/components/common'
 import { ChatList } from '@/components/chatList/ChatList'
 import { useChats } from '@/hooks/useChats'
+import { useChatListV2 } from '@/hooks/useChatListV2'
 import { useChatStore } from '@/store/chatStore'
+import { useAuthStore } from '@/store/authStore'
+import { grpcClient } from '@/shared/api/grpcClient'
 
 interface ChatListScreenProps {
   onChatSelect: (chatId: string) => void
@@ -18,6 +18,40 @@ interface ChatListScreenProps {
 export function ChatListScreen({ onChatSelect, onSearch, onProfile, onArchive }: ChatListScreenProps) {
   const { chats, isLoadingChats, openChat } = useChats()
   const setActiveChatId = useChatStore((s) => s.setActiveChatId)
+  const { pinChat, unpinChat, archiveChat, setMutedChat, deleteChat } = useChatListV2()
+  const user = useAuthStore((s) => s.user)
+  const [typingChats, setTypingChats] = useState<Record<string, boolean>>({})
+  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  const handleTypingEvent = useCallback((event: { type: string; chatId?: string; userId?: string; isTyping?: boolean }) => {
+    if (event.type !== 'typing' || !event.chatId) return
+    if (event.userId === user?.id) return
+    const chatId = event.chatId
+    const timerMap = typingTimersRef.current
+
+    if (timerMap.has(chatId)) {
+      clearTimeout(timerMap.get(chatId)!)
+      timerMap.delete(chatId)
+    }
+
+    setTypingChats((prev) => ({ ...prev, [chatId]: event.isTyping || false }))
+
+    if (event.isTyping) {
+      const timer = setTimeout(() => {
+        setTypingChats((prev) => ({ ...prev, [chatId]: false }))
+        timerMap.delete(chatId)
+      }, 3000)
+      timerMap.set(chatId, timer)
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    const cleanup = grpcClient.openReceiveStream('__global_typing__', handleTypingEvent)
+    return () => {
+      cleanup()
+      typingTimersRef.current.forEach((t) => clearTimeout(t))
+    }
+  }, [handleTypingEvent])
 
   const handleChatClick = (chatId: string) => {
     openChat(chatId)
@@ -31,12 +65,19 @@ export function ChatListScreen({ onChatSelect, onSearch, onProfile, onArchive }:
         chats={chats}
         isLoading={isLoadingChats}
         onChatClick={handleChatClick}
+        typingChats={typingChats}
+        onPin={pinChat}
+        onUnpin={unpinChat}
+        onArchive={archiveChat}
+        onMute={(chatId) => {
+          const chat = chats.find((c) => c.id === chatId)
+          if (chat) setMutedChat(chatId, !chat.isMuted)
+        }}
+        onDelete={deleteChat}
       />
     </Screen>
   )
 }
-
-// --- Header ---
 
 function ChatListHeader({ onSearch, onProfile, onArchive }: {
   onSearch?: () => void

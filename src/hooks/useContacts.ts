@@ -5,6 +5,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useErrorStore } from '@/store/errorStore'
+import type { User } from '@/shared/types'
 
 export interface Contact {
   id: string
@@ -19,7 +20,9 @@ export interface Contact {
 
 export function useContacts() {
   const [contacts, setContacts] = useState<Contact[]>([])
+  const [allUsers, setAllUsers] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false)
   const addError = useErrorStore((s) => s.addError)
 
   const loadContacts = useCallback(async () => {
@@ -33,6 +36,32 @@ export function useContacts() {
       setIsLoading(false)
     }
   }, [])
+
+  const loadAllUsers = useCallback(async () => {
+    setIsLoadingUsers(true)
+    try {
+      const users = await grpcClient.getAllUsers()
+      setAllUsers(users)
+    } catch (err) {
+      console.error('Failed to load all users:', err)
+    } finally {
+      setIsLoadingUsers(false)
+    }
+  }, [])
+
+  const searchUsers = useCallback(async (query: string): Promise<User[]> => {
+    if (!query.trim()) return allUsers
+    try {
+      const users = await grpcClient.getAllUsers()
+      const q = query.toLowerCase()
+      return users.filter(
+        (u) => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      )
+    } catch (err) {
+      console.error('Failed to search users:', err)
+      return []
+    }
+  }, [allUsers])
 
   const addContact = useCallback(async (userId: string, username: string) => {
     try {
@@ -62,8 +91,12 @@ export function useContacts() {
 
   return {
     contacts,
+    allUsers,
     isLoading,
+    isLoadingUsers,
     loadContacts,
+    loadAllUsers,
+    searchUsers,
     addContact,
     removeContact,
   }

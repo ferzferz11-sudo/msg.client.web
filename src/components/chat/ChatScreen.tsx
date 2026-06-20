@@ -12,6 +12,9 @@ export interface ChatScreenProps {
   chatId: string
   onBack: () => void
   onPinnedClick?: () => void
+  onServerShutdown?: () => void
+  onReconnecting?: (isReconnecting: boolean) => void
+  onStreamError?: (error: string) => void
 }
 
 function createLazyLoader(
