@@ -28,9 +28,9 @@ export function useChats() {
 
     grpcClient
       .getChats(userId, username)
-      .then((chats) => {
+      .then((result) => {
         if (cancelled) return
-        setChats(chats)
+        setChats(result.chats)
       })
       .catch((err) => {
         if (cancelled) return

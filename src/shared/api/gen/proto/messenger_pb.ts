@@ -60,7 +60,7 @@ export class Message extends Message$1<Message> {
   reactions: Reaction[] = [];
 
   /**
-   * Password for authentication (only in first/join message) — v1 legacy
+   * v1 legacy auth (deprecated, use JWT)
    *
    * @generated from field: string password = 6;
    */
@@ -156,7 +156,7 @@ export class Message extends Message$1<Message> {
   duration = 0;
 
   /**
-   * Flag to register a new user
+   * v1 legacy registration flag (deprecated, use AuthServiceV2)
    *
    * @generated from field: bool register = 19;
    */
@@ -508,6 +508,16 @@ export class UserInfo extends Message$1<UserInfo> {
    */
   email = "";
 
+  /**
+   * @generated from field: string user_id = 6;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: bool is_super_admin = 7;
+   */
+  isSuperAdmin = false;
+
   constructor(data?: PartialMessage<UserInfo>) {
     super();
     proto3.util.initPartial(data, this);
@@ -521,6 +531,8 @@ export class UserInfo extends Message$1<UserInfo> {
     { no: 3, name: "last_client_version", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "last_seen_at", kind: "message", T: Timestamp },
     { no: 5, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "is_super_admin", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UserInfo {
@@ -1145,7 +1157,7 @@ export class GetChatsRequest extends Message$1<GetChatsRequest> {
   limit = 0;
 
   /**
-   * Pagination: skip N chats
+   * Pagination: skip N chats (deprecated, use cursor)
    *
    * @generated from field: int32 offset = 4;
    */
@@ -1157,6 +1169,13 @@ export class GetChatsRequest extends Message$1<GetChatsRequest> {
    * @generated from field: string filter = 5;
    */
   filter = "";
+
+  /**
+   * Cursor-based pagination: token from previous response
+   *
+   * @generated from field: string cursor = 6;
+   */
+  cursor = "";
 
   constructor(data?: PartialMessage<GetChatsRequest>) {
     super();
@@ -1171,6 +1190,7 @@ export class GetChatsRequest extends Message$1<GetChatsRequest> {
     { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 5, name: "filter", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetChatsRequest {
@@ -1199,6 +1219,20 @@ export class GetChatsResponse extends Message$1<GetChatsResponse> {
    */
   chats: ChatInfo[] = [];
 
+  /**
+   * Cursor for next page (empty if no more)
+   *
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor = "";
+
+  /**
+   * Whether there are more results
+   *
+   * @generated from field: bool has_more = 3;
+   */
+  hasMore = false;
+
   constructor(data?: PartialMessage<GetChatsResponse>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1208,6 +1242,8 @@ export class GetChatsResponse extends Message$1<GetChatsResponse> {
   static readonly typeName = "messenger.GetChatsResponse";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "chats", kind: "message", T: ChatInfo, repeated: true },
+    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "has_more", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetChatsResponse {
@@ -6057,6 +6093,16 @@ export class GetPinnedMessagesRequest extends Message$1<GetPinnedMessagesRequest
    */
   chatId = "";
 
+  /**
+   * @generated from field: int32 limit = 3;
+   */
+  limit = 0;
+
+  /**
+   * @generated from field: int32 offset = 4;
+   */
+  offset = 0;
+
   constructor(data?: PartialMessage<GetPinnedMessagesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -6067,6 +6113,8 @@ export class GetPinnedMessagesRequest extends Message$1<GetPinnedMessagesRequest
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "chat_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetPinnedMessagesRequest {
@@ -11785,6 +11833,2021 @@ export class UpdateUserSettingsResponse extends Message$1<UpdateUserSettingsResp
 
   static equals(a: UpdateUserSettingsResponse | PlainMessage<UpdateUserSettingsResponse> | undefined, b: UpdateUserSettingsResponse | PlainMessage<UpdateUserSettingsResponse> | undefined): boolean {
     return proto3.util.equals(UpdateUserSettingsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ChatWithAIV2Request
+ */
+export class ChatWithAIV2Request extends Message$1<ChatWithAIV2Request> {
+  /**
+   * empty = create new chat
+   *
+   * @generated from field: string session_id = 1;
+   */
+  sessionId = "";
+
+  /**
+   * @generated from field: string message = 2;
+   */
+  message = "";
+
+  /**
+   * base64 images for multimodal
+   *
+   * @generated from field: repeated bytes images = 3;
+   */
+  images: Uint8Array[] = [];
+
+  /**
+   * force specific agent
+   *
+   * @generated from field: string agent_id = 4;
+   */
+  agentId = "";
+
+  /**
+   * client-side tool results (for agentic loop)
+   *
+   * @generated from field: repeated messenger.ToolCallV2 tool_calls = 5;
+   */
+  toolCalls: ToolCallV2[] = [];
+
+  constructor(data?: PartialMessage<ChatWithAIV2Request>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ChatWithAIV2Request";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "images", kind: "scalar", T: 12 /* ScalarType.BYTES */, repeated: true },
+    { no: 4, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "tool_calls", kind: "message", T: ToolCallV2, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ChatWithAIV2Request {
+    return new ChatWithAIV2Request().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ChatWithAIV2Request {
+    return new ChatWithAIV2Request().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ChatWithAIV2Request {
+    return new ChatWithAIV2Request().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ChatWithAIV2Request | PlainMessage<ChatWithAIV2Request> | undefined, b: ChatWithAIV2Request | PlainMessage<ChatWithAIV2Request> | undefined): boolean {
+    return proto3.util.equals(ChatWithAIV2Request, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ChatWithAIV2Response
+ */
+export class ChatWithAIV2Response extends Message$1<ChatWithAIV2Response> {
+  /**
+   * @generated from field: string token = 1;
+   */
+  token = "";
+
+  /**
+   * @generated from field: bool finished = 2;
+   */
+  finished = false;
+
+  /**
+   * @generated from field: string error = 3;
+   */
+  error = "";
+
+  /**
+   * @generated from field: string agent_id = 4;
+   */
+  agentId = "";
+
+  /**
+   * @generated from field: string agent_name = 5;
+   */
+  agentName = "";
+
+  /**
+   * @generated from field: repeated messenger.ToolCallRequestV2 tool_calls = 6;
+   */
+  toolCalls: ToolCallRequestV2[] = [];
+
+  /**
+   * @generated from field: bool has_rag_context = 7;
+   */
+  hasRagContext = false;
+
+  /**
+   * @generated from field: string model_used = 8;
+   */
+  modelUsed = "";
+
+  /**
+   * @generated from field: int32 token_count = 9;
+   */
+  tokenCount = 0;
+
+  /**
+   * @generated from field: string image_url = 10;
+   */
+  imageUrl = "";
+
+  constructor(data?: PartialMessage<ChatWithAIV2Response>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ChatWithAIV2Response";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "finished", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "error", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "agent_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "tool_calls", kind: "message", T: ToolCallRequestV2, repeated: true },
+    { no: 7, name: "has_rag_context", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 8, name: "model_used", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "token_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 10, name: "image_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ChatWithAIV2Response {
+    return new ChatWithAIV2Response().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ChatWithAIV2Response {
+    return new ChatWithAIV2Response().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ChatWithAIV2Response {
+    return new ChatWithAIV2Response().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ChatWithAIV2Response | PlainMessage<ChatWithAIV2Response> | undefined, b: ChatWithAIV2Response | PlainMessage<ChatWithAIV2Response> | undefined): boolean {
+    return proto3.util.equals(ChatWithAIV2Response, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ToolCallV2
+ */
+export class ToolCallV2 extends Message$1<ToolCallV2> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name = "";
+
+  /**
+   * JSON string
+   *
+   * @generated from field: string arguments = 3;
+   */
+  arguments = "";
+
+  /**
+   * @generated from field: string result = 4;
+   */
+  result = "";
+
+  constructor(data?: PartialMessage<ToolCallV2>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ToolCallV2";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "arguments", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "result", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ToolCallV2 {
+    return new ToolCallV2().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ToolCallV2 {
+    return new ToolCallV2().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ToolCallV2 {
+    return new ToolCallV2().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ToolCallV2 | PlainMessage<ToolCallV2> | undefined, b: ToolCallV2 | PlainMessage<ToolCallV2> | undefined): boolean {
+    return proto3.util.equals(ToolCallV2, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ToolCallRequestV2
+ */
+export class ToolCallRequestV2 extends Message$1<ToolCallRequestV2> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name = "";
+
+  /**
+   * JSON Schema
+   *
+   * @generated from field: string arguments = 3;
+   */
+  arguments = "";
+
+  constructor(data?: PartialMessage<ToolCallRequestV2>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ToolCallRequestV2";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "arguments", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ToolCallRequestV2 {
+    return new ToolCallRequestV2().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ToolCallRequestV2 {
+    return new ToolCallRequestV2().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ToolCallRequestV2 {
+    return new ToolCallRequestV2().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ToolCallRequestV2 | PlainMessage<ToolCallRequestV2> | undefined, b: ToolCallRequestV2 | PlainMessage<ToolCallRequestV2> | undefined): boolean {
+    return proto3.util.equals(ToolCallRequestV2, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.CreateAIAgentRequest
+ */
+export class CreateAIAgentRequest extends Message$1<CreateAIAgentRequest> {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name = "";
+
+  /**
+   * @generated from field: string description = 2;
+   */
+  description = "";
+
+  /**
+   * openrouter, mimo, webhook, websocket, subprocess, mcp
+   *
+   * @generated from field: string provider_type = 3;
+   */
+  providerType = "";
+
+  /**
+   * JSON string
+   *
+   * @generated from field: string provider_config = 4;
+   */
+  providerConfig = "";
+
+  /**
+   * @generated from field: string system_prompt = 5;
+   */
+  systemPrompt = "";
+
+  /**
+   * @generated from field: string model = 6;
+   */
+  model = "";
+
+  /**
+   * @generated from field: int32 max_tokens = 7;
+   */
+  maxTokens = 0;
+
+  /**
+   * @generated from field: float temperature = 8;
+   */
+  temperature = 0;
+
+  /**
+   * @generated from field: bool tools_enabled = 9;
+   */
+  toolsEnabled = false;
+
+  /**
+   * @generated from field: repeated string tool_whitelist = 10;
+   */
+  toolWhitelist: string[] = [];
+
+  /**
+   * @generated from field: bool rag_enabled = 11;
+   */
+  ragEnabled = false;
+
+  /**
+   * JSON string
+   *
+   * @generated from field: string rag_config = 12;
+   */
+  ragConfig = "";
+
+  /**
+   * @generated from field: int32 rate_limit = 13;
+   */
+  rateLimit = 0;
+
+  /**
+   * @generated from field: bool is_public = 14;
+   */
+  isPublic = false;
+
+  constructor(data?: PartialMessage<CreateAIAgentRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.CreateAIAgentRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "provider_type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "provider_config", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "system_prompt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "model", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "max_tokens", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 8, name: "temperature", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+    { no: 9, name: "tools_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "tool_whitelist", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 11, name: "rag_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 12, name: "rag_config", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 13, name: "rate_limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 14, name: "is_public", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateAIAgentRequest {
+    return new CreateAIAgentRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateAIAgentRequest {
+    return new CreateAIAgentRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateAIAgentRequest {
+    return new CreateAIAgentRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CreateAIAgentRequest | PlainMessage<CreateAIAgentRequest> | undefined, b: CreateAIAgentRequest | PlainMessage<CreateAIAgentRequest> | undefined): boolean {
+    return proto3.util.equals(CreateAIAgentRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.CreateAIAgentResponse
+ */
+export class CreateAIAgentResponse extends Message$1<CreateAIAgentResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string agent_id = 2;
+   */
+  agentId = "";
+
+  /**
+   * @generated from field: string error = 3;
+   */
+  error = "";
+
+  constructor(data?: PartialMessage<CreateAIAgentResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.CreateAIAgentResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "error", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateAIAgentResponse {
+    return new CreateAIAgentResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateAIAgentResponse {
+    return new CreateAIAgentResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateAIAgentResponse {
+    return new CreateAIAgentResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CreateAIAgentResponse | PlainMessage<CreateAIAgentResponse> | undefined, b: CreateAIAgentResponse | PlainMessage<CreateAIAgentResponse> | undefined): boolean {
+    return proto3.util.equals(CreateAIAgentResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UpdateAIAgentRequest
+ */
+export class UpdateAIAgentRequest extends Message$1<UpdateAIAgentRequest> {
+  /**
+   * @generated from field: string agent_id = 1;
+   */
+  agentId = "";
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name = "";
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description = "";
+
+  /**
+   * @generated from field: string provider_config = 4;
+   */
+  providerConfig = "";
+
+  /**
+   * @generated from field: string system_prompt = 5;
+   */
+  systemPrompt = "";
+
+  /**
+   * @generated from field: string model = 6;
+   */
+  model = "";
+
+  /**
+   * @generated from field: int32 max_tokens = 7;
+   */
+  maxTokens = 0;
+
+  /**
+   * @generated from field: float temperature = 8;
+   */
+  temperature = 0;
+
+  /**
+   * @generated from field: bool tools_enabled = 9;
+   */
+  toolsEnabled = false;
+
+  /**
+   * @generated from field: repeated string tool_whitelist = 10;
+   */
+  toolWhitelist: string[] = [];
+
+  /**
+   * @generated from field: bool rag_enabled = 11;
+   */
+  ragEnabled = false;
+
+  /**
+   * @generated from field: string rag_config = 12;
+   */
+  ragConfig = "";
+
+  /**
+   * @generated from field: int32 rate_limit = 13;
+   */
+  rateLimit = 0;
+
+  /**
+   * @generated from field: bool is_public = 14;
+   */
+  isPublic = false;
+
+  constructor(data?: PartialMessage<UpdateAIAgentRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UpdateAIAgentRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "provider_config", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "system_prompt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "model", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "max_tokens", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 8, name: "temperature", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+    { no: 9, name: "tools_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "tool_whitelist", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 11, name: "rag_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 12, name: "rag_config", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 13, name: "rate_limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 14, name: "is_public", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateAIAgentRequest {
+    return new UpdateAIAgentRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateAIAgentRequest {
+    return new UpdateAIAgentRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateAIAgentRequest {
+    return new UpdateAIAgentRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateAIAgentRequest | PlainMessage<UpdateAIAgentRequest> | undefined, b: UpdateAIAgentRequest | PlainMessage<UpdateAIAgentRequest> | undefined): boolean {
+    return proto3.util.equals(UpdateAIAgentRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UpdateAIAgentResponse
+ */
+export class UpdateAIAgentResponse extends Message$1<UpdateAIAgentResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string error = 2;
+   */
+  error = "";
+
+  constructor(data?: PartialMessage<UpdateAIAgentResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UpdateAIAgentResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "error", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateAIAgentResponse {
+    return new UpdateAIAgentResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateAIAgentResponse {
+    return new UpdateAIAgentResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateAIAgentResponse {
+    return new UpdateAIAgentResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateAIAgentResponse | PlainMessage<UpdateAIAgentResponse> | undefined, b: UpdateAIAgentResponse | PlainMessage<UpdateAIAgentResponse> | undefined): boolean {
+    return proto3.util.equals(UpdateAIAgentResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.DeleteAIAgentRequest
+ */
+export class DeleteAIAgentRequest extends Message$1<DeleteAIAgentRequest> {
+  /**
+   * @generated from field: string agent_id = 1;
+   */
+  agentId = "";
+
+  constructor(data?: PartialMessage<DeleteAIAgentRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.DeleteAIAgentRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteAIAgentRequest {
+    return new DeleteAIAgentRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteAIAgentRequest {
+    return new DeleteAIAgentRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteAIAgentRequest {
+    return new DeleteAIAgentRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteAIAgentRequest | PlainMessage<DeleteAIAgentRequest> | undefined, b: DeleteAIAgentRequest | PlainMessage<DeleteAIAgentRequest> | undefined): boolean {
+    return proto3.util.equals(DeleteAIAgentRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.DeleteAIAgentResponse
+ */
+export class DeleteAIAgentResponse extends Message$1<DeleteAIAgentResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string error = 2;
+   */
+  error = "";
+
+  constructor(data?: PartialMessage<DeleteAIAgentResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.DeleteAIAgentResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "error", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteAIAgentResponse {
+    return new DeleteAIAgentResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteAIAgentResponse {
+    return new DeleteAIAgentResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteAIAgentResponse {
+    return new DeleteAIAgentResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteAIAgentResponse | PlainMessage<DeleteAIAgentResponse> | undefined, b: DeleteAIAgentResponse | PlainMessage<DeleteAIAgentResponse> | undefined): boolean {
+    return proto3.util.equals(DeleteAIAgentResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAIAgentRequest
+ */
+export class GetAIAgentRequest extends Message$1<GetAIAgentRequest> {
+  /**
+   * @generated from field: string agent_id = 1;
+   */
+  agentId = "";
+
+  constructor(data?: PartialMessage<GetAIAgentRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAIAgentRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAIAgentRequest {
+    return new GetAIAgentRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAIAgentRequest {
+    return new GetAIAgentRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAIAgentRequest {
+    return new GetAIAgentRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAIAgentRequest | PlainMessage<GetAIAgentRequest> | undefined, b: GetAIAgentRequest | PlainMessage<GetAIAgentRequest> | undefined): boolean {
+    return proto3.util.equals(GetAIAgentRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAIAgentResponse
+ */
+export class GetAIAgentResponse extends Message$1<GetAIAgentResponse> {
+  /**
+   * @generated from field: messenger.AgentInfoV2 agent = 1;
+   */
+  agent?: AgentInfoV2;
+
+  constructor(data?: PartialMessage<GetAIAgentResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAIAgentResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "agent", kind: "message", T: AgentInfoV2 },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAIAgentResponse {
+    return new GetAIAgentResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAIAgentResponse {
+    return new GetAIAgentResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAIAgentResponse {
+    return new GetAIAgentResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAIAgentResponse | PlainMessage<GetAIAgentResponse> | undefined, b: GetAIAgentResponse | PlainMessage<GetAIAgentResponse> | undefined): boolean {
+    return proto3.util.equals(GetAIAgentResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.AgentInfoV2
+ */
+export class AgentInfoV2 extends Message$1<AgentInfoV2> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name = "";
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description = "";
+
+  /**
+   * @generated from field: string provider_type = 4;
+   */
+  providerType = "";
+
+  /**
+   * @generated from field: string model = 5;
+   */
+  model = "";
+
+  /**
+   * @generated from field: string system_prompt = 6;
+   */
+  systemPrompt = "";
+
+  /**
+   * @generated from field: bool tools_enabled = 7;
+   */
+  toolsEnabled = false;
+
+  /**
+   * @generated from field: bool rag_enabled = 8;
+   */
+  ragEnabled = false;
+
+  /**
+   * @generated from field: bool is_preset = 9;
+   */
+  isPreset = false;
+
+  /**
+   * @generated from field: bool is_public = 10;
+   */
+  isPublic = false;
+
+  /**
+   * @generated from field: int32 max_tokens = 11;
+   */
+  maxTokens = 0;
+
+  /**
+   * @generated from field: float temperature = 12;
+   */
+  temperature = 0;
+
+  /**
+   * @generated from field: string created_by = 13;
+   */
+  createdBy = "";
+
+  /**
+   * @generated from field: messenger.AgentCapabilitiesV2 capabilities = 14;
+   */
+  capabilities?: AgentCapabilitiesV2;
+
+  /**
+   * @generated from field: int32 install_count = 15;
+   */
+  installCount = 0;
+
+  /**
+   * @generated from field: float avg_rating = 16;
+   */
+  avgRating = 0;
+
+  /**
+   * @generated from field: int32 review_count = 17;
+   */
+  reviewCount = 0;
+
+  /**
+   * @generated from field: repeated string tags = 18;
+   */
+  tags: string[] = [];
+
+  /**
+   * @generated from field: string original_agent_id = 19;
+   */
+  originalAgentId = "";
+
+  /**
+   * @generated from field: int32 version = 20;
+   */
+  version = 0;
+
+  /**
+   * @generated from field: string share_code = 21;
+   */
+  shareCode = "";
+
+  constructor(data?: PartialMessage<AgentInfoV2>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.AgentInfoV2";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "provider_type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "model", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "system_prompt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "tools_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 8, name: "rag_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 9, name: "is_preset", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "is_public", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 11, name: "max_tokens", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 12, name: "temperature", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+    { no: 13, name: "created_by", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 14, name: "capabilities", kind: "message", T: AgentCapabilitiesV2 },
+    { no: 15, name: "install_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 16, name: "avg_rating", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+    { no: 17, name: "review_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 18, name: "tags", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 19, name: "original_agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 20, name: "version", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 21, name: "share_code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AgentInfoV2 {
+    return new AgentInfoV2().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AgentInfoV2 {
+    return new AgentInfoV2().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AgentInfoV2 {
+    return new AgentInfoV2().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AgentInfoV2 | PlainMessage<AgentInfoV2> | undefined, b: AgentInfoV2 | PlainMessage<AgentInfoV2> | undefined): boolean {
+    return proto3.util.equals(AgentInfoV2, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.AgentCapabilitiesV2
+ */
+export class AgentCapabilitiesV2 extends Message$1<AgentCapabilitiesV2> {
+  /**
+   * @generated from field: bool supports_images = 1;
+   */
+  supportsImages = false;
+
+  /**
+   * @generated from field: bool supports_tools = 2;
+   */
+  supportsTools = false;
+
+  /**
+   * @generated from field: bool supports_streaming = 3;
+   */
+  supportsStreaming = false;
+
+  /**
+   * @generated from field: int32 max_tokens = 4;
+   */
+  maxTokens = 0;
+
+  constructor(data?: PartialMessage<AgentCapabilitiesV2>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.AgentCapabilitiesV2";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "supports_images", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "supports_tools", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "supports_streaming", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 4, name: "max_tokens", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AgentCapabilitiesV2 {
+    return new AgentCapabilitiesV2().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AgentCapabilitiesV2 {
+    return new AgentCapabilitiesV2().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AgentCapabilitiesV2 {
+    return new AgentCapabilitiesV2().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AgentCapabilitiesV2 | PlainMessage<AgentCapabilitiesV2> | undefined, b: AgentCapabilitiesV2 | PlainMessage<AgentCapabilitiesV2> | undefined): boolean {
+    return proto3.util.equals(AgentCapabilitiesV2, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ListAIAgentsRequest
+ */
+export class ListAIAgentsRequest extends Message$1<ListAIAgentsRequest> {
+  /**
+   * @generated from field: bool include_public = 1;
+   */
+  includePublic = false;
+
+  constructor(data?: PartialMessage<ListAIAgentsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ListAIAgentsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "include_public", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListAIAgentsRequest {
+    return new ListAIAgentsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListAIAgentsRequest {
+    return new ListAIAgentsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListAIAgentsRequest {
+    return new ListAIAgentsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListAIAgentsRequest | PlainMessage<ListAIAgentsRequest> | undefined, b: ListAIAgentsRequest | PlainMessage<ListAIAgentsRequest> | undefined): boolean {
+    return proto3.util.equals(ListAIAgentsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ListAIAgentsResponse
+ */
+export class ListAIAgentsResponse extends Message$1<ListAIAgentsResponse> {
+  /**
+   * @generated from field: repeated messenger.AgentInfoV2 agents = 1;
+   */
+  agents: AgentInfoV2[] = [];
+
+  constructor(data?: PartialMessage<ListAIAgentsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ListAIAgentsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "agents", kind: "message", T: AgentInfoV2, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListAIAgentsResponse {
+    return new ListAIAgentsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListAIAgentsResponse {
+    return new ListAIAgentsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListAIAgentsResponse {
+    return new ListAIAgentsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListAIAgentsResponse | PlainMessage<ListAIAgentsResponse> | undefined, b: ListAIAgentsResponse | PlainMessage<ListAIAgentsResponse> | undefined): boolean {
+    return proto3.util.equals(ListAIAgentsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.CloneAIAgentRequest
+ */
+export class CloneAIAgentRequest extends Message$1<CloneAIAgentRequest> {
+  /**
+   * @generated from field: string agent_id = 1;
+   */
+  agentId = "";
+
+  /**
+   * @generated from field: string new_name = 2;
+   */
+  newName = "";
+
+  constructor(data?: PartialMessage<CloneAIAgentRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.CloneAIAgentRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "new_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CloneAIAgentRequest {
+    return new CloneAIAgentRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CloneAIAgentRequest {
+    return new CloneAIAgentRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CloneAIAgentRequest {
+    return new CloneAIAgentRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CloneAIAgentRequest | PlainMessage<CloneAIAgentRequest> | undefined, b: CloneAIAgentRequest | PlainMessage<CloneAIAgentRequest> | undefined): boolean {
+    return proto3.util.equals(CloneAIAgentRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.CloneAIAgentResponse
+ */
+export class CloneAIAgentResponse extends Message$1<CloneAIAgentResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string agent_id = 2;
+   */
+  agentId = "";
+
+  /**
+   * @generated from field: string error = 3;
+   */
+  error = "";
+
+  constructor(data?: PartialMessage<CloneAIAgentResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.CloneAIAgentResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "error", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CloneAIAgentResponse {
+    return new CloneAIAgentResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CloneAIAgentResponse {
+    return new CloneAIAgentResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CloneAIAgentResponse {
+    return new CloneAIAgentResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CloneAIAgentResponse | PlainMessage<CloneAIAgentResponse> | undefined, b: CloneAIAgentResponse | PlainMessage<CloneAIAgentResponse> | undefined): boolean {
+    return proto3.util.equals(CloneAIAgentResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ListAIToolsRequest
+ */
+export class ListAIToolsRequest extends Message$1<ListAIToolsRequest> {
+  constructor(data?: PartialMessage<ListAIToolsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ListAIToolsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListAIToolsRequest {
+    return new ListAIToolsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListAIToolsRequest {
+    return new ListAIToolsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListAIToolsRequest {
+    return new ListAIToolsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListAIToolsRequest | PlainMessage<ListAIToolsRequest> | undefined, b: ListAIToolsRequest | PlainMessage<ListAIToolsRequest> | undefined): boolean {
+    return proto3.util.equals(ListAIToolsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ListAIToolsResponse
+ */
+export class ListAIToolsResponse extends Message$1<ListAIToolsResponse> {
+  /**
+   * @generated from field: repeated messenger.ToolInfoV2 tools = 1;
+   */
+  tools: ToolInfoV2[] = [];
+
+  constructor(data?: PartialMessage<ListAIToolsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ListAIToolsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "tools", kind: "message", T: ToolInfoV2, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListAIToolsResponse {
+    return new ListAIToolsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListAIToolsResponse {
+    return new ListAIToolsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListAIToolsResponse {
+    return new ListAIToolsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListAIToolsResponse | PlainMessage<ListAIToolsResponse> | undefined, b: ListAIToolsResponse | PlainMessage<ListAIToolsResponse> | undefined): boolean {
+    return proto3.util.equals(ListAIToolsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ToolInfoV2
+ */
+export class ToolInfoV2 extends Message$1<ToolInfoV2> {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name = "";
+
+  /**
+   * @generated from field: string description = 2;
+   */
+  description = "";
+
+  /**
+   * JSON Schema
+   *
+   * @generated from field: string parameters_schema = 3;
+   */
+  parametersSchema = "";
+
+  /**
+   * @generated from field: string required_role = 4;
+   */
+  requiredRole = "";
+
+  constructor(data?: PartialMessage<ToolInfoV2>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ToolInfoV2";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "parameters_schema", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "required_role", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ToolInfoV2 {
+    return new ToolInfoV2().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ToolInfoV2 {
+    return new ToolInfoV2().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ToolInfoV2 {
+    return new ToolInfoV2().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ToolInfoV2 | PlainMessage<ToolInfoV2> | undefined, b: ToolInfoV2 | PlainMessage<ToolInfoV2> | undefined): boolean {
+    return proto3.util.equals(ToolInfoV2, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.RateAIAgentRequest
+ */
+export class RateAIAgentRequest extends Message$1<RateAIAgentRequest> {
+  /**
+   * @generated from field: string agent_id = 1;
+   */
+  agentId = "";
+
+  /**
+   * 1-5
+   *
+   * @generated from field: int32 rating = 2;
+   */
+  rating = 0;
+
+  /**
+   * optional text review
+   *
+   * @generated from field: string review = 3;
+   */
+  review = "";
+
+  constructor(data?: PartialMessage<RateAIAgentRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.RateAIAgentRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "rating", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "review", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RateAIAgentRequest {
+    return new RateAIAgentRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RateAIAgentRequest {
+    return new RateAIAgentRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RateAIAgentRequest {
+    return new RateAIAgentRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RateAIAgentRequest | PlainMessage<RateAIAgentRequest> | undefined, b: RateAIAgentRequest | PlainMessage<RateAIAgentRequest> | undefined): boolean {
+    return proto3.util.equals(RateAIAgentRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.RateAIAgentResponse
+ */
+export class RateAIAgentResponse extends Message$1<RateAIAgentResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string error = 2;
+   */
+  error = "";
+
+  /**
+   * @generated from field: float avg_rating = 3;
+   */
+  avgRating = 0;
+
+  /**
+   * @generated from field: int32 review_count = 4;
+   */
+  reviewCount = 0;
+
+  constructor(data?: PartialMessage<RateAIAgentResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.RateAIAgentResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "error", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "avg_rating", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+    { no: 4, name: "review_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RateAIAgentResponse {
+    return new RateAIAgentResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RateAIAgentResponse {
+    return new RateAIAgentResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RateAIAgentResponse {
+    return new RateAIAgentResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RateAIAgentResponse | PlainMessage<RateAIAgentResponse> | undefined, b: RateAIAgentResponse | PlainMessage<RateAIAgentResponse> | undefined): boolean {
+    return proto3.util.equals(RateAIAgentResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAIAgentReviewsRequest
+ */
+export class GetAIAgentReviewsRequest extends Message$1<GetAIAgentReviewsRequest> {
+  /**
+   * @generated from field: string agent_id = 1;
+   */
+  agentId = "";
+
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<GetAIAgentReviewsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAIAgentReviewsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAIAgentReviewsRequest {
+    return new GetAIAgentReviewsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAIAgentReviewsRequest {
+    return new GetAIAgentReviewsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAIAgentReviewsRequest {
+    return new GetAIAgentReviewsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAIAgentReviewsRequest | PlainMessage<GetAIAgentReviewsRequest> | undefined, b: GetAIAgentReviewsRequest | PlainMessage<GetAIAgentReviewsRequest> | undefined): boolean {
+    return proto3.util.equals(GetAIAgentReviewsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.AgentReviewInfo
+ */
+export class AgentReviewInfo extends Message$1<AgentReviewInfo> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: int32 rating = 2;
+   */
+  rating = 0;
+
+  /**
+   * @generated from field: string review = 3;
+   */
+  review = "";
+
+  /**
+   * @generated from field: string created_at = 4;
+   */
+  createdAt = "";
+
+  constructor(data?: PartialMessage<AgentReviewInfo>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.AgentReviewInfo";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "rating", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "review", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AgentReviewInfo {
+    return new AgentReviewInfo().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AgentReviewInfo {
+    return new AgentReviewInfo().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AgentReviewInfo {
+    return new AgentReviewInfo().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AgentReviewInfo | PlainMessage<AgentReviewInfo> | undefined, b: AgentReviewInfo | PlainMessage<AgentReviewInfo> | undefined): boolean {
+    return proto3.util.equals(AgentReviewInfo, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAIAgentReviewsResponse
+ */
+export class GetAIAgentReviewsResponse extends Message$1<GetAIAgentReviewsResponse> {
+  /**
+   * @generated from field: repeated messenger.AgentReviewInfo reviews = 1;
+   */
+  reviews: AgentReviewInfo[] = [];
+
+  /**
+   * @generated from field: float avg_rating = 2;
+   */
+  avgRating = 0;
+
+  /**
+   * @generated from field: int32 review_count = 3;
+   */
+  reviewCount = 0;
+
+  constructor(data?: PartialMessage<GetAIAgentReviewsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAIAgentReviewsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "reviews", kind: "message", T: AgentReviewInfo, repeated: true },
+    { no: 2, name: "avg_rating", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+    { no: 3, name: "review_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAIAgentReviewsResponse {
+    return new GetAIAgentReviewsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAIAgentReviewsResponse {
+    return new GetAIAgentReviewsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAIAgentReviewsResponse {
+    return new GetAIAgentReviewsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAIAgentReviewsResponse | PlainMessage<GetAIAgentReviewsResponse> | undefined, b: GetAIAgentReviewsResponse | PlainMessage<GetAIAgentReviewsResponse> | undefined): boolean {
+    return proto3.util.equals(GetAIAgentReviewsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ListMarketplaceAgentsRequest
+ */
+export class ListMarketplaceAgentsRequest extends Message$1<ListMarketplaceAgentsRequest> {
+  /**
+   * search by name/description/tags
+   *
+   * @generated from field: string query = 1;
+   */
+  query = "";
+
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  /**
+   * @generated from field: int32 offset = 3;
+   */
+  offset = 0;
+
+  constructor(data?: PartialMessage<ListMarketplaceAgentsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ListMarketplaceAgentsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListMarketplaceAgentsRequest {
+    return new ListMarketplaceAgentsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListMarketplaceAgentsRequest {
+    return new ListMarketplaceAgentsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListMarketplaceAgentsRequest {
+    return new ListMarketplaceAgentsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListMarketplaceAgentsRequest | PlainMessage<ListMarketplaceAgentsRequest> | undefined, b: ListMarketplaceAgentsRequest | PlainMessage<ListMarketplaceAgentsRequest> | undefined): boolean {
+    return proto3.util.equals(ListMarketplaceAgentsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ListMarketplaceAgentsResponse
+ */
+export class ListMarketplaceAgentsResponse extends Message$1<ListMarketplaceAgentsResponse> {
+  /**
+   * @generated from field: repeated messenger.AgentInfoV2 agents = 1;
+   */
+  agents: AgentInfoV2[] = [];
+
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
+  constructor(data?: PartialMessage<ListMarketplaceAgentsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ListMarketplaceAgentsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "agents", kind: "message", T: AgentInfoV2, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListMarketplaceAgentsResponse {
+    return new ListMarketplaceAgentsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListMarketplaceAgentsResponse {
+    return new ListMarketplaceAgentsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListMarketplaceAgentsResponse {
+    return new ListMarketplaceAgentsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListMarketplaceAgentsResponse | PlainMessage<ListMarketplaceAgentsResponse> | undefined, b: ListMarketplaceAgentsResponse | PlainMessage<ListMarketplaceAgentsResponse> | undefined): boolean {
+    return proto3.util.equals(ListMarketplaceAgentsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAIAgentStatsRequest
+ */
+export class GetAIAgentStatsRequest extends Message$1<GetAIAgentStatsRequest> {
+  /**
+   * @generated from field: string agent_id = 1;
+   */
+  agentId = "";
+
+  constructor(data?: PartialMessage<GetAIAgentStatsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAIAgentStatsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAIAgentStatsRequest {
+    return new GetAIAgentStatsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAIAgentStatsRequest {
+    return new GetAIAgentStatsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAIAgentStatsRequest {
+    return new GetAIAgentStatsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAIAgentStatsRequest | PlainMessage<GetAIAgentStatsRequest> | undefined, b: GetAIAgentStatsRequest | PlainMessage<GetAIAgentStatsRequest> | undefined): boolean {
+    return proto3.util.equals(GetAIAgentStatsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAIAgentStatsResponse
+ */
+export class GetAIAgentStatsResponse extends Message$1<GetAIAgentStatsResponse> {
+  /**
+   * @generated from field: int32 install_count = 1;
+   */
+  installCount = 0;
+
+  /**
+   * @generated from field: float avg_rating = 2;
+   */
+  avgRating = 0;
+
+  /**
+   * @generated from field: int32 review_count = 3;
+   */
+  reviewCount = 0;
+
+  /**
+   * @generated from field: int32 total_tokens_used = 4;
+   */
+  totalTokensUsed = 0;
+
+  constructor(data?: PartialMessage<GetAIAgentStatsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAIAgentStatsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "install_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "avg_rating", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+    { no: 3, name: "review_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "total_tokens_used", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAIAgentStatsResponse {
+    return new GetAIAgentStatsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAIAgentStatsResponse {
+    return new GetAIAgentStatsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAIAgentStatsResponse {
+    return new GetAIAgentStatsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAIAgentStatsResponse | PlainMessage<GetAIAgentStatsResponse> | undefined, b: GetAIAgentStatsResponse | PlainMessage<GetAIAgentStatsResponse> | undefined): boolean {
+    return proto3.util.equals(GetAIAgentStatsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ShareAIAgentRequest
+ */
+export class ShareAIAgentRequest extends Message$1<ShareAIAgentRequest> {
+  /**
+   * @generated from field: string agent_id = 1;
+   */
+  agentId = "";
+
+  constructor(data?: PartialMessage<ShareAIAgentRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ShareAIAgentRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ShareAIAgentRequest {
+    return new ShareAIAgentRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ShareAIAgentRequest {
+    return new ShareAIAgentRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ShareAIAgentRequest {
+    return new ShareAIAgentRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ShareAIAgentRequest | PlainMessage<ShareAIAgentRequest> | undefined, b: ShareAIAgentRequest | PlainMessage<ShareAIAgentRequest> | undefined): boolean {
+    return proto3.util.equals(ShareAIAgentRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ShareAIAgentResponse
+ */
+export class ShareAIAgentResponse extends Message$1<ShareAIAgentResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string share_code = 2;
+   */
+  shareCode = "";
+
+  /**
+   * @generated from field: string error = 3;
+   */
+  error = "";
+
+  constructor(data?: PartialMessage<ShareAIAgentResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ShareAIAgentResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "share_code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "error", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ShareAIAgentResponse {
+    return new ShareAIAgentResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ShareAIAgentResponse {
+    return new ShareAIAgentResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ShareAIAgentResponse {
+    return new ShareAIAgentResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ShareAIAgentResponse | PlainMessage<ShareAIAgentResponse> | undefined, b: ShareAIAgentResponse | PlainMessage<ShareAIAgentResponse> | undefined): boolean {
+    return proto3.util.equals(ShareAIAgentResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.InstallAIAgentRequest
+ */
+export class InstallAIAgentRequest extends Message$1<InstallAIAgentRequest> {
+  /**
+   * @generated from field: string share_code = 1;
+   */
+  shareCode = "";
+
+  /**
+   * optional rename
+   *
+   * @generated from field: string new_name = 2;
+   */
+  newName = "";
+
+  constructor(data?: PartialMessage<InstallAIAgentRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.InstallAIAgentRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "share_code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "new_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): InstallAIAgentRequest {
+    return new InstallAIAgentRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): InstallAIAgentRequest {
+    return new InstallAIAgentRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): InstallAIAgentRequest {
+    return new InstallAIAgentRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: InstallAIAgentRequest | PlainMessage<InstallAIAgentRequest> | undefined, b: InstallAIAgentRequest | PlainMessage<InstallAIAgentRequest> | undefined): boolean {
+    return proto3.util.equals(InstallAIAgentRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.InstallAIAgentResponse
+ */
+export class InstallAIAgentResponse extends Message$1<InstallAIAgentResponse> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string agent_id = 2;
+   */
+  agentId = "";
+
+  /**
+   * @generated from field: string error = 3;
+   */
+  error = "";
+
+  constructor(data?: PartialMessage<InstallAIAgentResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.InstallAIAgentResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "error", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): InstallAIAgentResponse {
+    return new InstallAIAgentResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): InstallAIAgentResponse {
+    return new InstallAIAgentResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): InstallAIAgentResponse {
+    return new InstallAIAgentResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: InstallAIAgentResponse | PlainMessage<InstallAIAgentResponse> | undefined, b: InstallAIAgentResponse | PlainMessage<InstallAIAgentResponse> | undefined): boolean {
+    return proto3.util.equals(InstallAIAgentResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAIUsageStatsRequest
+ */
+export class GetAIUsageStatsRequest extends Message$1<GetAIUsageStatsRequest> {
+  constructor(data?: PartialMessage<GetAIUsageStatsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAIUsageStatsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAIUsageStatsRequest {
+    return new GetAIUsageStatsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAIUsageStatsRequest {
+    return new GetAIUsageStatsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAIUsageStatsRequest {
+    return new GetAIUsageStatsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAIUsageStatsRequest | PlainMessage<GetAIUsageStatsRequest> | undefined, b: GetAIUsageStatsRequest | PlainMessage<GetAIUsageStatsRequest> | undefined): boolean {
+    return proto3.util.equals(GetAIUsageStatsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.UsageStatInfo
+ */
+export class UsageStatInfo extends Message$1<UsageStatInfo> {
+  /**
+   * @generated from field: string agent_id = 1;
+   */
+  agentId = "";
+
+  /**
+   * @generated from field: int32 total_tokens = 2;
+   */
+  totalTokens = 0;
+
+  /**
+   * @generated from field: int32 request_count = 3;
+   */
+  requestCount = 0;
+
+  /**
+   * @generated from field: string period_start = 4;
+   */
+  periodStart = "";
+
+  /**
+   * @generated from field: string agent_name = 5;
+   */
+  agentName = "";
+
+  constructor(data?: PartialMessage<UsageStatInfo>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.UsageStatInfo";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "total_tokens", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "request_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "period_start", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "agent_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UsageStatInfo {
+    return new UsageStatInfo().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UsageStatInfo {
+    return new UsageStatInfo().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UsageStatInfo {
+    return new UsageStatInfo().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UsageStatInfo | PlainMessage<UsageStatInfo> | undefined, b: UsageStatInfo | PlainMessage<UsageStatInfo> | undefined): boolean {
+    return proto3.util.equals(UsageStatInfo, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAIUsageStatsResponse
+ */
+export class GetAIUsageStatsResponse extends Message$1<GetAIUsageStatsResponse> {
+  /**
+   * @generated from field: repeated messenger.UsageStatInfo stats = 1;
+   */
+  stats: UsageStatInfo[] = [];
+
+  /**
+   * @generated from field: int32 total_tokens = 2;
+   */
+  totalTokens = 0;
+
+  /**
+   * @generated from field: int32 total_requests = 3;
+   */
+  totalRequests = 0;
+
+  constructor(data?: PartialMessage<GetAIUsageStatsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAIUsageStatsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "stats", kind: "message", T: UsageStatInfo, repeated: true },
+    { no: 2, name: "total_tokens", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "total_requests", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAIUsageStatsResponse {
+    return new GetAIUsageStatsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAIUsageStatsResponse {
+    return new GetAIUsageStatsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAIUsageStatsResponse {
+    return new GetAIUsageStatsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAIUsageStatsResponse | PlainMessage<GetAIUsageStatsResponse> | undefined, b: GetAIUsageStatsResponse | PlainMessage<GetAIUsageStatsResponse> | undefined): boolean {
+    return proto3.util.equals(GetAIUsageStatsResponse, a, b);
   }
 }
 

@@ -289,11 +289,11 @@ function protoToToolInfo(t: any): ToolInfoV2 {
 
 function protoToDraft(d: any): Draft {
   return {
-    text: d.text || '',
+    text: d.draftText || d.text || '',
     repliedToMessageId: d.repliedToMessageId || '',
     repliedToUser: d.repliedToUser || '',
     repliedToText: d.repliedToText || '',
-    hasDraft: d.text ? d.text.length > 0 : false,
+    hasDraft: (d.draftText || d.text) ? (d.draftText || d.text).length > 0 : false,
   }
 }
 
@@ -606,9 +606,9 @@ class GrpcClient {
 
   async getChats(userId: string, username?: string, options?: {
     limit?: number
-    offset?: number
+    cursor?: string
     filter?: 'all' | 'pinned' | 'archived' | 'muted'
-  }): Promise<Chat[]> {
+  }): Promise<{ chats: Chat[]; nextCursor: string; hasMore: boolean }> {
     if (!this.chatClient) throw new Error('Not connected')
     return withRetry(
       async () => {
@@ -616,10 +616,14 @@ class GrpcClient {
           userId,
           username: username || '',
           limit: options?.limit ?? 100,
-          offset: options?.offset ?? 0,
+          cursor: options?.cursor ?? '',
           filter: options?.filter ?? 'all',
         })
-        return (response.chats || []).map(protoToChat)
+        return {
+          chats: (response.chats || []).map(protoToChat),
+          nextCursor: response.nextCursor ?? '',
+          hasMore: response.hasMore ?? false,
+        }
       },
       { maxRetries: 3, baseDelay: 500 },
     )
@@ -940,7 +944,7 @@ class GrpcClient {
 
   async saveDraft(userId: string, roomId: string, text: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.saveDraft({ userId, roomId, text })
+    const result = await this.chatClient.saveDraft({ userId, roomId, draftText: text })
     return result.success ?? false
   }
 
@@ -993,9 +997,9 @@ class GrpcClient {
     return result.success ?? false
   }
 
-  async setCurrentTheme(userId: string, themeId: string): Promise<boolean> {
+  async setCurrentTheme(username: string, userId: string, themeId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.setCurrentTheme({ userId, themeId })
+    const result = await this.chatClient.setCurrentTheme({ username, userId, themeId })
     return result.success ?? false
   }
 

@@ -23,18 +23,19 @@ export function useChatListV2() {
   const [searchQuery, setSearchQuery] = useState('')
   const [chatListVersion, setChatListVersion] = useState(0)
   const [hasMore, setHasMore] = useState(true)
+  const [nextCursor, setNextCursor] = useState('')
 
   const loadChats = useCallback(async (f: ChatFilter = 'all') => {
     if (!user) return
     setLoadingChats(true)
     try {
-      const chats = await grpcClient.getChats(user.id, user.username, {
+      const result = await grpcClient.getChats(user.id, user.username, {
         limit: 100,
-        offset: 0,
         filter: f,
       })
-      setChats(chats)
-      setHasMore(chats.length === 100)
+      setChats(result.chats)
+      setNextCursor(result.nextCursor)
+      setHasMore(result.hasMore)
     } catch (err) {
       console.error('Failed to load chats:', err)
       addError({ message: 'Не удалось загрузить список чатов', type: 'network' })
@@ -44,21 +45,22 @@ export function useChatListV2() {
   }, [user, setChats, setLoadingChats, addError])
 
   const loadMore = useCallback(async () => {
-    if (!user || !hasMore) return
+    if (!user || !hasMore || !nextCursor) return
     try {
-      const chats = await grpcClient.getChats(user.id, user.username, {
+      const result = await grpcClient.getChats(user.id, user.username, {
         limit: 100,
-        offset: chatList.length,
+        cursor: nextCursor,
         filter,
       })
-      if (chats.length > 0) {
-        useChatStore.getState().setChats([...useChatStore.getState().getChatList(), ...chats])
+      if (result.chats.length > 0) {
+        useChatStore.getState().setChats([...useChatStore.getState().getChatList(), ...result.chats])
       }
-      setHasMore(chats.length === 100)
+      setNextCursor(result.nextCursor)
+      setHasMore(result.hasMore)
     } catch (err) {
       console.error('Failed to load more chats:', err)
     }
-  }, [user, chatList.length, filter])
+  }, [user, hasMore, nextCursor, filter])
 
   const refreshChats = useCallback(async () => {
     await loadChats(filter)
