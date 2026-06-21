@@ -41,11 +41,22 @@
 
 | Метод | Описание |
 |-------|----------|
-| `sendMessage(roomId, content, userId)` | Отправить (ephemeral BiDi stream) |
-| `openReceiveStream(roomId, callback)` | Получать сообщения (persistent BiDi stream) |
-| `setReaction(messageId, emoji)` | Реакция |
-| `deleteMessages(messageIds, roomId, userId)` | Удалить сообщения |
-| `editMessage(messageId, roomId, userId, newText)` | Редактировать |
+| `sendMessage(roomId, content, userId)` | Отправить (ephemeral BiDi stream, v1) |
+| `openReceiveStream(roomId, callback)` | Получать сообщения (persistent BiDi stream, v1) |
+| `setReaction(messageId, emoji)` | Реакция (v1) |
+| `deleteMessages(messageIds, roomId, userId)` | Удалить сообщения (v1) |
+| `editMessage(messageId, roomId, userId, newText)` | Редактировать (v1) |
+
+## Messages v2
+
+| Метод | Описание |
+|-------|----------|
+| `getHistoryV2(roomId, limit, cursor)` | История (cursor-based pagination) |
+| `sendMessageV2(roomId, content, replyToId?)` | Отправить (unary RPC) |
+| `editMessageV2(messageId, newText)` | Редактировать |
+| `deleteMessageV2(messageIds, requesterUserId)` | Удалить |
+| `setReactionV2(messageId, emoji)` | Реакция |
+| `openChatV2Stream(roomId, callback)` | BiDi stream (oneof: message/typing/system) |
 
 ## ChatList v2
 

@@ -11,9 +11,10 @@ import { t } from '@/shared/types'
 interface ChatListScreenProps {
   onChatSelect: (chatId: string) => void
   onLogout: () => void
+  onProfile?: () => void
 }
 
-export function ChatListScreen({ onChatSelect, onLogout }: ChatListScreenProps) {
+export function ChatListScreen({ onChatSelect, onLogout, onProfile }: ChatListScreenProps) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const { chats, isLoadingChats, openChat } = useChats()
   const { pinChat, unpinChat, archiveChat, setMutedChat, deleteChat } = useChatListV2()
@@ -98,9 +99,18 @@ export function ChatListScreen({ onChatSelect, onLogout }: ChatListScreenProps) 
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {user && (
-              <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
+              <button
+                onClick={onProfile}
+                style={{
+                  fontSize: 13, color: 'rgba(255,255,255,0.5)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  padding: '4px 8px', borderRadius: 6,
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#6b5ce7')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.5)')}
+              >
                 {user.username}
-              </span>
+              </button>
             )}
             <button
               onClick={onLogout}

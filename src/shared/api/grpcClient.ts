@@ -119,15 +119,24 @@ async function withRetry<T>(
 
 // --- Auth Interceptor (V2 — with auto-refresh) ---
 
+let isRefreshing = false
+let refreshFailedAt = 0
+
 function createAuthInterceptor(
   getTokens: () => TokenPair | null,
   authClientRef: { current: any },
 ) {
   return (next: any) => async (req: any) => {
     const tokens = getTokens()
+
+    // Always attach token (even during refresh — prevents empty-auth requests)
     if (tokens) {
       const now = Math.floor(Date.now() / 1000)
-      if (now >= tokens.accessExpiresAt - 300) {
+      const isExpired = now >= tokens.accessExpiresAt
+
+      // Skip refresh if: not expired, already refreshing, or recently failed (30s cooldown)
+      if (isExpired && !isRefreshing && (now - refreshFailedAt > 30)) {
+        isRefreshing = true
         try {
           const client = authClientRef.current
           if (client) {
@@ -140,18 +149,18 @@ function createAuthInterceptor(
             }
             useAuthStore.getState().updateAccessToken(newTokens)
             req.header.set('Authorization', `Bearer ${newTokens.accessToken}`)
+            return next(req)
           }
         } catch (err) {
-          console.error('[Auth] Token refresh failed:', err)
-          useAuthStore.getState().logout()
-          useErrorStore.getState().addError({
-            message: 'Сессия истекла. Войдите снова.',
-            type: 'auth',
-          })
+          console.warn('[Auth] Token refresh failed:', err)
+          refreshFailedAt = Math.floor(Date.now() / 1000)
+        } finally {
+          isRefreshing = false
         }
-      } else {
-        req.header.set('Authorization', `Bearer ${tokens.accessToken}`)
       }
+
+      // Use current (possibly stale) token for this request
+      req.header.set('Authorization', `Bearer ${tokens.accessToken}`)
     }
     return next(req)
   }
@@ -206,6 +215,93 @@ function protoToMessage(msg: any): Message {
     userId: msg.userId || '',
     voiceUrl: msg.voiceUrl || '',
     duration: msg.duration || 0,
+  }
+}
+
+function protoToMessageV2(msg: any, outgoing = false, userMap?: Record<string, string>): Message {
+  let text = ''
+  let imageUrl = ''
+  let imageUrls: string[] = []
+  let voiceUrl = ''
+  let duration = 0
+  let replyToId = ''
+  let replyToPreview = ''
+
+  if (msg.content?.$case === 'text') {
+    text = msg.content.value || ''
+  } else if (msg.content?.$case === 'media') {
+    const media = msg.content.value
+    if (media.type === 'image') {
+      imageUrl = media.url || ''
+      imageUrls = media.urls || []
+    } else if (media.type === 'voice') {
+      voiceUrl = media.url || ''
+      duration = media.duration || 0
+    }
+  } else if (msg.content?.$case === 'reply') {
+    replyToId = msg.content.value.messageId || ''
+    replyToPreview = msg.content.value.preview || ''
+  }
+
+  let reactions: Record<string, string[]> = {}
+  if (msg.reactions && msg.reactions.length > 0) {
+    try {
+      const decoded = new TextDecoder().decode(msg.reactions)
+      const parsed = JSON.parse(decoded)
+      for (const [userId, emoji] of Object.entries(parsed)) {
+        if (!reactions[emoji as string]) reactions[emoji as string] = []
+        reactions[emoji as string].push(userId)
+      }
+    } catch {}
+  }
+
+  const senderId = msg.senderId || ''
+  const username = userMap?.[senderId] || ''
+
+  return {
+    id: msg.id || '',
+    roomId: msg.roomId || '',
+    user: username,
+    text,
+    createdAt: msg.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+    isOutgoing: outgoing,
+    isRead: msg.isRead || false,
+    repliedToMessageId: replyToId,
+    repliedToUser: '',
+    repliedToText: replyToPreview,
+    reactions,
+    isEdited: msg.edited || false,
+    imageUrl,
+    imageUrls,
+    userId: senderId,
+    voiceUrl,
+    duration,
+  }
+}
+
+function handleChatV2Message(v2Msg: any, callback: StreamCallback): void {
+  const payload = v2Msg.payload
+  if (!payload) return
+
+  if (payload.$case === 'system') {
+    const sys = payload.value
+    if (sys.type === 'SERVER_SHUTTINGDOWN') {
+      callback({ type: 'error', error: 'SERVER_SHUTTINGDOWN' })
+      return
+    }
+    if (sys.type === 'AUTH_FAILED') {
+      callback({ type: 'error', error: 'AUTH_FAILED' })
+      return
+    }
+    return
+  }
+
+  if (payload.$case === 'typing') {
+    return
+  }
+
+  if (payload.$case === 'message') {
+    callback({ type: 'message', message: protoToMessageV2(payload.value) })
   }
 }
 
@@ -880,6 +976,142 @@ class GrpcClient {
     if (!this.chatClient) throw new Error('Not connected')
     const result = await this.chatClient.editMessage({ messageId, text: newText })
     return result.success ?? false
+  }
+
+  // --- Messages V2 Methods ---
+
+  async getHistoryV2(roomId: string, limit = 50, cursor = ''): Promise<{ messages: Message[]; nextCursor: string; hasMore: boolean }> {
+    if (!this.chatClient) throw new Error('Not connected')
+    return withRetry(
+      async () => {
+        const response = await this.chatClient.getHistoryV2({ roomId, limit, cursor })
+        const messages = (response.messages || []).map((m: any) => protoToMessageV2(m))
+        if (messages.length === 0 && !cursor) {
+          const v1 = await this.chatClient.getHistory({ room: roomId, limit })
+          return {
+            messages: (v1.messages || []).map(protoToMessage),
+            nextCursor: '',
+            hasMore: (v1.messages || []).length === limit,
+          }
+        }
+        return {
+          messages,
+          nextCursor: response.nextCursor ?? '',
+          hasMore: response.hasMore ?? false,
+        }
+      },
+      { maxRetries: 2, baseDelay: 500 },
+    )
+  }
+
+  async sendMessageV2(
+    roomId: string,
+    content: string,
+    replyToId?: string,
+  ): Promise<Message> {
+    if (!this.chatClient) throw new Error('Not connected')
+    return withRetry(
+      async () => {
+        const request: any = { roomId, text: content }
+        if (replyToId) request.replyToId = replyToId
+        const response = await this.chatClient.sendMessageV2(request)
+        if (!response.success) throw new Error(response.error || 'Failed to send')
+        return protoToMessageV2(response.message, true)
+      },
+      { maxRetries: 2, baseDelay: 300 },
+    )
+  }
+
+  async editMessageV2(messageId: string, newText: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.editMessageV2({ messageId, text: newText })
+    return result.success ?? false
+  }
+
+  async deleteMessageV2(messageIds: string[], requesterUserId: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.deleteMessageV2({ messageIds, requesterUserId })
+    return result.success ?? false
+  }
+
+  async setReactionV2(messageId: string, emoji: string): Promise<boolean> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.setReactionV2({ messageId, emoji })
+    return result.success ?? false
+  }
+
+  // --- ChatV2 Stream (bidirectional) ---
+
+  openChatV2Stream(roomId: string, callback: StreamCallback): () => void {
+    const streamId = `chatv2-${roomId}`
+    const controller = new AbortController()
+    const signal = controller.signal
+
+    const existing = this.activeStreams.get(streamId)
+    if (existing) {
+      existing.abort()
+      this.activeStreams.delete(streamId)
+    }
+    this.activeStreams.set(streamId, controller)
+
+    const tokens = this._getTokens?.()
+    const jwtToken = tokens?.accessToken || ''
+
+    let authSent = false
+    const sendQueue: any[] = []
+    let sendResolve: ((value: IteratorResult<any>) => void) | null = null
+
+    const inputStream = {
+      [Symbol.asyncIterator]() {
+        return {
+          next(): Promise<IteratorResult<any>> {
+            if (sendQueue.length > 0) {
+              return Promise.resolve({ value: sendQueue.shift()!, done: false })
+            }
+            return new Promise<IteratorResult<any>>((resolve) => {
+              sendResolve = resolve
+            })
+          },
+        }
+      },
+    }
+
+    const stream = this.chatClient.chatV2(inputStream, { signal })
+
+    const processStream = async () => {
+      try {
+        for await (const v2Msg of stream) {
+          if (signal.aborted) break
+
+          if (!authSent) {
+            authSent = true
+            sendQueue.push({ jwtToken, roomId })
+            if (sendResolve) {
+              sendResolve({ value: sendQueue.shift()!, done: false })
+              sendResolve = null
+            }
+            continue
+          }
+
+          handleChatV2Message(v2Msg, callback)
+        }
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return
+        const msg = String(err?.message || err || '')
+        if (msg.includes('SERVER_SHUTTINGDOWN')) {
+          callback({ type: 'error', error: 'SERVER_SHUTTINGDOWN' })
+          return
+        }
+        callback({ type: 'error', error: msg })
+      }
+    }
+
+    processStream()
+
+    return () => {
+      controller.abort()
+      this.activeStreams.delete(streamId)
+    }
   }
 
   // --- ChatList V2 Methods ---

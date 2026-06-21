@@ -1,14 +1,6 @@
 // ============================================
 // useChatMessages — Chat Messages Hook
-// Loads message history + real-time streaming + pagination.
-// Features:
-// - Loads initial history on mount
-// - Opens a receive-only Chat stream via grpcClient for real-time messages
-// - Sends messages via grpcClient.sendMessage (ephemeral BiDi stream)
-// - Supports pagination (load more on scroll to top)
-// - Draft support with debounce save/load/delete
-// - Reactions, edit, delete, typing indicators
-// - Message selection mode
+// Uses V2 methods with V1 fallback for history.
 // ============================================
 
 import { useEffect, useCallback, useRef, useState } from 'react'
@@ -41,27 +33,25 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
   const updateChat = useChatStore((s) => s.updateChat)
   const user = useAuthStore((s) => s.user)
 
-  // Pagination state
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
-  const oldestMessageIdRef = useRef<string | null>(null)
+  const nextCursorRef = useRef<string>('')
+  const usingV2Ref = useRef<boolean>(true)
 
-  // Draft state
+  const userMapRef = useRef<Record<string, string>>({})
+  const userMapReadyRef = useRef(false)
+
   const [draft, setDraft] = useState('')
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Editing state
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editingText, setEditingText] = useState('')
 
-  // Selection state
   const [selectedMessages, setSelectedMessages] = useState<string[]>([])
   const [isSelecting, setIsSelecting] = useState(false)
 
-  // Typing indicators
   const [typingUsers, setTypingUsers] = useState<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
-  // Reply state
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null)
 
   const chatIdRef = useRef(chatId)
@@ -70,7 +60,6 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
   const userIdRef = useRef(user?.id || '')
   userIdRef.current = user?.id || ''
 
-  // Load draft when chat opens
   useEffect(() => {
     if (!chatId) return
     const savedDraft = localStorage.getItem(`draft_${chatId}`) || ''
@@ -85,7 +74,6 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     }
   }, [chatId])
 
-  // Save draft with debounce
   const updateDraft = useCallback((text: string) => {
     setDraft(text)
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
@@ -100,7 +88,6 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     }
   }, [])
 
-  // Clear draft on send
   const clearDraft = useCallback(() => {
     if (chatIdRef.current) {
       localStorage.removeItem(`draft_${chatIdRef.current}`)
@@ -108,25 +95,40 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     setDraft('')
   }, [])
 
-  // Load message history when chat opens
   useEffect(() => {
     if (!chatId) return
 
     let cancelled = false
     setLoadingMessages(true)
     setHasMore(true)
-    oldestMessageIdRef.current = null
+    nextCursorRef.current = ''
+
+    if (!userMapReadyRef.current) {
+      grpcClient.getAllUsers().then((users) => {
+        if (cancelled) return
+        const map: Record<string, string> = {}
+        for (const u of users) {
+          if (u.id) map[u.id] = u.username
+        }
+        userMapRef.current = map
+        userMapReadyRef.current = true
+      }).catch(() => {})
+    }
 
     grpcClient
-      .getHistory(chatId, 50)
-      .then(({ messages: msgs, hasMore: more }: { messages: Message[]; hasMore: boolean }) => {
+      .getHistoryV2(chatId, 50)
+      .then(({ messages: msgs, nextCursor, hasMore: more }) => {
         if (cancelled || chatIdRef.current !== chatId) return
-        setMessages(chatId, msgs)
+        const resolved = msgs.map((m) => {
+          if (!m.user && m.userId && userMapRef.current[m.userId]) {
+            return { ...m, user: userMapRef.current[m.userId] }
+          }
+          return m
+        })
+        setMessages(chatId, resolved)
         setHasMore(more)
-        // Track oldest message for pagination
-        if (msgs.length > 0) {
-          oldestMessageIdRef.current = msgs[0].id
-        }
+        nextCursorRef.current = nextCursor
+        usingV2Ref.current = nextCursor !== '' || resolved.length > 0
       })
       .catch((err) => {
         if (cancelled) return
@@ -138,7 +140,6 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
         }
       })
 
-    // Mark chat as read
     updateChat(chatId, { unreadCount: 0 })
 
     return () => {
@@ -168,7 +169,11 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
       }
       if (event.type === 'message' && event.message) {
         if (event.message.roomId === chatIdRef.current) {
-          addMessage(event.message)
+          let msg = event.message
+          if (!msg.user && msg.userId && userMapRef.current[msg.userId]) {
+            msg = { ...msg, user: userMapRef.current[msg.userId] }
+          }
+          addMessage(msg)
         }
       }
       if (event.type === 'typing' && event.chatId === chatIdRef.current && event.userId !== userIdRef.current) {
@@ -196,47 +201,43 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     [addMessage]
   )
 
-  // Subscribe to real-time stream via BiDi Chat stream
   useEffect(() => {
     if (!chatId) return
-
     const cleanup = grpcClient.openReceiveStream(chatId, handleStreamEvent)
-
-    return () => {
-      cleanup()
-    }
+    return () => { cleanup() }
   }, [chatId, handleStreamEvent])
 
-  // Load more messages (pagination)
   const loadMore = useCallback(async () => {
-    if (!chatId || isLoadingMore || !hasMore) return
+    if (!chatId || isLoadingMore || !hasMore || !nextCursorRef.current) return
 
     setIsLoadingMore(true)
 
     try {
-      const { messages: olderMsgs, hasMore: more } = await grpcClient.getHistory(
+      const { messages: olderMsgs, nextCursor, hasMore: more } = await grpcClient.getHistoryV2(
         chatId,
-        50
+        50,
+        nextCursorRef.current,
       )
 
       if (olderMsgs.length > 0) {
-        const existingIds = new Set(messages.map((m) => m.id))
-        const newMsgs = olderMsgs.filter((m) => !existingIds.has(m.id))
-        if (newMsgs.length > 0) {
-          prependMessages(chatId, newMsgs)
-          oldestMessageIdRef.current = newMsgs[0].id
-        }
+        const resolved = olderMsgs.map((m) => {
+          if (!m.user && m.userId && userMapRef.current[m.userId]) {
+            return { ...m, user: userMapRef.current[m.userId] }
+          }
+          return m
+        })
+        prependMessages(chatId, resolved)
       }
 
-      setHasMore(more && olderMsgs.length > 0)
+      nextCursorRef.current = nextCursor
+      setHasMore(more)
     } catch (err) {
       console.error('Failed to load more messages:', err)
     } finally {
       setIsLoadingMore(false)
     }
-  }, [chatId, isLoadingMore, hasMore, messages, prependMessages])
+  }, [chatId, isLoadingMore, hasMore, prependMessages])
 
-  // Send message
   const sendMessage = useCallback(
     async (content: string) => {
       if (!chatId || !content.trim()) return
@@ -244,14 +245,11 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
       setSendingMessage(true)
       clearDraft()
       try {
-        const replyTo = replyToMessage
-          ? { messageId: replyToMessage.id, user: replyToMessage.user, text: replyToMessage.text }
-          : undefined
-        const message = await grpcClient.sendMessage(
+        const replyToId = replyToMessage?.id
+        const message = await grpcClient.sendMessageV2(
           chatId,
           content.trim(),
-          userIdRef.current,
-          replyTo,
+          replyToId,
         )
         addMessage(message)
         setReplyToMessage(null)
@@ -264,12 +262,11 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     [chatId, addMessage, setSendingMessage, clearDraft, replyToMessage, setReplyToMessage]
   )
 
-  // Edit message
   const editMessage = useCallback(
     async (messageId: string, newText: string) => {
       if (!chatId || !newText.trim()) return
       try {
-        const success = await grpcClient.editMessage(messageId, chatId, userIdRef.current, newText)
+        const success = await grpcClient.editMessageV2(messageId, newText)
         if (success) {
           updateMessage(messageId, { text: newText, isEdited: true })
         }
@@ -282,12 +279,11 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     [chatId, updateMessage]
   )
 
-  // Delete messages
   const deleteMessages = useCallback(
     async (messageIds: string[]) => {
       if (!chatId || messageIds.length === 0) return
       try {
-        const success = await grpcClient.deleteMessages(messageIds, chatId, userIdRef.current)
+        const success = await grpcClient.deleteMessageV2(messageIds, userIdRef.current)
         if (success) {
           for (const id of messageIds) {
             removeMessageFromChat(chatId, id)
@@ -302,12 +298,11 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     [chatId, removeMessageFromChat]
   )
 
-  // Toggle reaction — server upserts, broadcast updates all clients
   const toggleReaction = useCallback(
     async (messageId: string, emoji: string) => {
       if (!chatId || !user?.username) return
       try {
-        await grpcClient.setReaction(messageId, chatId, userIdRef.current, emoji)
+        await grpcClient.setReactionV2(messageId, emoji)
       } catch (err) {
         console.error('Failed to set reaction:', err)
       }
@@ -315,7 +310,6 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     [chatId, user]
   )
 
-  // Selection helpers
   const toggleSelectMessage = useCallback((messageId: string) => {
     setSelectedMessages((prev) =>
       prev.includes(messageId) ? prev.filter((id) => id !== messageId) : [...prev, messageId]
@@ -327,7 +321,6 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     setIsSelecting(false)
   }, [])
 
-  // Start editing
   const startEditing = useCallback((messageId: string, text: string) => {
     setEditingMessageId(messageId)
     setEditingText(text)
@@ -338,7 +331,6 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     setEditingText('')
   }, [])
 
-  // Cleanup typing timers
   useEffect(() => {
     return () => {
       typingUsers.forEach((timer) => clearTimeout(timer))

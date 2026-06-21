@@ -9,6 +9,7 @@ import { useChatMessages } from '@/hooks/useChatMessages'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
 import { useChatStore } from '@/store/chatStore'
 import { useAuthStore } from '@/store/authStore'
+import { grpcClient } from '@/shared/api/grpcClient'
 import { t } from '@/shared/types'
 import type { Message } from '@/shared/types'
 
@@ -150,6 +151,15 @@ export function ChatScreen({ chatId, onBack, onServerShutdown, onReconnecting, o
   const handleReply = useCallback((message: Message) => {
     setLongPressMenu(null); setReplyToMessage(message); inputRef.current?.focus()
   }, [setReplyToMessage])
+
+  const handleFavorite = useCallback(async (messageId: string) => {
+    if (!user?.id) return
+    try {
+      await grpcClient.addFavorite(user.id, messageId)
+    } catch (err) {
+      console.error('Failed to add favorite:', err)
+    }
+  }, [user])
 
   const typingNames = Array.from(typingUsers.keys())
 
@@ -306,6 +316,7 @@ export function ChatScreen({ chatId, onBack, onServerShutdown, onReconnecting, o
           }} onClick={(e) => e.stopPropagation()}>
             <CtxItem emoji="😊" label={t('reaction')} onClick={() => handleReact(longPressMenu.messageId)} />
             <CtxItem emoji="↩️" label={t('reply')} onClick={() => { const msg = messages.find((m) => m.id === longPressMenu.messageId); if (msg) handleReply(msg) }} />
+            <CtxItem emoji="⭐" label="В избранное" onClick={() => { handleFavorite(longPressMenu.messageId); closeMenus() }} />
             {messages.find((m) => m.id === longPressMenu.messageId)?.user === user?.username && (
               <>
                 <CtxItem emoji="✏️" label={t('edit')} onClick={() => { const msg = messages.find((m) => m.id === longPressMenu.messageId); if (msg) handleEdit(msg) }} />

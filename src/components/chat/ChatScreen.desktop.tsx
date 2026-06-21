@@ -7,6 +7,7 @@ import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import { useChatMessages } from '@/hooks/useChatMessages'
 import { useChatStore } from '@/store/chatStore'
 import { useAuthStore } from '@/store/authStore'
+import { grpcClient } from '@/shared/api/grpcClient'
 import { t } from '@/shared/types'
 import type { Message } from '@/shared/types'
 
@@ -152,6 +153,15 @@ export function ChatScreen({ chatId, onServerShutdown, onReconnecting, onStreamE
     setReplyToMessage(message)
     inputRef.current?.focus()
   }, [setReplyToMessage])
+
+  const handleFavorite = useCallback(async (messageId: string) => {
+    if (!user?.id) return
+    try {
+      await grpcClient.addFavorite(user.id, messageId)
+    } catch (err) {
+      console.error('Failed to add favorite:', err)
+    }
+  }, [user])
 
   const typingNames = Array.from(typingUsers.keys())
   const chatName = activeChat?.name || t('chat')
@@ -402,6 +412,7 @@ export function ChatScreen({ chatId, onServerShutdown, onReconnecting, onStreamE
           >
             <CtxItem emoji="😊" label={t('reaction')} onClick={() => handleReact(contextMenu.messageId)} />
             <CtxItem emoji="↩️" label={t('reply')} onClick={() => { const msg = messages.find((m) => m.id === contextMenu.messageId); if (msg) handleReply(msg) }} />
+            <CtxItem emoji="⭐" label="В избранное" onClick={() => { handleFavorite(contextMenu.messageId); closeMenus() }} />
             {messages.find((m) => m.id === contextMenu.messageId)?.user === user?.username && (
               <>
                 <CtxItem emoji="✏️" label={t('edit')} onClick={() => { const msg = messages.find((m) => m.id === contextMenu.messageId); if (msg) handleEdit(msg) }} />

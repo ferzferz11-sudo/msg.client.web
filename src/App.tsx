@@ -6,13 +6,15 @@ import { useState, useEffect, useCallback } from 'react'
 import { ChatListScreen } from '@/components/chatList/ChatListScreen'
 import { ChatScreen } from '@/components/chat/ChatScreen'
 import { AuthScreen } from '@/components/auth/AuthScreen'
+import { ProfileScreen } from '@/components/profile/ProfileScreen'
+import { FavoritesScreen } from '@/components/favorites/FavoritesScreen'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
 import { useAuthStore } from '@/store/authStore'
 import { isMobile } from '@/shared/utils'
 import '@/styles/global.css'
 
-type Screen = 'auth' | 'chatList' | 'chat'
+type Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites'
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth')
@@ -165,6 +167,14 @@ export default function App() {
     setActiveChatId(null)
   }, [])
 
+  const handleProfile = useCallback(() => {
+    setCurrentScreen('profile')
+  }, [])
+
+  const handleFavorites = useCallback(() => {
+    setCurrentScreen('favorites')
+  }, [])
+
   if (isLoading) {
     return (
       <div style={{
@@ -195,7 +205,13 @@ export default function App() {
         {isOffline && !isReconnecting && !showShutdownBanner && (
           <OfflineBanner />
         )}
-        <ChatListScreen onChatSelect={handleChatSelect} onLogout={handleLogout} />
+        {currentScreen === 'profile' ? (
+          <ProfileScreen onBack={handleBack} onFavorites={handleFavorites} />
+        ) : currentScreen === 'favorites' ? (
+          <FavoritesScreen onBack={handleBack} />
+        ) : (
+          <ChatListScreen onChatSelect={handleChatSelect} onLogout={handleLogout} onProfile={handleProfile} />
+        )}
       </div>
     )
   }
@@ -217,7 +233,7 @@ export default function App() {
 
       {currentScreen === 'chatList' && (
         <div key="list" className="screen-enter" style={{ width: '100%', height: '100%' }}>
-          <ChatListScreen onChatSelect={handleChatSelect} onLogout={handleLogout} />
+          <ChatListScreen onChatSelect={handleChatSelect} onLogout={handleLogout} onProfile={handleProfile} />
         </div>
       )}
 
@@ -230,6 +246,18 @@ export default function App() {
             onReconnecting={handleReconnecting}
             onStreamError={handleStreamError}
           />
+        </div>
+      )}
+
+      {currentScreen === 'profile' && (
+        <div key="profile" className="screen-enter" style={{ width: '100%', height: '100%' }}>
+          <ProfileScreen onBack={handleBack} onFavorites={handleFavorites} />
+        </div>
+      )}
+
+      {currentScreen === 'favorites' && (
+        <div key="favorites" className="screen-enter" style={{ width: '100%', height: '100%' }}>
+          <FavoritesScreen onBack={handleBack} />
         </div>
       )}
     </div>

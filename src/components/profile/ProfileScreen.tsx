@@ -7,9 +7,10 @@ interface ProfileScreenProps {
   onSettings?: () => void
   onContacts?: () => void
   onAIChats?: () => void
+  onFavorites?: () => void
 }
 
-export function ProfileScreen({ onBack, onSettings, onContacts, onAIChats }: ProfileScreenProps) {
+export function ProfileScreen({ onBack, onSettings, onContacts, onAIChats, onFavorites }: ProfileScreenProps) {
   const { profile, updateProfile, updateAvatar, isLoading } = useProfile()
   const user = useAuthStore((s) => s.user)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -224,6 +225,17 @@ export function ProfileScreen({ onBack, onSettings, onContacts, onAIChats }: Pro
 
             {/* Action Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {onFavorites && (
+                <button onClick={onFavorites} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  width: '100%', padding: '14px 16px', borderRadius: 12,
+                  background: 'rgba(255,255,255,0.06)', border: 'none',
+                  color: '#fff', fontSize: 15, cursor: 'pointer', textAlign: 'left',
+                }}>
+                  <span style={{ fontSize: 20 }}>⭐</span>
+                  Избранное
+                </button>
+              )}
               {onSettings && (
                 <button onClick={onSettings} style={{
                   display: 'flex', alignItems: 'center', gap: 12,

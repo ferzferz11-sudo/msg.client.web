@@ -1,5 +1,64 @@
 # Changelog
 
+## v1.3.0 (2026-06-21)
+
+Messages V2 + Favorites self-chat + Auth interceptor fix.
+
+### Messages V2
+
+- **Proto**: MessageV2, MessageMedia, MessageReply, ChatV2Message + 6 RPCs (ChatV2, GetHistoryV2, SendMessageV2, EditMessageV2, DeleteMessageV2, SetReactionV2)
+- **grpcClient**: V2 methods с V1 fallback (getHistoryV2 → getHistory при пустом messages_v2)
+- **useChatMessages**: V2 send/edit/delete/reaction, cursor pagination, user resolution
+
+### Favorites
+
+- **FavoritesScreen**: self-chat в `favorites_<username>` room — отправка сообщений себе
+- **ProfileScreen**: кнопка "⭐ Избранное"
+- **Chat context menu** (mobile + desktop): "⭐ В избранное"
+
+### Auth Interceptor
+
+- **isRefreshing** флаг — блокирует бесконечную рекурсию refreshToken
+- **refreshFailedAt** — 30s cooldown после неудачного refresh
+- Токен всегда attached к запросу (stale token) — данные загружаются даже при ошибке refresh
+
+### Routing
+
+- **App.tsx mobile**: profile и favorites экраны
+- **App.tsx desktop**: profile/favorites через sidebar
+
+---
+
+## v1.2.0 (2026-06-21)
+
+Messages V2 интеграция — lean message type, cursor pagination, ChatV2 stream.
+
+### Messages v2
+
+- **Proto**: добавлены MessageV2, MessageMedia, MessageReply, ChatV2Message, ChatV2Typing, ChatV2System
+- **RPCs**: ChatV2 (BiDi stream), GetHistoryV2, SendMessageV2, EditMessageV2, DeleteMessageV2, SetReactionV2
+- **grpcClient**: `getHistoryV2` — cursor-based pagination (`nextCursor`, `hasMore`)
+- **grpcClient**: `sendMessageV2` — unary RPC (вместо ephemeral BiDi stream)
+- **grpcClient**: `editMessageV2`, `deleteMessageV2`, `setReactionV2` — обновлённые V2 методы
+- **grpcClient**: `openChatV2Stream` — bidirectional stream с oneof payload (message/typing/system)
+- **protoToMessageV2** — конвертер MessageV2 → Message (oneof content → flat fields, JSONB reactions)
+- **useChatMessages**: переход на V2 методы (getHistoryV2, sendMessageV2, editMessageV2, deleteMessageV2, setReactionV2)
+- **useChatMessages**: cursor-based пагинация (вместо offset-based)
+- **useChatMessages**: ChatV2 stream для real-time (вместо v1 Chat stream)
+- **User resolution**: автоматическое разрешение sender_id → username через users map
+
+### Что убрано vs v1 Message
+
+| Поле | Замена в v2 |
+|------|------------|
+| `user` (username) | `sender_id` (UUID) → разрешается через users map |
+| `replied_to_user/text` | `MessageReply { message_id, preview }` |
+| `avatar_url`, `is_super_admin` | Нет в MessageV2 (resolve at read time) |
+| `image_url`, `voice_url`, `duration` | `MessageMedia { type, url, urls, duration }` |
+| `reactions` (array) | `bytes reactions` (JSON: `{"uuid":"emoji",...}`) |
+
+---
+
 ## v1.1.4 (2026-06-21)
 
 Hotfix: GetChatsV2 RPC name.
