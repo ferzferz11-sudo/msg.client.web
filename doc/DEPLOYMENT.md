@@ -62,10 +62,22 @@ ssh lava "sudo systemctl restart lavender-server"
 ssh lava "sudo journalctl -u lavender-server -f"
 ```
 
+### Database
+
+```bash
+# Prod: chat_db (user paveld)
+ssh lava "sudo -u postgres psql -d chat_db -c 'SELECT count(*) FROM users;'"
+
+# Dev: chat_db_dev (user lavender)
+ssh lava "sudo -u postgres psql -d chat_db_dev -c 'SELECT count(*) FROM users;'"
+```
+
 ## Proto генерация
 
 ```bash
-npm run proto:generate
+# ⚠️ npm run proto:generate падает из-за node_modules protobuf ошибок
+# Используй:
+npx buf generate --path proto/messenger.proto
 ```
 
 Генерирует `src/shared/api/gen/proto/messenger_pb.ts` и `messenger_connect.ts`.

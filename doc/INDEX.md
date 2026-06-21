@@ -56,9 +56,10 @@ src/
 
 | Файл | Описание |
 |------|----------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Архитектура, стек, паттерны |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Архитектура, стек, паттерны, инфраструктура |
 | [API.md](API.md) | Все gRPC методы клиента |
-| [DEPLOYMENT.md](DEPLOYMENT.md) | Деплой на сервер |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Деплой, сервер, proto генерация |
+| [GOTCHAS.md](GOTCHAS.md) | Known issues, proto gotchas, fixes, UI patterns |
 | [CHANGELOG.md](CHANGELOG.md) | История версий |
 
 ## Следующие шаги (для новой сессии)

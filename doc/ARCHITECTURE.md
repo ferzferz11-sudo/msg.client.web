@@ -32,9 +32,25 @@ Component → Hook → grpcClient (singleton) → gRPC-web transport → Envoy �
 ```
 
 ### gRPC Interceptor
-Автоматический рефреш токена за 5 минут до истечения.
-Экспоненциальный retry (3 попытки) для network/server ошибок.
-Классификация ошибок: network | auth | rate_limit | server | unknown.
+- `isRefreshing` флаг блокирует рекурсию (refreshToken сам проходит через interceptor)
+- `refreshFailedAt` — 30s cooldown после неудачного refresh
+- Stale token fallback — токен всегда attached к запросу
+- Экспоненциальный retry (3 попытки) для network/server ошибок
+- Классификация ошибок: network | auth | rate_limit | server | unknown
+
+## Серверная инфраструктура (13.140.25.249)
+
+| Сервис | Порт | Описание |
+|--------|------|----------|
+| Nginx | 80 | /web → dist, /messenger → envoy:9090, /info /health → 8082 |
+| Envoy | 9090 | gRPC-web proxy → gRPC backend 50051 |
+| Lavender Server | 50051 (prod), 50052 (dev) | systemd `lavender-server` |
+| HTTP API | 8082 (prod), 8083 (dev) | uploads, /info, /health, /files |
+
+- **SSH**: `lava` (root@13.140.25.249, key `~/.ssh/lava`)
+- **Envoy quirk**: `--network host`, `chmod 644`, всегда `docker rm -f` перед запуском
+- **DB prod**: `chat_db` (user: paveld, host: localhost)
+- **DB dev**: `chat_db_dev` (user: lavender, host: localhost)
 
 ## Типы экранов
 
@@ -51,6 +67,7 @@ Component → Hook → grpcClient (singleton) → gRPC-web transport → Envoy �
 | NotificationsScreen | ✅ | — | Уведомления |
 | PinnedMessagesScreen | ✅ | — | Закреплённые |
 | ArchiveScreen | ✅ | — | Архив |
+| FavoritesScreen | ✅ | ✅ | Избранное (self-chat) |
 
 ## Resilience
 
