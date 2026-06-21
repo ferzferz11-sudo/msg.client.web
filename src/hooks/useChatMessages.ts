@@ -52,6 +52,9 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
 
   const [typingUsers, setTypingUsers] = useState<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isTypingRef = useRef(false)
+
   const [replyToMessage, setReplyToMessage] = useState<Message | null>(null)
 
   const chatIdRef = useRef(chatId)
@@ -61,9 +64,10 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
   userIdRef.current = user?.id || ''
 
   useEffect(() => {
-    if (!chatId) return
-    const savedDraft = localStorage.getItem(`draft_${chatId}`) || ''
-    setDraft(savedDraft)
+    if (!chatId || !user?.id) return
+    grpcClient.getDraft(user.id, chatId).then((d) => {
+      if (d.hasDraft) setDraft(d.text)
+    }).catch(() => {})
     return () => {
       setDraft('')
       setEditingMessageId(null)
@@ -71,29 +75,54 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
       setSelectedMessages([])
       setIsSelecting(false)
       setReplyToMessage(null)
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      if (isTypingRef.current && chatIdRef.current && user) {
+        isTypingRef.current = false
+        grpcClient.sendTyping(chatIdRef.current, user.username, user.id, false).next().catch(() => {})
+      }
     }
-  }, [chatId])
+  }, [chatId, user?.id])
 
   const updateDraft = useCallback((text: string) => {
     setDraft(text)
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
-    if (chatIdRef.current) {
+    if (chatIdRef.current && user?.id) {
       draftTimerRef.current = setTimeout(() => {
         if (text.trim()) {
-          localStorage.setItem(`draft_${chatIdRef.current}`, text)
+          grpcClient.saveDraft(user.id!, chatIdRef.current!, text).catch(() => {})
         } else {
-          localStorage.removeItem(`draft_${chatIdRef.current}`)
+          grpcClient.deleteDraft(user.id!, chatIdRef.current!).catch(() => {})
         }
       }, DRAFT_DEBOUNCE_MS)
     }
-  }, [])
+  }, [user?.id])
 
   const clearDraft = useCallback(() => {
-    if (chatIdRef.current) {
-      localStorage.removeItem(`draft_${chatIdRef.current}`)
+    if (chatIdRef.current && user?.id) {
+      grpcClient.deleteDraft(user.id, chatIdRef.current).catch(() => {})
     }
     setDraft('')
-  }, [])
+  }, [user?.id])
+
+  const sendTypingIndicator = useCallback((isTyping: boolean) => {
+    if (!chatIdRef.current || !user) return
+    const roomId = chatIdRef.current
+    const username = user.username
+    const userId = user.id
+
+    if (isTyping && isTypingRef.current) return
+    isTypingRef.current = isTyping
+
+    grpcClient.sendTyping(roomId, username, userId, isTyping).next().catch(() => {})
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+    if (isTyping) {
+      typingTimeoutRef.current = setTimeout(() => {
+        isTypingRef.current = false
+        grpcClient.sendTyping(roomId, username, userId, false).next().catch(() => {})
+      }, TYPING_TIMEOUT_MS)
+    }
+  }, [user])
 
   useEffect(() => {
     if (!chatId) return
@@ -178,21 +207,22 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
       }
       if (event.type === 'typing' && event.chatId === chatIdRef.current && event.userId !== userIdRef.current) {
         const userId = event.userId || ''
+        const displayName = userMapRef.current[userId] || userId
         setTypingUsers((prev) => {
           const next = new Map(prev)
-          const existing = next.get(userId)
+          const existing = next.get(displayName)
           if (existing) clearTimeout(existing)
           if (event.isTyping) {
             const timer = setTimeout(() => {
               setTypingUsers((current) => {
                 const updated = new Map(current)
-                updated.delete(userId)
+                updated.delete(displayName)
                 return updated
               })
             }, TYPING_TIMEOUT_MS)
-            next.set(userId, timer)
+            next.set(displayName, timer)
           } else {
-            next.delete(userId)
+            next.delete(displayName)
           }
           return next
         })
@@ -203,7 +233,7 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
 
   useEffect(() => {
     if (!chatId) return
-    const cleanup = grpcClient.openReceiveStream(chatId, handleStreamEvent)
+    const cleanup = grpcClient.openChatV2Stream(chatId, handleStreamEvent)
     return () => { cleanup() }
   }, [chatId, handleStreamEvent])
 
@@ -260,6 +290,50 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
       }
     },
     [chatId, addMessage, setSendingMessage, clearDraft, replyToMessage, setReplyToMessage]
+  )
+
+  const sendMediaMessage = useCallback(
+    async (file: File, type: 'image' | 'file' | 'voice', duration?: number) => {
+      if (!chatId) return
+
+      setSendingMessage(true)
+      try {
+        let url = ''
+        let mediaDuration = duration || 0
+
+        if (type === 'image') {
+          url = await grpcClient.uploadImage(file)
+        } else if (type === 'voice') {
+          const result = await fetch('/upload-audio', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${useAuthStore.getState().tokens?.accessToken || ''}` },
+            body: (() => { const fd = new FormData(); fd.append('audio', file); fd.append('duration', String(duration || 0)); return fd })(),
+          })
+          if (!result.ok) throw new Error('Upload failed')
+          const data = await result.json()
+          url = data.url || ''
+          mediaDuration = data.duration || duration || 0
+        } else {
+          url = await grpcClient.uploadFile_(file)
+        }
+
+        if (!url) throw new Error('Upload returned empty URL')
+
+        const replyToId = replyToMessage?.id
+        const message = await grpcClient.sendMessageV2Media(
+          chatId,
+          { type, url, duration: mediaDuration },
+          replyToId,
+        )
+        addMessage(message)
+        setReplyToMessage(null)
+      } catch (err) {
+        console.error('Failed to send media:', err)
+      } finally {
+        setSendingMessage(false)
+      }
+    },
+    [chatId, addMessage, setSendingMessage, replyToMessage, setReplyToMessage]
   )
 
   const editMessage = useCallback(
@@ -344,6 +418,7 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     isLoadingMore,
     hasMore,
     sendMessage,
+    sendMediaMessage,
     loadMore,
     draft,
     updateDraft,
@@ -362,6 +437,7 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
     toggleSelectMessage,
     clearSelection,
     typingUsers,
+    sendTypingIndicator,
     replyToMessage,
     setReplyToMessage,
   }

@@ -11,6 +11,7 @@ import { Screen } from '@/components/common'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useAuthStore } from '@/store/authStore'
 import { t, detectLang, type Lang } from '@/shared/types'
+import { APP_VERSION } from '@/shared/version'
 
 interface AuthScreenProps {
   onAuthSuccess: () => void
@@ -146,8 +147,12 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         </div>
 
         {/* App name */}
-        <div style={{ fontSize: 28, fontWeight: 700, color: '#fff', marginBottom: 8 }}>
+        <div style={{ fontSize: 28, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
           {t('appName', lang)}
+        </div>
+
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>
+          v{APP_VERSION}
         </div>
 
         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 40 }}>

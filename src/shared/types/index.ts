@@ -48,6 +48,7 @@ export interface Message {
   isEdited?: boolean
   imageUrl?: string
   imageUrls?: string[]
+  fileUrl?: string
   userId?: string
   voiceUrl?: string
   duration?: number

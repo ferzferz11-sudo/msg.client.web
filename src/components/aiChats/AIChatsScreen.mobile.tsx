@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { Screen } from '@/components/common'
 import { useAIChats } from '@/hooks/useAIChats'
+import { grpcClient } from '@/shared/api/grpcClient'
 import type { AIMessage, AIAgentV2 } from '@/shared/types'
 
-type MobileView = 'chats' | 'chat' | 'agents' | 'agent-edit' | 'marketplace' | 'usage'
+type MobileView = 'chats' | 'chat' | 'agents' | 'agent-edit' | 'marketplace' | 'usage' | 'ai-settings'
 
 interface Props {
   onBack: () => void
@@ -31,6 +32,10 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [aiSettings, setAiSettings] = useState<{ apiKey: string; model: string; remaining: number; limit: number } | null>(null)
+  const [settingsApiKey, setSettingsApiKey] = useState('')
+  const [settingsModel, setSettingsModel] = useState('')
+  const [settingsMessage, setSettingsMessage] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -38,6 +43,31 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const loadAISettings = async (sessionId: string) => {
+    try {
+      const settings = await grpcClient.getAIChatSettings(sessionId, '')
+      setAiSettings({ apiKey: settings.userApiKey, model: settings.model, remaining: settings.remaining, limit: settings.limit })
+      setSettingsApiKey(settings.userApiKey)
+      setSettingsModel(settings.model)
+      setSettingsMessage('')
+    } catch (err) {
+      console.error('Failed to load AI settings:', err)
+    }
+  }
+
+  const saveAISettings = async () => {
+    if (!activeChatId) return
+    try {
+      const result = await grpcClient.updateAIChatSettings(activeChatId, '', settingsApiKey, settingsModel)
+      setSettingsMessage(result.message || (result.success ? 'Сохранено' : 'Ошибка'))
+      if (result.success) {
+        setAiSettings((prev) => prev ? { ...prev, apiKey: settingsApiKey, model: settingsModel } : prev)
+      }
+    } catch (err) {
+      setSettingsMessage('Ошибка сохранения')
+    }
+  }
 
   const handleSend = async () => {
     const text = inputText.trim()
@@ -108,6 +138,7 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
           </button>
           <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>AI чаты</span>
           <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => { if (activeChatId) { loadAISettings(activeChatId); setView('ai-settings') } }} style={{ color: '#6b5ce7', fontSize: 16, background: 'none', border: 'none', cursor: 'pointer' }}>🔑</button>
             <button onClick={() => { loadAgents(); setView('agents') }} style={{ color: '#6b5ce7', fontSize: 16, background: 'none', border: 'none', cursor: 'pointer' }}>⚙️</button>
             <button onClick={() => { loadUsageStats(); setView('usage') }} style={{ color: '#6b5ce7', fontSize: 16, background: 'none', border: 'none', cursor: 'pointer' }}>📊</button>
           </div>
@@ -490,6 +521,79 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
           ) : (
             <div style={{ textAlign: 'center', padding: 40, color: '#888' }}>Загрузка...</div>
           )}
+        </div>
+      </Screen>
+    )
+  }
+
+  if (view === 'ai-settings') {
+    return (
+      <Screen header={
+        <div className="safe-top" style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          height: 44, padding: '0 16px',
+          background: 'rgba(26, 26, 46, 0.95)', backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+        }}>
+          <button onClick={() => setView('chats')} style={{ color: '#6b5ce7', fontSize: 16, background: 'none', border: 'none', cursor: 'pointer' }}>
+            ← Назад
+          </button>
+          <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>Настройки AI</span>
+          <div style={{ width: 40 }} />
+        </div>
+      }>
+        <div className="scrollable" style={{ padding: '16px' }}>
+          {aiSettings && (
+            <div style={{
+              padding: '12px', marginBottom: 16, borderRadius: 12,
+              background: 'rgba(107,92,231,0.1)', border: '1px solid rgba(107,92,231,0.2)',
+            }}>
+              <div style={{ fontSize: 12, color: '#888' }}>Использование</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#6b5ce7' }}>
+                {aiSettings.remaining} / {aiSettings.limit}
+              </div>
+              <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>запросов осталось</div>
+            </div>
+          )}
+
+          <FormField label="Свой API ключ (OpenRouter)">
+            <input
+              value={settingsApiKey}
+              onChange={(e) => setSettingsApiKey(e.target.value)}
+              placeholder="sk-or-..."
+              type="password"
+              style={inputStyle}
+            />
+          </FormField>
+
+          <FormField label="Модель">
+            <input
+              value={settingsModel}
+              onChange={(e) => setSettingsModel(e.target.value)}
+              placeholder="anthropic/claude-sonnet-4"
+              style={inputStyle}
+            />
+          </FormField>
+
+          {settingsMessage && (
+            <div style={{
+              padding: '8px 12px', borderRadius: 8, marginBottom: 12,
+              background: settingsMessage.includes('Ошибка') ? 'rgba(231,76,60,0.15)' : 'rgba(76,175,80,0.15)',
+              color: settingsMessage.includes('Ошибка') ? '#e74c3c' : '#4caf50',
+              fontSize: 13,
+            }}>
+              {settingsMessage}
+            </div>
+          )}
+
+          <button onClick={saveAISettings} style={{
+            width: '100%', height: 44, borderRadius: 12,
+            background: 'linear-gradient(135deg, #6b5ce7, #8b7cf7)',
+            border: 'none', color: '#fff', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer', marginTop: 8,
+          }}>
+            Сохранить
+          </button>
         </div>
       </Screen>
     )

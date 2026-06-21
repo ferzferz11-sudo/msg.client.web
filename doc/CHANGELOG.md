@@ -1,5 +1,131 @@
 # Changelog
 
+## v1.3.9 (2026-06-21)
+
+Версия на экране логина + финальная сборка.
+
+### Auth Screen
+
+- **AuthScreen desktop/mobile**: отображение версии приложения под названием (vX.X.X)
+- Версия берётся из `package.json` через `src/shared/version.ts`
+
+---
+
+## v1.3.8 (2026-06-21)
+
+Автообновление клиента — Telegram-style "Обновить" баннер.
+
+### Auto Update
+
+- **version.json**: файл с текущей версией в `public/` (перезаписывается при деплое)
+- **App.tsx**: проверка `/version.json` при загрузке + каждые 60 секунд
+- **UpdateBanner**: баннер внизу экрана "Доступно обновление vX.X.X" с кнопкой "Обновить"
+- **handleUpdate**: очищает все Service Worker кэши → `location.reload()`
+- Версия сохраняется в `localStorage.app_version` для сравнения
+
+---
+
+## v1.3.7 (2026-06-21)
+
+Избранное — пересборка для сброса кэша.
+
+- FavoritesScreen = ChatScreen (полный функционал: отправка, скрепка, реакции, медиа)
+- Исправлена ошибка streaming request bodies (v1 → v2)
+
+---
+
+## v1.3.6 (2026-06-21)
+
+Избранное — полный функционал чата.
+
+### Favorites Screen
+
+- **FavoritesScreen**: заменён на ChatScreen — теперь работает как обычный чат
+- Поддержка отправки текста, изображений, файлов, аудио
+- Поддержка реакций, редактирования, удаления сообщений
+- Исправлена ошибка "fetch API does not support streaming request bodies" (v1 sendMessage → v2)
+- Исправлено отображение имени — показывается "⭐ Избранное"
+
+---
+
+## v1.3.5 (2026-06-21)
+
+Исправление имён личных чатов + работающие вложения.
+
+### Имена чатов
+
+- **protoToChat**: для direct чатов имя показывает только собеседника (было "user1 & user2")
+- Определяет текущего пользователя и убирает его из имени
+
+### Вложения (изображения, файлы, аудио)
+
+- **Message type**: добавлено поле `fileUrl` для файловых вложений
+- **protoToMessageV2**: обработка `media.type === 'file'` — извлекается URL и имя файла
+- **ChatScreen desktop**: рендеринг изображений (`<img>`), аудио (`<audio>`), файлов (`<a>` ссылка)
+- **ChatScreen mobile**: рендеринг изображений (`<img>`), аудио (`<audio>`), файлов (`<a>` ссылка)
+- Изображения открываются по клику в новой вкладке
+- Файлы скачиваются по ссылке
+
+---
+
+## v1.3.4 (2026-06-21)
+
+AI Chat Settings — настройки API ключа и модели.
+
+### AI Chat Settings
+
+- **grpcClient**: методы `getAIChatSettings` и `updateAIChatSettings` для управления настройками AI чата
+- **AIChatsScreen mobile**: новый view "Настройки AI" с формой API ключа и модели
+- **AIChatsScreen mobile**: отображение использования (remaining/limit)
+- Кнопка 🔑 в хедере для доступа к настройкам
+
+---
+
+## v1.3.3 (2026-06-21)
+
+Drafts server integration — замена localStorage на серверные RPC.
+
+### Drafts
+
+- **useChatMessages**: `getDraft` загружает черновик с сервера при открытии чата
+- **useChatMessages**: `updateDraft` сохраняет черновик на сервер через `saveDraft` (debounce 800ms)
+- **useChatMessages**: `clearDraft` удаляет черновик на сервер через `deleteDraft`
+- Убрана зависимость от `localStorage` для черновиков
+
+---
+
+## v1.3.2 (2026-06-21)
+
+HTTP uploads — отправка изображений, файлов и аудио.
+
+### HTTP Uploads
+
+- **grpcClient**: новый метод `sendMessageV2Media` — отправка медиа-сообщений (image/file/voice) через SendMessageV2Request с MessageMedia
+- **useChatMessages**: новый метод `sendMediaMessage` — загрузка файла + отправка медиа-сообщения с определением типа по MIME
+- **ChatScreen desktop**: кнопка скрепки открывает file picker (image/*, audio/*, documents)
+- **ChatScreen mobile**: кнопка скрепки открывает file picker (image/*, audio/*, documents)
+- **Upload flow**: file → uploadImage/uploadFile_/upload-audio → URL → sendMessageV2Media
+
+---
+
+## v1.3.1 (2026-06-21)
+
+Typing indicators — отправка и отображение в чате и списке чатов.
+
+### Typing Indicators
+
+- **grpcClient**: `handleChatV2Message` теперь пересылает typing события из ChatV2 stream в callback (было silent ignore)
+- **grpcClient**: новый метод `openTypingStream` — persistent BiDi Typing stream для получения typing событий из всех чатов
+- **useChatMessages**: переключение с v1 `openReceiveStream` на `openChatV2Stream` для получения typing событий
+- **useChatMessages**: новый метод `sendTypingIndicator` — отправкаtyping信号 с debounce (3s timeout, дедупликация)
+- **useChatMessages**: cleanup при смене чата — автоматическая отправка `isTyping: false`
+- **useChatMessages**: userId → username резолв для `typingUsers` map (отображение имён вместо UUID)
+- **ChatScreen desktop**: `handleInputChange` вызывает `sendTypingIndicator(true)` при наборе текста
+- **ChatScreen mobile**: `handleInputTextChange` вызывает `sendTypingIndicator(true)` при наборе текста
+- **ChatListScreen desktop/mobile**: переключение с `openReceiveStream('__global_typing__')` на `openTypingStream` для корректного получения typing событий
+
+---
+
 ## v1.3.0 (2026-06-21)
 
 Messages V2 + Favorites self-chat + Auth interceptor fix.

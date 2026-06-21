@@ -23,6 +23,8 @@ export default function App() {
   const [showShutdownBanner, setShowShutdownBanner] = useState(false)
   const [isReconnecting, setIsReconnecting] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
+  const [hasUpdate, setHasUpdate] = useState(false)
+  const [latestVersion, setLatestVersion] = useState('')
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const logout = useAuthStore((s) => s.logout)
@@ -175,6 +177,40 @@ export default function App() {
     setCurrentScreen('favorites')
   }, [])
 
+  // --- Update Check ---
+  useEffect(() => {
+    const checkForUpdate = async () => {
+      try {
+        const res = await fetch('/version.json', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        const current = localStorage.getItem('app_version')
+        if (current && current !== data.version) {
+          setLatestVersion(data.version)
+          setHasUpdate(true)
+        }
+        localStorage.setItem('app_version', data.version)
+      } catch {}
+    }
+    checkForUpdate()
+    const interval = setInterval(checkForUpdate, 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleUpdate = useCallback(() => {
+    const doReload = () => {
+      localStorage.removeItem('app_version')
+      location.reload()
+    }
+    if ('caches' in window) {
+      caches.keys().then((names) => {
+        Promise.all(names.map((n) => caches.delete(n))).then(doReload)
+      })
+    } else {
+      doReload()
+    }
+  }, [])
+
   if (isLoading) {
     return (
       <div style={{
@@ -205,6 +241,9 @@ export default function App() {
         {isOffline && !isReconnecting && !showShutdownBanner && (
           <OfflineBanner />
         )}
+        {hasUpdate && (
+          <UpdateBanner version={latestVersion} onUpdate={handleUpdate} />
+        )}
         {currentScreen === 'profile' ? (
           <ProfileScreen onBack={handleBack} onFavorites={handleFavorites} />
         ) : currentScreen === 'favorites' ? (
@@ -229,6 +268,9 @@ export default function App() {
       )}
       {isOffline && !isReconnecting && !showShutdownBanner && (
         <OfflineBanner />
+      )}
+      {hasUpdate && (
+        <UpdateBanner version={latestVersion} onUpdate={handleUpdate} />
       )}
 
       {currentScreen === 'chatList' && (
@@ -311,6 +353,31 @@ function OfflineBanner() {
       <span style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>
         Сервер недоступен. Проверьте подключение к сети.
       </span>
+    </div>
+  )
+}
+
+function UpdateBanner({ version, onUpdate }: { version: string; onUpdate: () => void }) {
+  return (
+    <div style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0,
+      padding: '12px 16px', paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+      background: 'rgba(107,92,231,0.95)',
+      backdropFilter: 'blur(10px)',
+      zIndex: 1000,
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    }}>
+      <span style={{ fontSize: 14, color: '#fff', fontWeight: 500 }}>
+        Доступно обновление{version ? ` v${version}` : ''}
+      </span>
+      <button onClick={onUpdate} style={{
+        padding: '6px 16px', borderRadius: 8,
+        background: '#fff', border: 'none',
+        color: '#6b5ce7', fontSize: 14, fontWeight: 600,
+        cursor: 'pointer', flexShrink: 0,
+      }}>
+        Обновить
+      </button>
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useAuthStore } from '@/store/authStore'
 import { t, detectLang, type Lang } from '@/shared/types'
+import { APP_VERSION } from '@/shared/version'
 
 interface AuthScreenProps {
   onAuthSuccess: () => void
@@ -94,6 +95,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       </div>
 
       <h2 style={{ color: '#fff', marginBottom: 8 }}>{t('appName', lang)}</h2>
+      <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12, marginBottom: 8 }}>v{APP_VERSION}</div>
       <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 32 }}>
         {isSignUp ? t('signupTitle', lang) : t('loginTitle', lang)}
       </p>

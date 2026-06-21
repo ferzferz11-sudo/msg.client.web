@@ -31,6 +31,7 @@ import type {
   FreeModelInfo,
   AIMessage,
   AIToolResult,
+  AIChatSettings,
 } from '@/shared/types'
 import { useAuthStore } from '@/store/authStore'
 import { useErrorStore } from '@/store/errorStore'
@@ -169,10 +170,19 @@ function createAuthInterceptor(
 // --- Proto → TypeScript converters ---
 
 function protoToChat(chat: any): Chat {
+  let name = chat.name || ''
+  const chatType = chat.type || 'regular'
+  if (chatType === 'direct' && name.includes(' & ')) {
+    const me = useAuthStore.getState().user?.username || ''
+    const parts = name.split(' & ')
+    if (parts.length === 2) {
+      name = parts[0] === me ? parts[1] : parts[0]
+    }
+  }
   return {
     id: chat.id || '',
-    name: chat.name || '',
-    type: chat.type || 'regular',
+    name,
+    type: chatType,
     creatorId: chat.creator || '',
     participants: chat.participants || '[]',
     lastMessageText: chat.lastMessageText || '',
@@ -222,6 +232,7 @@ function protoToMessageV2(msg: any, outgoing = false, userMap?: Record<string, s
   let text = ''
   let imageUrl = ''
   let imageUrls: string[] = []
+  let fileUrl = ''
   let voiceUrl = ''
   let duration = 0
   let replyToId = ''
@@ -237,6 +248,9 @@ function protoToMessageV2(msg: any, outgoing = false, userMap?: Record<string, s
     } else if (media.type === 'voice') {
       voiceUrl = media.url || ''
       duration = media.duration || 0
+    } else if (media.type === 'file') {
+      fileUrl = media.url || ''
+      text = media.url?.split('/').pop() || 'Файл'
     }
   } else if (msg.content?.$case === 'reply') {
     replyToId = msg.content.value.messageId || ''
@@ -273,6 +287,7 @@ function protoToMessageV2(msg: any, outgoing = false, userMap?: Record<string, s
     isEdited: msg.edited || false,
     imageUrl,
     imageUrls,
+    fileUrl,
     userId: senderId,
     voiceUrl,
     duration,
@@ -297,6 +312,7 @@ function handleChatV2Message(v2Msg: any, callback: StreamCallback): void {
   }
 
   if (payload.$case === 'typing') {
+    callback({ type: 'typing', chatId: v2Msg.roomId || '', userId: v2Msg.senderId || '', isTyping: payload.value.isTyping })
     return
   }
 
@@ -1022,6 +1038,27 @@ class GrpcClient {
     )
   }
 
+  async sendMessageV2Media(
+    roomId: string,
+    media: { type: string; url: string; duration?: number },
+    replyToId?: string,
+  ): Promise<Message> {
+    if (!this.chatClient) throw new Error('Not connected')
+    return withRetry(
+      async () => {
+        const request: any = {
+          roomId,
+          media: { type: media.type, url: media.url, duration: media.duration || 0 },
+        }
+        if (replyToId) request.replyToId = replyToId
+        const response = await this.chatClient.sendMessageV2(request)
+        if (!response.success) throw new Error(response.error || 'Failed to send')
+        return protoToMessageV2(response.message, true)
+      },
+      { maxRetries: 2, baseDelay: 300 },
+    )
+  }
+
   async editMessageV2(messageId: string, newText: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
     const result = await this.chatClient.editMessageV2({ messageId, text: newText })
@@ -1332,6 +1369,26 @@ class GrpcClient {
     if (!this.chatClient) throw new Error('Not connected')
     const result = await this.chatClient.renameAIChat({ chatId, newName })
     return result.success ?? false
+  }
+
+  async getAIChatSettings(sessionId: string, userId: string): Promise<AIChatSettings> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getAIChatSettings({ sessionId, userId })
+    return {
+      sessionId: result.sessionId || '',
+      userApiKey: result.userApiKey || '',
+      model: result.model || '',
+      isUsingCustomKey: result.isUsingCustomKey || false,
+      remaining: result.remaining || 0,
+      limit: result.limit || 0,
+      windowSeconds: result.windowSeconds || 0,
+    }
+  }
+
+  async updateAIChatSettings(sessionId: string, userId: string, apiKey: string, model: string): Promise<{ success: boolean; message: string }> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.updateAIChatSettings({ sessionId, userId, apiKey, model })
+    return { success: result.success ?? false, message: result.message || '' }
   }
 
   // --- AI V2 Methods ---
@@ -1759,6 +1816,51 @@ class GrpcClient {
       }
     } finally {
       controller.abort()
+    }
+  }
+
+  openTypingStream(callback: (event: { roomId: string; username: string; isTyping: boolean }) => void): () => void {
+    if (!this.chatClient) return () => {}
+
+    const streamId = 'typing-global'
+    const controller = new AbortController()
+    const signal = controller.signal
+
+    const existing = this.activeStreams.get(streamId)
+    if (existing) {
+      existing.abort()
+      this.activeStreams.delete(streamId)
+    }
+    this.activeStreams.set(streamId, controller)
+
+    const inputStream = {
+      [Symbol.asyncIterator]() {
+        return {
+          next(): Promise<IteratorResult<any>> {
+            return new Promise<IteratorResult<any>>(() => {})
+          },
+        }
+      },
+    }
+
+    const stream = this.chatClient.typing(inputStream, { signal })
+
+    ;(async () => {
+      try {
+        for await (const signal of stream) {
+          if (signal.aborted) break
+          callback({ roomId: signal.roomId, username: signal.username, isTyping: signal.isTyping })
+        }
+      } catch (err) {
+        if (!signal.aborted) {
+          console.warn('[Typing] Stream ended:', err)
+        }
+      }
+    })()
+
+    return () => {
+      controller.abort()
+      this.activeStreams.delete(streamId)
     }
   }
 

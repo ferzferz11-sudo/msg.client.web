@@ -49,6 +49,7 @@ export function ChatScreen({ chatId, onServerShutdown, onReconnecting, onStreamE
     isLoadingMore,
     hasMore,
     sendMessage,
+    sendMediaMessage,
     loadMore,
     draft,
     updateDraft,
@@ -66,6 +67,7 @@ export function ChatScreen({ chatId, onServerShutdown, onReconnecting, onStreamE
     toggleSelectMessage,
     clearSelection,
     typingUsers,
+    sendTypingIndicator,
     replyToMessage,
     setReplyToMessage,
   } = useChatMessages({ chatId, onServerShutdown, onReconnecting, onStreamError })
@@ -75,6 +77,7 @@ export function ChatScreen({ chatId, onServerShutdown, onReconnecting, onStreamE
   const [reactionPicker, setReactionPicker] = useState<{ messageId: string; x: number; y: number } | null>(null)
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const shouldFollowOutput = useRef(true)
 
   useEffect(() => {
@@ -120,7 +123,8 @@ export function ChatScreen({ chatId, onServerShutdown, onReconnecting, onStreamE
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputText(e.target.value)
     updateDraft(e.target.value)
-  }, [updateDraft])
+    sendTypingIndicator(true)
+  }, [updateDraft, sendTypingIndicator])
 
   const handleStartReached = useCallback(() => {
     if (hasMore && !isLoadingMore) loadMore()
@@ -162,6 +166,15 @@ export function ChatScreen({ chatId, onServerShutdown, onReconnecting, onStreamE
       console.error('Failed to add favorite:', err)
     }
   }, [user])
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const isImage = file.type.startsWith('image/')
+    const isAudio = file.type.startsWith('audio/')
+    sendMediaMessage(file, isImage ? 'image' : isAudio ? 'voice' : 'file')
+    e.target.value = ''
+  }, [sendMediaMessage])
 
   const typingNames = Array.from(typingUsers.keys())
   const chatName = activeChat?.name || t('chat')
@@ -286,6 +299,8 @@ export function ChatScreen({ chatId, onServerShutdown, onReconnecting, onStreamE
         </div>
       )}
 
+      <input ref={fileInputRef} type="file" accept="image/*,audio/*,.pdf,.doc,.docx,.txt,.zip,.rar" onChange={handleFileSelect} style={{ display: 'none' }} />
+
       {/* Input area */}
       <div style={{ background: TG.inputBg, borderTop: `1px solid ${TG.border}`, flexShrink: 0 }}>
         {/* Edit banner */}
@@ -316,7 +331,7 @@ export function ChatScreen({ chatId, onServerShutdown, onReconnecting, onStreamE
 
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, padding: '10px 12px' }}>
           {/* Attachment */}
-          <button style={{ width: 40, height: 40, borderRadius: '50%', background: 'transparent', border: 'none', color: TG.textSecondary, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} title={t('attachFile')}>
+          <button onClick={() => fileInputRef.current?.click()} style={{ width: 40, height: 40, borderRadius: '50%', background: 'transparent', border: 'none', color: TG.textSecondary, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} title={t('attachFile')}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
             </svg>
@@ -573,7 +588,31 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, onSelect, onCo
             <div style={{ fontSize: 13, fontWeight: 600, color: TG.accent, marginBottom: 2 }}>{message.user}</div>
           )}
 
-          <div style={{ display: 'inline' }}>{message.text}</div>
+          {/* Image */}
+          {message.imageUrl && (
+            <div style={{ marginBottom: 4 }}>
+              <img src={message.imageUrl} alt="" style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 8, cursor: 'pointer' }} onClick={() => window.open(message.imageUrl, '_blank')} />
+            </div>
+          )}
+
+          {/* Voice message */}
+          {message.voiceUrl && (
+            <div style={{ marginBottom: 4 }}>
+              <audio controls src={message.voiceUrl} style={{ maxWidth: '100%', height: 36 }} />
+            </div>
+          )}
+
+          {/* File */}
+          {message.fileUrl && (
+            <div style={{ marginBottom: 4 }}>
+              <a href={message.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.08)', color: TG.accent, fontSize: 13, textDecoration: 'none' }}>
+                📎 {message.text || 'Файл'}
+              </a>
+            </div>
+          )}
+
+          {/* Text */}
+          {message.text && !message.fileUrl && <div style={{ display: 'inline' }}>{message.text}</div>}
 
           {/* Time + read */}
           <span style={{

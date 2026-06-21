@@ -62,17 +62,84 @@ src/
 | [GOTCHAS.md](GOTCHAS.md) | Known issues, proto gotchas, fixes, UI patterns |
 | [CHANGELOG.md](CHANGELOG.md) | История версий |
 
+## Статус интеграции (с сервером v1.3.0.18)
+
+### ✅ Реализовано
+
+| Модуль | Готово | Версия | Детали |
+|--------|--------|--------|--------|
+| Auth V2 (JWT) | ✅ | v1.0.0 | signInV2, signUpV2, refresh, signOut |
+| Auth Interceptor | ✅ | v1.3.0 | isRefreshing, refreshFailedAt cooldown, stale token |
+| Chat Stream v1 | ✅ | v0.5.0 | BiDi stream, send/receive |
+| ChatV2 Stream | ✅ | v1.2.0 | BiDi stream, typing, system events |
+| Chat List (GetChatsV2) | ✅ | v1.1.2 | cursor-based pagination, filter |
+| Messages V1 | ✅ | v0.5.0 | getHistory, sendMessage, edit, delete, reactions |
+| Messages V2 | ✅ | v1.2.0 | getHistoryV2, sendMessageV2, editV2, deleteV2, reactionV2 |
+| Pin/Unpin Chat | ✅ | v1.1.1 | userId required |
+| Archive/Unarchive Chat | ✅ | v1.1.1 | userId required |
+| Muted Chats | ✅ | v1.0.0 | getMutedChats, setMutedChat |
+| Search Chats | ✅ | v1.0.0 | searchChats |
+| Pin/Unpin Messages | ✅ | v1.1.1 | userId required |
+| Profile (ProfileService v2) | ✅ | v1.0.0 | getProfile, updateProfile, updateAvatar |
+| User Settings | ✅ | v1.0.0 | getUserSettings, updateUserSettings |
+| Delete Profile | ✅ | v1.1.0 | requires password |
+| All Users | ✅ | v1.0.0 | getAllUsers, getUserId |
+| User Profile | ✅ | v1.0.0 | getUserProfile |
+| Contacts | ✅ | v1.1.0 | getContacts (string[]), addContact, removeContact |
+| Typing Indicators | ✅ | v1.3.1 | sendTyping (v1 stream), ChatV2 typing, openTypingStream |
+| HTTP Uploads | ✅ | v1.3.2 | uploadImage, uploadFile_, uploadAudio, uploadAvatar, uploadBackground |
+| Send Media Messages | ✅ | v1.3.2 | sendMessageV2Media (image/file/voice) |
+| Drafts (Server) | ✅ | v1.3.3 | saveDraft, getDraft, deleteDraft |
+| Favorites | ✅ | v1.3.6 | ChatScreen wrapper, полный функционал чата |
+| Favorites sync | ✅ | v1.3.6 | FavoritesScreen = ChatScreen, sendMessageV2 |
+| Auto Update | ✅ | v1.3.8 | version.json + UpdateBanner + cache clear |
+| Auth Screen Version | ✅ | v1.3.9 | Версия под названием приложения |
+| Themes | ✅ | v1.0.0 | getThemes, saveTheme, setCurrentTheme, deleteTheme |
+| AI Chat V2 | ✅ | v1.0.0 | chatWithAIV2 (streaming), images, tool calls |
+| AI Agents CRUD | ✅ | v1.0.0 | create, update, delete, get, list, clone |
+| AI Marketplace | ✅ | v1.0.0 | listMarketplaceAgents, rate, reviews, stats, share, install |
+| AI Chat Settings | ✅ | v1.3.4 | getAIChatSettings, updateAIChatSettings |
+| AI Usage Stats | ✅ | v1.0.0 | getAIUsageStats |
+| AI Tools List | ✅ | v1.0.0 | listAITools |
+| Bot Commands | ✅ | v1.0.0 | processBotCommand, getBotCommands |
+| Notifications | ✅ | v1.0.0 | subscribeNotifications, history, markRead, unreadCount |
+| Push (FCM) | ✅ | v1.0.0 | registerPushToken, getDevices, deleteOtherDevices |
+| Graceful Shutdown | ✅ | v1.1.0 | SERVER_SHUTTINGDOWN handling |
+| Offline Mode | ✅ | v1.1.0 | indicators + cached data |
+| Capability Negotiation | ✅ | v1.1.0 | GET /info |
+| Health Check | ✅ | v1.0.0 | GET /health |
+| Free Models List | ✅ | v1.0.0 | getFreeModels |
+
+### ❌ Не реализовано (нет UI)
+
+| Модуль | RPC | Приоритет | Описание |
+|--------|-----|-----------|----------|
+| Password Reset | RequestPasswordReset / ResetPassword | P3 | Нет UI восстановления пароля |
+| E2EE Secret Chats | createSecretChat / exchangeSecretKey / getSecretChatKey | P3 | Методы есть, нет UI |
+| WebRTC Calls | callSession (BiDi stream) + TURN credentials | P3 | Нет UI, нужен TURN endpoint |
+| getUserAvatar | getUserAvatar RPC | P3 | Метод есть, нет UI |
+
+### ⚠️ Известные проблемы
+
+| Проблема | Описание | Решение |
+|----------|----------|---------|
+| Proto codegen | `npm run proto:generate` падает из-за node_modules | Использовать `npx buf generate --path proto/messenger.proto` |
+| getHistoryV2 fallback | Fallback на v1 если messages_v2 пуста | Убрать когда все сообщения будут в messages_v2 |
+| Auth interceptor | refreshFailedAt cooldown 30s | Возможно logout при permanent fail |
+| Desktop routing | chatList-only, нет sidebar навигации | Добавить sidebar навигацию |
+| ChatV2 stream full transition | Сейчас dual-write v1+v2 | Полный переход когда messages_v2 заполнена |
+
 ## Следующие шаги (для новой сессии)
 
 ### Приоритет 1 — Важное
-- **Favorites sync**: favorites хранятся в `favorites_<username>` room, но `addFavorite`/`removeFavorite` RPC работают через таблицу `favorites` — нужно унифицировать (серверная сторона)
+- **Favorites sync**: ✅ реализовано (v1.3.6) — FavoritesScreen использует ChatScreen, полный функционал чата
 - **ChatV2 stream**: сейчас используется v1 Chat stream. Полный переход на ChatV2 stream нужен когда `messages_v2` таблица будет заполнена (сервер dual-write)
 
 ### Приоритет 2 — UI интеграция бэкенд-методов
-- **Typing indicators**: метод `sendTyping` есть, нет UI триггера в ChatScreen
-- **HTTP uploads**: методы загрузки аватара/изображений/файлов/аудио есть, нет UI интеграции (кроме аватара в профиле)
-- **Drafts**: localStorage-based, серверные `SaveDraft`/`GetDraft`/`DeleteDraft` не используются
-- **AI Chat Settings**: `GetAIChatSettings`/`UpdateAIChatSettings` — нет UI
+- **Typing indicators**: ✅ реализованы (v1.3.1) — sendTyping + ChatV2 stream typing + ChatList typing stream
+- **HTTP uploads**: ✅ реализованы (v1.3.2) — file picker + uploadImage/uploadFile_/upload-audio + sendMessageV2Media
+- **Drafts**: ✅ реализованы (v1.3.3) — серверные SaveDraft/GetDraft/DeleteDraft вместо localStorage
+- **AI Chat Settings**: ✅ реализованы (v1.3.4) — getAIChatSettings/updateAIChatSettings + UI в AIChatsScreen
 
 ### Приоритет 3 — Новые фичи
 - **E2EE Secret Chats**: `createSecretChat`/`exchangeSecretKey`/`getSecretChatKey` — методы есть, нет UI

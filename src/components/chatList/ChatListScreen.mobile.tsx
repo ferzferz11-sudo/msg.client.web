@@ -23,10 +23,10 @@ export function ChatListScreen({ onChatSelect, onSearch, onProfile, onArchive }:
   const [typingChats, setTypingChats] = useState<Record<string, boolean>>({})
   const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
-  const handleTypingEvent = useCallback((event: { type: string; chatId?: string; userId?: string; isTyping?: boolean }) => {
-    if (event.type !== 'typing' || !event.chatId) return
-    if (event.userId === user?.id) return
-    const chatId = event.chatId
+  const handleTypingEvent = useCallback((event: { roomId: string; username: string; isTyping: boolean }) => {
+    if (!event.roomId) return
+    if (event.username === user?.username) return
+    const chatId = event.roomId
     const timerMap = typingTimersRef.current
 
     if (timerMap.has(chatId)) {
@@ -43,10 +43,10 @@ export function ChatListScreen({ onChatSelect, onSearch, onProfile, onArchive }:
       }, 3000)
       timerMap.set(chatId, timer)
     }
-  }, [user?.id])
+  }, [user?.username])
 
   useEffect(() => {
-    const cleanup = grpcClient.openReceiveStream('__global_typing__', handleTypingEvent)
+    const cleanup = grpcClient.openTypingStream(handleTypingEvent)
     return () => {
       cleanup()
       typingTimersRef.current.forEach((t) => clearTimeout(t))
