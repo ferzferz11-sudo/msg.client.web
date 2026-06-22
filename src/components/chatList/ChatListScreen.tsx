@@ -10,7 +10,11 @@ export interface ChatListScreenProps {
   onLogout?: () => void
   onSearch?: () => void
   onProfile?: () => void
+  onContacts?: () => void
+  onFavorites?: () => void
   onArchive?: () => void
+  rightPanel?: 'profile' | 'contacts' | 'favorites' | null
+  onCloseRightPanel?: () => void
 }
 
 function createLazyLoader(

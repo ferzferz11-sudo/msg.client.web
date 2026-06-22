@@ -1,13 +1,72 @@
 # Changelog
 
+## v1.3.10 (2026-06-22)
+
+Auth interceptor fix, v1/v2 merge, desktop UI, reactions.
+
+### Auth Interceptor Fixes
+
+- **Stale token on parallel requests**: interceptor теперь перечитывает свежий токен из стора после refresh, а не использует snapshot
+- **Permanent fail handling**: `permanentFail` флаг блокирует все запросы после permanent failure refresh
+- **Logout on permanent fail**: автоматический logout + reload при UNAUTHENTICATED/invalid_token/expired
+
+### v1/v2 Message Merge
+
+- **getHistoryV2 merge**: всегда загружает v1 сообщения при первой загрузке и мержит с v2 (убирает дубликаты по ID, сортирует по дате)
+- **protoToMessageV2 v1 fallback**: читает `msg.text`/`msg.imageUrl`/etc если `content` oneof пуст
+- **v1 reactions fix**: конвертирует `[{user, emoji}]` в `Record<string, string[]>` для совместимости с UI
+
+### Desktop UI
+
+- **Right panel**: профиль, контакты и избранное открываются в правой панели (как в Telegram Desktop)
+- **New Chat button**: кнопка ➕ в хедере сайдбара, модалка с поиском пользователей
+- **Contacts button**: кнопка 👥 в хедере сайдбара
+- **Profile link**: "Изменить профиль" ссылка под именем пользователя
+
+### Chat Scroll
+
+- **Unread scroll**: при входе в чат скролл к первому непрочитанному (минус 3 сообщения для контекста)
+- **Read scroll**: если все прочитано — скролл вниз к последнему сообщению
+
+### Password Reset UI
+
+- **Request flow**: email → код + новый пароль → успех
+- **Desktop + Mobile**: оба экрана авторизации с forgot password
+- **Translations**: RU/EN ключи для password reset
+
+### Typing Stream
+
+- **BiDi error handling**: обёрнут в try-catch, ошибки BiDi streaming больше не крашат приложение
+
+### Other
+
+- **getUserAvatar RPC**: метод для получения аватара пользователя
+- **Proto codegen fix**: `npm run proto:generate` с `--path proto/messenger.proto`
+
+---
+
 ## v1.3.9 (2026-06-21)
 
-Версия на экране логина + финальная сборка.
+Технический долг + P3 фичи + Password Reset.
 
-### Auth Screen
+### Tech Debt Fixes
 
-- **AuthScreen desktop/mobile**: отображение версии приложения под названием (vX.X.X)
-- Версия берётся из `package.json` через `src/shared/version.ts`
+- **Proto codegen**: исправлен `npm run proto:generate` — добавлен `--path proto/messenger.proto` для избежания сканирования node_modules
+- **getHistoryV2 fallback**: fallback на v1 messages оставлен — необходим для чтения старых сообщений
+- **Auth interceptor**: добавлен logout при permanent fail refresh (UNAUTHENTICATED/invalid_token/expired)
+
+### New Features
+
+- **Password Reset UI**: экран восстановления пароля на desktop и mobile
+  - `requestPasswordReset(email)` — отправка кода сброса
+  - `resetPassword(token, newPassword)` — сброс пароля по коду
+  - 3-step flow: email → код + новый пароль → успех
+- **getUserAvatar RPC**: метод `getUserAvatar(userIdOrUsername)` для получения аватара
+- **Desktop sidebar**: "Изменить профиль" ссылка под именем пользователя
+
+### i18n
+
+- Добавлены ключи для password reset: `forgotPassword`, `resetPasswordTitle`, `resetPasswordHint`, `resetPasswordSuccess`, `enterResetCode`, `newPasswordPlaceholder`, `resetPassword`, `resetPasswordDone`, `backToLogin`, `passwordMismatch`
 
 ---
 

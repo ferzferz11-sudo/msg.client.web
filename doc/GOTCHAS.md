@@ -111,9 +111,25 @@ Proto содержит оба RPC → codegen схлопывает в `getChats`
 
 ## Runtime Issues
 
+### Auth Token Refresh — Parallel Requests Bug
+Параллельные запросы во время refresh использовали протухший token. Interceptor читал snapshot в начале, а после refresh не перечитывал.
+**Решение** (v1.3.10): interceptor перечитывает `getTokens()` после refresh блока. `permanentFail` флаг блокирует все запросы после permanent failure.
+
 ### Auth Token Refresh на Reload
-`grpcClient.ts:130` триггерит refresh когда `now >= accessExpiresAt - 300`. При перезагрузке с валидным токеном сервер отклоняет refresh как "revoked or expired".
+`grpcClient.ts:130` триггерит refresh когда `now >= accessExpiresAt`. При перезагрузке с валидным токеном сервер отклоняет refresh как "revoked or expired".
 **Решение**: `isRefreshing` флаг блокирует рекурсию, 30s cooldown после ошибки, stale token fallback.
+
+### v1/v2 Message Merge
+Сервер dual-write: новые сообщения в `messages_v2`, старые только в `messages`. getHistoryV2 возвращает только v2 subset для смешанных чатов.
+**Решение** (v1.3.10): getHistoryV2 всегда загружает v1 и мержит с v2 (дедупликация по ID, сортировка по дате).
+
+### v1 Reactions Format
+V1 reactions: `[{user, emoji}]` array. UI ожидает `Record<string, string[]>`.
+**Решение** (v1.3.10): `protoToMessage` конвертирует в правильный формат.
+
+### Typing Stream — BiDi Not Supported
+`openTypingStream` использует BiDi stream (fetch streaming request bodies), не поддерживается браузерами.
+**Решение** (v1.3.10): обёрнуто в try-catch, ошибки не крашат приложение.
 
 ### Favorites Server Query
 `GetFavorites` SQL (`db_messages.go:207-212`) делает JOIN favorites с messages, вызывает `decrypt()`. Subqueries резолвят user_id из username — если нет строк, запрос возвращает пусто молча.
@@ -121,11 +137,11 @@ Proto содержит оба RPC → codegen схлопывает в `getChats`
 
 ### messages_v2 Table Empty
 Dual-write на сервере (`server_chat.go:341+`) пишет только НОВЫЕ сообщения, не ретроактивно. Все существующие — только в `messages`.
-**Решение**: getHistoryV2 с fallback на getHistory.
+**Решение**: getHistoryV2 без fallback (v1.3.9+)
 
 ### Proto Codegen
 `npm run proto:generate` падает из-за node_modules protobuf ошибок.
-**Решение**: `npx buf generate --path proto/messenger.proto`
+**Решение**: `buf generate --path proto/messenger.proto` (обновлено в v1.3.9)
 
 ---
 
@@ -138,7 +154,10 @@ Flat list of `<button>` с emoji prefix + label,conditionally rendered чере�
 `CtxItem` компонент с emoji+label+onClick, `position: fixed` overlay, одинаковый паттерн в mobile и desktop.
 
 ### App.tsx mobile routing
-`Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites'` — добавление экранов требует расширение union типа.
+`Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites' | 'contacts'` — добавление экранов требует расширение union типа.
+
+### App.tsx desktop routing
+Desktop использует `ChatListScreen` с `rightPanel` prop: `'profile' | 'contacts' | 'favorites' | null`. Все экраны открываются в правой панели.
 
 ### Screen component pattern
 `Screen` принимает `header` и `footer` JSX пропы. Inline JSX в footer в scope для hooks (useState, useRef, useCallback).

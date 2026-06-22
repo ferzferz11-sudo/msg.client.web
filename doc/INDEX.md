@@ -114,41 +114,25 @@ src/
 
 | Модуль | RPC | Приоритет | Описание |
 |--------|-----|-----------|----------|
-| Password Reset | RequestPasswordReset / ResetPassword | P3 | Нет UI восстановления пароля |
-| E2EE Secret Chats | createSecretChat / exchangeSecretKey / getSecretChatKey | P3 | Методы есть, нет UI |
-| WebRTC Calls | callSession (BiDi stream) + TURN credentials | P3 | Нет UI, нужен TURN endpoint |
-| getUserAvatar | getUserAvatar RPC | P3 | Метод есть, нет UI |
+| E2EE Secret Chats | createSecretChat / exchangeSecretKey / getSecretChatKey | P3 | Требует RSA key gen + шифрование — сложная фича |
+| WebRTC Calls | callSession (BiDi stream) + TURN credentials | P3 | Требует TURN endpoint на сервере |
 
 ### ⚠️ Известные проблемы
 
 | Проблема | Описание | Решение |
 |----------|----------|---------|
-| Proto codegen | `npm run proto:generate` падает из-за node_modules | Использовать `npx buf generate --path proto/messenger.proto` |
-| getHistoryV2 fallback | Fallback на v1 если messages_v2 пуста | Убрать когда все сообщения будут в messages_v2 |
-| Auth interceptor | refreshFailedAt cooldown 30s | Возможно logout при permanent fail |
-| Desktop routing | chatList-only, нет sidebar навигации | Добавить sidebar навигацию |
 | ChatV2 stream full transition | Сейчас dual-write v1+v2 | Полный переход когда messages_v2 заполнена |
+| getHistoryV2 merge | v1+v2 мерж при загрузке | Временно — нужен для чтения старых сообщений |
 
 ## Следующие шаги (для новой сессии)
 
 ### Приоритет 1 — Важное
-- **Favorites sync**: ✅ реализовано (v1.3.6) — FavoritesScreen использует ChatScreen, полный функционал чата
-- **ChatV2 stream**: сейчас используется v1 Chat stream. Полный переход на ChatV2 stream нужен когда `messages_v2` таблица будет заполнена (сервер dual-write)
+- **ChatV2 stream**: полный переход на ChatV2 stream когда `messages_v2` таблица будет заполнена (сервер dual-write)
 
-### Приоритет 2 — UI интеграция бэкенд-методов
-- **Typing indicators**: ✅ реализованы (v1.3.1) — sendTyping + ChatV2 stream typing + ChatList typing stream
-- **HTTP uploads**: ✅ реализованы (v1.3.2) — file picker + uploadImage/uploadFile_/upload-audio + sendMessageV2Media
-- **Drafts**: ✅ реализованы (v1.3.3) — серверные SaveDraft/GetDraft/DeleteDraft вместо localStorage
-- **AI Chat Settings**: ✅ реализованы (v1.3.4) — getAIChatSettings/updateAIChatSettings + UI в AIChatsScreen
+### Приоритет 2 — Сложные фичи
+- **E2EE Secret Chats**: RSA key generation (Web Crypto API) + key storage + message encryption/decryption
+- **WebRTC Calls**: TURN credentials endpoint + WebRTC UI
 
-### Приоритет 3 — Новые фичи
-- **E2EE Secret Chats**: `createSecretChat`/`exchangeSecretKey`/`getSecretChatKey` — методы есть, нет UI
-- **WebRTC calls**: `callSession` BiDi stream — нет UI, нужен TURN credentials (HTTP endpoint)
-- **Password Reset**: `RequestPasswordReset`/`ResetPassword` — нет UI
-- **getUserAvatar RPC**: метод есть, нет UI
-
-### Приоритет 4 — Технический долг
-- **Proto codegen**: `npm run proto:generate` падает из-за node_modules → использовать `npx buf generate --path proto/messenger.proto`
-- **getHistoryV2 fallback**: сейчас fallback на v1 если messages_v2 пуста — убрать когда все сообщения будут в messages_v2
-- **Auth interceptor**: `refreshFailedAt` cooldown 30s — возможно стоит делать logout при permanent fail
-- **Desktop routing**: chatList-only, нет sidebar навигации в профиль/контакты/настройки
+### Приоритет 3 — Улучшения
+- **getUserAvatar lazy loading**: использовать getUserAvatar для ленивой загрузки аватаров
+- **Desktop sidebar**: добавить AI чаты и настройки в сайдбар

@@ -122,6 +122,7 @@ async function withRetry<T>(
 
 let isRefreshing = false
 let refreshFailedAt = 0
+let permanentFail = false
 
 function createAuthInterceptor(
   getTokens: () => TokenPair | null,
@@ -129,6 +130,10 @@ function createAuthInterceptor(
 ) {
   return (next: any) => async (req: any) => {
     const tokens = getTokens()
+
+    if (permanentFail) {
+      throw new Error('Session expired. Please sign in again.')
+    }
 
     // Always attach token (even during refresh — prevents empty-auth requests)
     if (tokens) {
@@ -152,16 +157,28 @@ function createAuthInterceptor(
             req.header.set('Authorization', `Bearer ${newTokens.accessToken}`)
             return next(req)
           }
-        } catch (err) {
+        } catch (err: any) {
           console.warn('[Auth] Token refresh failed:', err)
+          const isPermanent = err?.code === 'UNAUTHENTICATED' ||
+            err?.message?.includes('invalid_token') ||
+            err?.message?.includes('token expired') ||
+            err?.message?.includes('refresh token')
+          if (isPermanent) {
+            console.warn('[Auth] Permanent refresh failure — logging out')
+            permanentFail = true
+            useAuthStore.getState().logout()
+            window.location.reload()
+            throw new Error('Session expired. Please sign in again.')
+          }
           refreshFailedAt = Math.floor(Date.now() / 1000)
         } finally {
           isRefreshing = false
         }
       }
 
-      // Use current (possibly stale) token for this request
-      req.header.set('Authorization', `Bearer ${tokens.accessToken}`)
+      // Re-read fresh tokens from store (may have been refreshed by another request)
+      const latestTokens = getTokens()
+      req.header.set('Authorization', `Bearer ${latestTokens?.accessToken || tokens.accessToken}`)
     }
     return next(req)
   }
@@ -206,6 +223,19 @@ function protoToChat(chat: any): Chat {
 }
 
 function protoToMessage(msg: any): Message {
+  const rawReactions = msg.reactions || []
+  const reactions: Record<string, string[]> = {}
+  if (Array.isArray(rawReactions)) {
+    for (const r of rawReactions) {
+      const emoji = r.emoji || ''
+      const user = r.user || ''
+      if (emoji && user) {
+        if (!reactions[emoji]) reactions[emoji] = []
+        reactions[emoji].push(user)
+      }
+    }
+  }
+
   return {
     id: msg.id || '',
     roomId: msg.roomId || msg.chatId || '',
@@ -218,7 +248,7 @@ function protoToMessage(msg: any): Message {
     repliedToUser: msg.repliedToUser || '',
     repliedToText: msg.repliedToText || '',
     agentId: msg.agentId || '',
-    reactions: (msg.reactions || []).map((r: any) => ({ user: r.user || '', emoji: r.emoji || '' })),
+    reactions,
     imageUrl: msg.imageUrl || '',
     imageUrls: msg.imageUrls || [],
     isEdited: msg.edited || false,
@@ -255,6 +285,15 @@ function protoToMessageV2(msg: any, outgoing = false, userMap?: Record<string, s
   } else if (msg.content?.$case === 'reply') {
     replyToId = msg.content.value.messageId || ''
     replyToPreview = msg.content.value.preview || ''
+  }
+
+  if (!text && !imageUrl && !voiceUrl && !fileUrl) {
+    text = msg.text || ''
+    imageUrl = msg.imageUrl || ''
+    imageUrls = msg.imageUrls || []
+    fileUrl = msg.fileUrl || ''
+    voiceUrl = msg.voiceUrl || ''
+    duration = msg.duration || 0
   }
 
   let reactions: Record<string, string[]> = {}
@@ -657,6 +696,28 @@ class GrpcClient {
     return result.success ?? false
   }
 
+  async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
+    if (!this.chatClient) throw new Error('Not connected')
+    return withRetry(
+      async () => {
+        const result = await this.chatClient!.requestPasswordReset({ email })
+        return { success: result.success, message: result.message }
+      },
+      { maxRetries: 2, baseDelay: 1000 },
+    )
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    if (!this.chatClient) throw new Error('Not connected')
+    return withRetry(
+      async () => {
+        const result = await this.chatClient!.resetPassword({ token, newPassword })
+        return { success: result.success, message: result.message }
+      },
+      { maxRetries: 2, baseDelay: 1000 },
+    )
+  }
+
   // --- ProfileService V2 Methods (JWT auth) ---
 
   async getProfile(): Promise<User & { bio: string; status: string; locale: string; isSuperAdmin: boolean; fullAvatarUrl: string }> {
@@ -1001,17 +1062,25 @@ class GrpcClient {
     return withRetry(
       async () => {
         const response = await this.chatClient.getHistoryV2({ roomId, limit, cursor })
-        const messages = (response.messages || []).map((m: any) => protoToMessageV2(m))
-        if (messages.length === 0 && !cursor) {
-          const v1 = await this.chatClient.getHistory({ room: roomId, limit })
-          return {
-            messages: (v1.messages || []).map(protoToMessage),
-            nextCursor: '',
-            hasMore: (v1.messages || []).length === limit,
+        const v2Messages = (response.messages || []).map((m: any) => protoToMessageV2(m))
+
+        if (!cursor) {
+          const v1 = await this.chatClient!.getHistory({ room: roomId, limit })
+          const v1Messages = (v1.messages || []).map(protoToMessage)
+          if (v1Messages.length > 0) {
+            const v2Ids = new Set(v2Messages.map((m: Message) => m.id))
+            const merged = [...v2Messages, ...v1Messages.filter((m: any) => !v2Ids.has(m.id))]
+            merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+            return {
+              messages: merged,
+              nextCursor: response.nextCursor ?? '',
+              hasMore: response.hasMore ?? false,
+            }
           }
         }
+
         return {
-          messages,
+          messages: v2Messages,
           nextCursor: response.nextCursor ?? '',
           hasMore: response.hasMore ?? false,
         }
@@ -1317,6 +1386,15 @@ class GrpcClient {
     if (!this.chatClient) throw new Error('Not connected')
     const result = await this.chatClient.getUserId({ username })
     return result.userId || result.user_id || ''
+  }
+
+  async getUserAvatar(userIdOrUsername: string): Promise<{ avatarUrl: string; fullAvatarUrl: string }> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getUserAvatar({ username: userIdOrUsername, userId: userIdOrUsername })
+    return {
+      avatarUrl: result.avatarUrl || result.avatar_url || '',
+      fullAvatarUrl: result.fullAvatarUrl || result.full_avatar_url || '',
+    }
   }
 
   async updateUsername(userId: string, newUsername: string): Promise<boolean> {
@@ -1676,20 +1754,6 @@ class GrpcClient {
     return result.devices || []
   }
 
-  // --- Password Methods ---
-
-  async requestPasswordReset(email: string): Promise<boolean> {
-    if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.requestPasswordReset({ email })
-    return result.success ?? false
-  }
-
-  async resetPassword(token: string, newPassword: string): Promise<boolean> {
-    if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.resetPassword({ token, newPassword })
-    return result.success ?? false
-  }
-
   // --- Contact Methods ---
 
   async getContacts(): Promise<string[]> {
@@ -1823,44 +1887,50 @@ class GrpcClient {
     if (!this.chatClient) return () => {}
 
     const streamId = 'typing-global'
-    const controller = new AbortController()
-    const signal = controller.signal
 
     const existing = this.activeStreams.get(streamId)
     if (existing) {
       existing.abort()
       this.activeStreams.delete(streamId)
     }
-    this.activeStreams.set(streamId, controller)
 
-    const inputStream = {
-      [Symbol.asyncIterator]() {
-        return {
-          next(): Promise<IteratorResult<any>> {
-            return new Promise<IteratorResult<any>>(() => {})
-          },
-        }
-      },
-    }
+    try {
+      const controller = new AbortController()
+      const signal = controller.signal
+      this.activeStreams.set(streamId, controller)
 
-    const stream = this.chatClient.typing(inputStream, { signal })
-
-    ;(async () => {
-      try {
-        for await (const signal of stream) {
-          if (signal.aborted) break
-          callback({ roomId: signal.roomId, username: signal.username, isTyping: signal.isTyping })
-        }
-      } catch (err) {
-        if (!signal.aborted) {
-          console.warn('[Typing] Stream ended:', err)
-        }
+      const inputStream = {
+        [Symbol.asyncIterator]() {
+          return {
+            next(): Promise<IteratorResult<any>> {
+              return new Promise<IteratorResult<any>>(() => {})
+            },
+          }
+        },
       }
-    })()
 
-    return () => {
-      controller.abort()
-      this.activeStreams.delete(streamId)
+      const stream = this.chatClient.typing(inputStream, { signal })
+
+      ;(async () => {
+        try {
+          for await (const signal of stream) {
+            if (signal.aborted) break
+            callback({ roomId: signal.roomId, username: signal.username, isTyping: signal.isTyping })
+          }
+        } catch (err) {
+          if (!signal.aborted) {
+            console.warn('[Typing] Stream ended:', err)
+          }
+        }
+      })()
+
+      return () => {
+        controller.abort()
+        this.activeStreams.delete(streamId)
+      }
+    } catch (err) {
+      console.warn('[Typing] BiDi stream not supported:', err)
+      return () => {}
     }
   }
 

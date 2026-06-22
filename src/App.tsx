@@ -14,7 +14,7 @@ import { useAuthStore } from '@/store/authStore'
 import { isMobile } from '@/shared/utils'
 import '@/styles/global.css'
 
-type Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites'
+type Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites' | 'contacts'
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth')
@@ -177,6 +177,10 @@ export default function App() {
     setCurrentScreen('favorites')
   }, [])
 
+  const handleContacts = useCallback(() => {
+    setCurrentScreen('contacts')
+  }, [])
+
   // --- Update Check ---
   useEffect(() => {
     const checkForUpdate = async () => {
@@ -244,13 +248,15 @@ export default function App() {
         {hasUpdate && (
           <UpdateBanner version={latestVersion} onUpdate={handleUpdate} />
         )}
-        {currentScreen === 'profile' ? (
-          <ProfileScreen onBack={handleBack} onFavorites={handleFavorites} />
-        ) : currentScreen === 'favorites' ? (
-          <FavoritesScreen onBack={handleBack} />
-        ) : (
-          <ChatListScreen onChatSelect={handleChatSelect} onLogout={handleLogout} onProfile={handleProfile} />
-        )}
+        <ChatListScreen
+          onChatSelect={handleChatSelect}
+          onLogout={handleLogout}
+          onProfile={handleProfile}
+          onContacts={handleContacts}
+          onFavorites={handleFavorites}
+          rightPanel={currentScreen === 'profile' ? 'profile' : currentScreen === 'contacts' ? 'contacts' : currentScreen === 'favorites' ? 'favorites' : null}
+          onCloseRightPanel={handleBack}
+        />
       </div>
     )
   }

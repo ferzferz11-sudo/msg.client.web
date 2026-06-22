@@ -78,12 +78,28 @@ export function ChatScreen({ chatId, onBack, onServerShutdown, onReconnecting, o
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const shouldFollowOutput = useRef(true)
+  const initialScrollDone = useRef(false)
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { setInputText(draft) }, [draft])
 
   useEffect(() => {
-    if (shouldFollowOutput.current && messages.length > 0) {
+    initialScrollDone.current = false
+  }, [chatId])
+
+  useEffect(() => {
+    if (!initialScrollDone.current && messages.length > 0) {
+      initialScrollDone.current = true
+      const firstUnreadIdx = messages.findIndex((m) => !m.isRead && !m.isOutgoing)
+      if (firstUnreadIdx > 0) {
+        const scrollTo = Math.max(0, firstUnreadIdx - 3)
+        setTimeout(() => {
+          virtuosoRef.current?.scrollToIndex({ index: scrollTo, align: 'start' })
+        }, 100)
+      } else {
+        virtuosoRef.current?.scrollToIndex({ index: messages.length - 1, align: 'end' })
+      }
+    } else if (shouldFollowOutput.current && messages.length > 0) {
       virtuosoRef.current?.scrollToIndex({ index: messages.length - 1, behavior: 'smooth' })
     }
   }, [messages.length])

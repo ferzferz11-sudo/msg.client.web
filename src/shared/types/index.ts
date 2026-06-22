@@ -382,6 +382,17 @@ const translations: Record<string, Record<Lang, string>> = {
   send: { en: 'Send', ru: 'Отправить' },
   networkError: { en: 'No internet connection', ru: 'Нет подключения к интернету' },
   sessionExpired: { en: 'Session expired. Please sign in again.', ru: 'Сессия истекла. Войдите снова.' },
+  // Password Reset
+  forgotPassword: { en: 'Forgot password?', ru: 'Забыли пароль?' },
+  resetPasswordTitle: { en: 'Reset Password', ru: 'Сброс пароля' },
+  resetPasswordHint: { en: 'Enter your email to receive a reset code', ru: 'Введите email для получения кода сброса' },
+  resetPasswordSuccess: { en: 'Reset code sent! Check your email.', ru: 'Код отправлен! Проверьте почту.' },
+  enterResetCode: { en: 'Enter reset code', ru: 'Введите код сброса' },
+  newPasswordPlaceholder: { en: 'New password', ru: 'Новый пароль' },
+  resetPassword: { en: 'Reset Password', ru: 'Сбросить пароль' },
+  resetPasswordDone: { en: 'Password reset successfully!', ru: 'Пароль успешно сброшен!' },
+  backToLogin: { en: 'Back to Sign In', ru: 'Вернуться к входу' },
+  passwordMismatch: { en: 'Passwords do not match', ru: 'Пароли не совпадают' },
 }
 
 export function t(key: string, lang: Lang = 'ru', replacements?: Record<string, string | number>): string {
