@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.1.6.0 (2026-06-27)
+
+Upload fix, image compression, [deleted] filter, full v1→v2 cleanup.
+
+### Upload Fix (Critical)
+
+- **404 on upload**: client called `/upload-image` directly, but nginx only proxies `/api/*` → port 8082
+- **Fix**: all upload endpoints now use `/api/` prefix (`/api/upload-image`, `/api/upload-file`, etc.)
+- **Affects**: image upload, file upload, voice upload, avatar upload, background upload
+
+### Image Compression
+
+- **compressImage**: all images compressed to JPEG before upload (max 1920px, quality 85%)
+- Prevents large file uploads and reduces bandwidth
+
+### [deleted] Message Filter
+
+- **useChatMessages**: filters out messages with `text === '[deleted]'` (soft-deleted by server)
+- Applied on initial load, pagination, and real-time stream
+
+### Version Display Fix
+
+- **public/version.json**: was stale at 0.1.4.4, now tracks actual version
+- Update banner now works correctly
+
 ## v0.1.5.2 (2026-06-27)
 
 Chat Background, File Download Progress.
