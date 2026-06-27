@@ -6,6 +6,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import { Screen, ImageLightbox } from '@/components/common'
 import { UserProfileModal } from '@/components/common/UserProfileModal'
+import { FileDownloadButton } from '@/components/common/FileDownloadButton'
 import { useChatMessages } from '@/hooks/useChatMessages'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
 import { useChatStore } from '@/store/chatStore'
@@ -97,6 +98,8 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
   const [searchResults, setSearchResults] = useState<{ messageId: string; roomId: string; username: string; preview: string; createdAt: string }[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [profileUser, setProfileUser] = useState<string | null>(null)
+  const [chatBgUrl, setChatBgUrl] = useState<string | null>(null)
+  const bgInputRef = useRef<HTMLInputElement>(null)
   const voiceRecorder = useVoiceRecorder()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -354,6 +357,7 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
                       window.dispatchEvent(new CustomEvent('show-pinned', { detail: { chatId } }))
                       setShowChatMenu(false)
                     }} />
+                    <MobileMenuItem emoji="🖼" label="Фон чата" onClick={() => { bgInputRef.current?.click(); setShowChatMenu(false) }} />
                   </div>
                 )}
               </div>
@@ -431,7 +435,7 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
       {isLoadingMessages ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, color: TG.textSecondary }}>{t('loadingMessages')}</div>
       ) : (
-        <div style={{ flex: 1, minHeight: 0 }}>
+        <div style={{ flex: 1, minHeight: 0, background: chatBgUrl ? `url(${chatBgUrl}) center/cover` : undefined }}>
           <Virtuoso
             ref={virtuosoRef}
             data={messages}
@@ -519,6 +523,15 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
 
     {/* Search panel */}
     {profileUser && <UserProfileModal username={profileUser} onClose={() => setProfileUser(null)} />}
+    <input ref={bgInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      try {
+        const url = await grpcClient.uploadBackground(file)
+        if (url) setChatBgUrl(url)
+      } catch {}
+      e.target.value = ''
+    }} />
     {showSearch && (
       <div style={{
         position: 'fixed', inset: 0, zIndex: 200, background: '#1a1a2e',
@@ -672,9 +685,11 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, onLongPressSta
           {/* File */}
           {message.fileUrl && (
             <div style={{ marginBottom: 4 }}>
-              <a href={message.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.08)', color: TG.accent, fontSize: 13, textDecoration: 'none' }}>
-                📎 {message.text || 'Файл'}
-              </a>
+              <FileDownloadButton url={message.fileUrl} filename={message.text || 'file'} style={{ borderRadius: 8, background: 'rgba(255,255,255,0.08)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', color: TG.accent, fontSize: 13 }}>
+                  📎 {message.text || 'Файл'}
+                </div>
+              </FileDownloadButton>
             </div>
           )}
 

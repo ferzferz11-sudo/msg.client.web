@@ -13,6 +13,7 @@ import type { Message } from '@/shared/types'
 import { useChatListV2 } from '@/hooks/useChatListV2'
 import { ImageLightbox } from '@/components/common'
 import { UserProfileModal } from '@/components/common/UserProfileModal'
+import { FileDownloadButton } from '@/components/common/FileDownloadButton'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 
 interface ChatScreenProps {
@@ -100,6 +101,8 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
   const [searchResults, setSearchResults] = useState<{ messageId: string; roomId: string; username: string; preview: string; createdAt: string }[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [profileUser, setProfileUser] = useState<string | null>(null)
+  const [chatBgUrl, setChatBgUrl] = useState<string | null>(null)
+  const bgInputRef = useRef<HTMLInputElement>(null)
   const voiceRecorder = useVoiceRecorder()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -399,6 +402,11 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
                     setShowChatMenu(false)
                   }}
                 />
+                <ChatMenuItem
+                  emoji="🖼"
+                  label="Фон чата"
+                  onClick={() => { bgInputRef.current?.click(); setShowChatMenu(false) }}
+                />
               </div>
             )}
           </div>
@@ -434,7 +442,7 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
           {t('loadingMessages')}
         </div>
       ) : (
-        <div style={{ flex: 1, minHeight: 0 }}>
+        <div style={{ flex: 1, minHeight: 0, background: chatBgUrl ? `url(${chatBgUrl}) center/cover` : undefined }}>
           <Virtuoso
             ref={virtuosoRef}
             data={messages}
@@ -665,6 +673,15 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
 
       {/* Search panel */}
       {profileUser && <UserProfileModal username={profileUser} onClose={() => setProfileUser(null)} />}
+      <input ref={bgInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        try {
+          const url = await grpcClient.uploadBackground(file)
+          if (url) setChatBgUrl(url)
+        } catch {}
+        e.target.value = ''
+      }} />
       {showSearch && (
         <div style={{
           position: 'absolute', top: 56, right: 0, width: 360, maxHeight: 'calc(100% - 56px)',
@@ -879,9 +896,11 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, onSelect, onCo
           {/* File */}
           {message.fileUrl && (
             <div style={{ marginBottom: 4 }}>
-              <a href={message.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.08)', color: TG.accent, fontSize: 13, textDecoration: 'none' }}>
-                📎 {message.text || 'Файл'}
-              </a>
+              <FileDownloadButton url={message.fileUrl} filename={message.text || 'file'} style={{ borderRadius: 8, background: 'rgba(255,255,255,0.08)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', color: TG.accent, fontSize: 13 }}>
+                  📎 {message.text || 'Файл'}
+                </div>
+              </FileDownloadButton>
             </div>
           )}
 

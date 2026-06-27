@@ -70,7 +70,7 @@ src/
 
 ## Статус интеграции (с сервером v1.3.0.25)
 
-**Web клиент:** v0.1.5.1 | **Дата проверки:** 2026-06-27
+**Web клиент:** v0.1.5.2 | **Дата проверки:** 2026-06-27
 
 ### ✅ Реализовано
 
@@ -182,6 +182,8 @@ src/
 | Version Display | ✅ | v0.1.5.0 | app version on select chat screen |
 | Message Search UI | ✅ | v0.1.5.1 | search icon in chat header, results with click-to-navigate |
 | Contact Profile Modal | ✅ | v0.1.5.1 | click avatar/name in header opens profile modal |
+| Chat Background | ✅ | v0.1.5.2 | upload image via chat menu, applies as background |
+| File Download Progress | ✅ | v0.1.5.2 | progress bar during file download |
 
 ### ⚠️ Частично реализовано / Known Issues
 

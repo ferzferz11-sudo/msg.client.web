@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.1.5.2 (2026-06-27)
+
+Chat Background, File Download Progress.
+
+### Chat Background
+
+- **Menu option**: "🖼 Фон чата" in chat three-dot menu (desktop + mobile)
+- **File picker**: select image → upload via `uploadBackground` → apply as chat background
+- **Visual**: background image covers the message area
+
+### File Download Progress
+
+- **FileDownloadButton**: replaces plain `<a>` links for file messages
+- **Progress tracking**: fetch with ReadableStream, tracks bytes received vs content-length
+- **Progress bar**: purple bar at bottom of file bubble during download
+- **Fallback**: on error, opens file in new tab
+
 ## v0.1.5.1 (2026-06-27)
 
 Message Search UI, Contact Profile Modal.
