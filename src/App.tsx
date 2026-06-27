@@ -15,6 +15,7 @@ import { grpcClient } from '@/shared/api/grpcClient'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
 import { useAuthStore } from '@/store/authStore'
 import { isMobile } from '@/shared/utils'
+import { ToastContainer } from '@/components/common/Toast'
 import '@/styles/global.css'
 
 type Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites' | 'contacts' | 'aiChats' | 'settings' | 'archive' | 'search' | 'pinned'
@@ -291,6 +292,7 @@ export default function App() {
       <div style={{
         width: '100%', height: '100vh', overflow: 'hidden', background: '#1a1a2e',
       }}>
+        <ToastContainer />
         {showShutdownBanner && (
           <ShutdownBanner />
         )}
@@ -356,6 +358,7 @@ export default function App() {
       width: '100%', height: 'var(--viewport-available-height, 100dvh)',
       overflow: 'hidden', background: '#1a1a2e',
     }}>
+      <ToastContainer />
       {showShutdownBanner && (
         <ShutdownBanner />
       )}

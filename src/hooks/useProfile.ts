@@ -52,20 +52,20 @@ export function useProfile() {
         lastSeenAt: p.lastSeenAt || '',
       })
     } catch (err) {
-      console.error('Failed to load profile:', err)
+      addError({ message: 'Не удалось загрузить профиль', type: 'network' })
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [addError])
 
   const loadSettings = useCallback(async () => {
     try {
       const s = await grpcClient.getUserSettings()
       setSettings(s)
     } catch (err) {
-      console.error('Failed to load settings:', err)
+      addError({ message: 'Не удалось загрузить настройки', type: 'network' })
     }
-  }, [])
+  }, [addError])
 
   const updateProfile = useCallback(async (updates: {
     username?: string

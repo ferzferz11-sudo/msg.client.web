@@ -18,6 +18,13 @@ export function useAIChats() {
   const addError = useErrorStore((s) => s.addError)
   const abortRef = useRef<AbortController | null>(null)
 
+  const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([])
+  const [isMultiMode, setIsMultiMode] = useState(false)
+  const [multiAgentMessages, setMultiAgentMessages] = useState<Record<string, AIMessage[]>>({})
+  const [activeMultiTab, setActiveMultiTab] = useState<string | null>(null)
+  const multiAbortRefs = useRef<Record<string, AbortController>>({})
+  const [multiStreamingCount, setMultiStreamingCount] = useState(0)
+
   const loadChats = useCallback(async () => {
     setIsLoading(true)
     try {
@@ -45,34 +52,45 @@ export function useAIChats() {
   }, [addError])
 
   const createNewChat = useCallback(async (agentId?: string): Promise<string | null> => {
-    try {
-      const body: any = { sessionId: '', message: 'Начать новый чат' }
-      const targetAgent = agentId || selectedAgentId
-      if (targetAgent) body.agentId = targetAgent
+    const targetAgent = agentId || selectedAgentId
+    const maxRetries = 3
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const body: any = { sessionId: '', message: 'Начать новый чат' }
+        if (targetAgent) body.agentId = targetAgent
 
-      let chatId = ''
-      for await (const chunk of grpcClient.chatWithAIV2(body)) {
-        if (chunk.id) chatId = chunk.id
-        if (chunk.isStreaming === false) break
-      }
+        let chatId = ''
+        for await (const chunk of grpcClient.chatWithAIV2(body)) {
+          if (chunk.id) chatId = chunk.id
+          if (chunk.isStreaming === false) break
+        }
 
-      if (chatId) {
-        await loadChats()
-        setActiveChatId(chatId)
-        setMessages([])
-        return chatId
+        if (chatId) {
+          await loadChats()
+          setActiveChatId(chatId)
+          setMessages([])
+          return chatId
+        }
+      } catch (err: any) {
+        const is429 = err?.message?.includes('429') || err?.statusCode === 429
+        if (is429 && attempt < maxRetries - 1) {
+          const retryAfter = 25
+          await new Promise((r) => setTimeout(r, retryAfter * 1000))
+          continue
+        }
+        console.error('Failed to create AI chat:', err)
+        addError({ message: is429 ? 'Rate limit — попробуйте через 25 секунд' : 'Не удалось создать AI чат', type: 'network' })
+        return null
       }
-    } catch (err) {
-      console.error('Failed to create AI chat:', err)
-      addError({ message: 'Не удалось создать AI чат', type: 'network' })
     }
     return null
   }, [selectedAgentId, loadChats, addError])
 
   const sendMessage = useCallback(async (text: string, imageBase64?: string) => {
     if (!activeChatId || (!text.trim() && !imageBase64)) return
+    const userMsgId = `user-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const userMsg: AIMessage = {
-      id: `user-${Date.now()}`,
+      id: userMsgId,
       role: 'user',
       content: text,
       timestamp: Date.now(),
@@ -80,7 +98,7 @@ export function useAIChats() {
     setMessages((prev) => [...prev, userMsg])
     setIsStreaming(true)
 
-    const assistantMsgId = `ai-${Date.now()}`
+    const assistantMsgId = `ai-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const assistantMsg: AIMessage = {
       id: assistantMsgId,
       role: 'assistant',
@@ -89,6 +107,9 @@ export function useAIChats() {
       timestamp: Date.now(),
     }
     setMessages((prev) => [...prev, assistantMsg])
+
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
 
     try {
       const body: any = {
@@ -99,6 +120,7 @@ export function useAIChats() {
       if (imageBase64) body.images = [imageBase64]
 
       for await (const chunk of grpcClient.chatWithAIV2(body)) {
+        if (ctrl.signal.aborted) break
         setMessages((prev) =>
           prev.map((m) => m.id === assistantMsgId
             ? {
@@ -123,12 +145,25 @@ export function useAIChats() {
         }
       }
     } catch (err: any) {
+      if (ctrl.signal.aborted) return
       setMessages((prev) =>
         prev.map((m) => m.id === assistantMsgId
           ? { ...m, content: `Ошибка: ${err.message || 'Не удалось получить ответ'}` }
           : m)
       )
+      const msg = err?.message || ''
+      const is429 = msg.includes('429')
+      const is402 = msg.includes('402')
+      const isBudget = msg.includes('BUDGET_EXHAUSTED') || msg.includes('budget')
+      let userMessage = 'Ошибка AI запроса'
+      if (isBudget || is402) userMessage = 'Бюджет AI провайдера исчерпан'
+      else if (is429) userMessage = 'Превышен лимит запросов. Подождите 25 секунд'
+      else if (msg.includes('401')) userMessage = 'Ошибка авторизации AI'
+      else if (msg.includes('500') || msg.includes('502') || msg.includes('503')) userMessage = 'Сервер AI временно недоступен'
+      else if (msg) userMessage = msg.length > 100 ? msg.slice(0, 100) + '...' : msg
+      addError({ message: userMessage, type: is429 ? 'rate_limit' : is402 || isBudget ? 'server' : 'network' })
     } finally {
+      abortRef.current = null
       setIsStreaming(false)
     }
   }, [activeChatId, selectedAgentId])
@@ -311,9 +346,133 @@ export function useAIChats() {
     loadMessages(chatId)
   }, [loadMessages])
 
+  const toggleMultiAgent = useCallback((agentId: string) => {
+    setMultiSelectedIds((prev) =>
+      prev.includes(agentId) ? prev.filter((id) => id !== agentId) : [...prev, agentId]
+    )
+  }, [])
+
+  const clearMultiSelection = useCallback(() => {
+    setMultiSelectedIds([])
+    setIsMultiMode(false)
+    setMultiAgentMessages({})
+    setActiveMultiTab(null)
+  }, [])
+
+  const sendMultiAgentMessage = useCallback(async (text: string, imageBase64?: string) => {
+    if (multiSelectedIds.length === 0 || (!text.trim() && !imageBase64)) return
+
+    const userMsgId = `user-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    const userMsg: AIMessage = {
+      id: userMsgId,
+      role: 'user',
+      content: text,
+      timestamp: Date.now(),
+    }
+
+    const initialMessages: Record<string, AIMessage[]> = {}
+    for (const agentId of multiSelectedIds) {
+      initialMessages[agentId] = [userMsg]
+    }
+    setMultiAgentMessages(initialMessages)
+    setActiveMultiTab(multiSelectedIds[0])
+    setMultiStreamingCount(multiSelectedIds.length)
+
+    const promises = multiSelectedIds.map(async (agentId) => {
+      const agentMsgId = `ai-${agentId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+      const agent = agents.find((a) => a.id === agentId)
+      const agentMsg: AIMessage = {
+        id: agentMsgId,
+        role: 'assistant',
+        content: '',
+        agentId,
+        agentName: agent?.name,
+        timestamp: Date.now(),
+      }
+
+      setMultiAgentMessages((prev) => ({
+        ...prev,
+        [agentId]: [...(prev[agentId] || []), agentMsg],
+      }))
+
+      const ctrl = new AbortController()
+      multiAbortRefs.current[agentId] = ctrl
+
+      try {
+        const body: any = {
+          sessionId: activeChatId || '',
+          message: text,
+          agentId,
+        }
+        if (imageBase64) body.images = [imageBase64]
+
+        for await (const chunk of grpcClient.chatWithAIV2(body)) {
+          if (ctrl.signal.aborted) break
+          setMultiAgentMessages((prev) => {
+            const msgs = prev[agentId] || []
+            return {
+              ...prev,
+              [agentId]: msgs.map((m) =>
+                m.id === agentMsgId
+                  ? {
+                      ...m,
+                      content: chunk.content || m.content,
+                      agentId: chunk.agentId || m.agentId,
+                      agentName: chunk.agentName || m.agentName,
+                      modelUsed: chunk.modelUsed || m.modelUsed,
+                      tokenCount: chunk.tokenCount || m.tokenCount,
+                      hasRagContext: chunk.hasRagContext || m.hasRagContext,
+                      imageUrl: chunk.imageUrl || m.imageUrl,
+                      isStreaming: chunk.isStreaming,
+                    }
+                  : m
+              ),
+            }
+          })
+        }
+      } catch (err: any) {
+        if (ctrl.signal.aborted) return
+        setMultiAgentMessages((prev) => {
+          const msgs = prev[agentId] || []
+          return {
+            ...prev,
+            [agentId]: msgs.map((m) =>
+              m.id === agentMsgId
+                ? { ...m, content: `Ошибка: ${err.message || 'Не удалось получить ответ'}` }
+                : m
+            ),
+          }
+        })
+        const msg = err?.message || ''
+        const is429 = msg.includes('429')
+        const is402 = msg.includes('402')
+        const isBudget = msg.includes('BUDGET_EXHAUSTED') || msg.includes('budget')
+        let userMessage = `Ошибка AI (${agent?.name || agentId.slice(0, 8)})`
+        if (isBudget || is402) userMessage = `Бюджет ${agent?.name || 'AI'} исчерпан`
+        else if (is429) userMessage = `Rate limit ${agent?.name || 'AI'} — подождите 25 сек`
+        addError({ message: userMessage, type: is429 ? 'rate_limit' : is402 || isBudget ? 'server' : 'network' })
+      } finally {
+        delete multiAbortRefs.current[agentId]
+        setMultiStreamingCount((prev) => prev - 1)
+      }
+    })
+
+    setIsStreaming(true)
+    await Promise.allSettled(promises)
+    setIsStreaming(false)
+  }, [multiSelectedIds, activeChatId, agents])
+
+  const stopMultiStreaming = useCallback(() => {
+    Object.values(multiAbortRefs.current).forEach((ctrl) => ctrl.abort())
+    multiAbortRefs.current = {}
+    setIsStreaming(false)
+    setMultiStreamingCount(0)
+  }, [])
+
   useEffect(() => {
     return () => {
       abortRef.current?.abort()
+      Object.values(multiAbortRefs.current).forEach((ctrl) => ctrl.abort())
     }
   }, [])
 
@@ -346,5 +505,16 @@ export function useAIChats() {
     installAgent,
     rateAgent,
     loadUsageStats,
+    multiSelectedIds,
+    isMultiMode,
+    multiAgentMessages,
+    activeMultiTab,
+    multiStreamingCount,
+    toggleMultiAgent,
+    clearMultiSelection,
+    sendMultiAgentMessage,
+    stopMultiStreaming,
+    setActiveMultiTab,
+    setIsMultiMode,
   }
 }

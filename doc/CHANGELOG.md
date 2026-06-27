@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.1.7.0 (2026-06-28)
+
+Multi-Agent AI Chat — parallel streaming to multiple agents.
+
+### Multi-Agent AI Chat
+
+- **Multi-select mode**: toggle button in agent panel to enable multi-select
+- **Agent checkboxes**: visual checkboxes on each agent when in multi-select mode
+- **Parallel streaming**: sends message to all selected agents simultaneously
+- **Tabbed responses**: tab bar above messages showing each agent's response
+- **Active tab indicator**: tab highlights with agent emoji, name, and status (⏳ streaming / ✓ done)
+- **Stop all**: stop button cancels all parallel streams
+- **Desktop**: multi-select in right agent panel, tabbed messages area
+- **Mobile**: multi-select in agents view, "→ Чат" button to return to chat, tabbed messages
+- **No new proto**: reuses existing `ChatWithAIV2` RPC — each agent gets its own session
+
 ## v0.1.6.1 (2026-06-27)
 
 Delete for all messages, nginx proxy fix.

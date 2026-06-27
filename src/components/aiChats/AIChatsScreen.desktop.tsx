@@ -16,6 +16,9 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
     loadChatMessages, renameChat, deleteChat, selectAgent,
     createAgent, deleteAgent, cloneAgent,
     searchMarketplace, installAgent, loadUsageStats,
+    multiSelectedIds, isMultiMode, multiAgentMessages, activeMultiTab,
+    toggleMultiAgent, clearMultiSelection, sendMultiAgentMessage, stopMultiStreaming,
+    setActiveMultiTab, setIsMultiMode,
   } = useAIChats()
 
   const [showAgentPanel, setShowAgentPanel] = useState(false)
@@ -30,6 +33,7 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
   const [showCreateAgent, setShowCreateAgent] = useState(false)
   const [newAgent, setNewAgent] = useState({ name: '', description: '', model: '', systemPrompt: '' })
   const [isCreatingAgent, setIsCreatingAgent] = useState(false)
+  const [showNewChatModal, setShowNewChatModal] = useState(false)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -41,7 +45,11 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
     setInputText('')
     const img = imagePreview
     setImagePreview(null)
-    await sendMessage(text, img || undefined)
+    if (isMultiMode && multiSelectedIds.length > 0) {
+      await sendMultiAgentMessage(text, img || undefined)
+    } else {
+      await sendMessage(text, img || undefined)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -61,7 +69,12 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
   }
 
   const handleNewChat = async () => {
-    await createNewChat()
+    setShowNewChatModal(true)
+  }
+
+  const handleNewChatWithAgent = async (agentId?: string) => {
+    setShowNewChatModal(false)
+    await createNewChat(agentId)
   }
 
   const handleCreateAgent = async () => {
@@ -210,20 +223,67 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
               </button>
             </div>
 
+            {isMultiMode && Object.keys(multiAgentMessages).length > 0 && (
+              <div style={{
+                display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)',
+                padding: '0 16px', background: 'rgba(26,26,46,0.5)',
+              }}>
+                {Object.keys(multiAgentMessages).map((agentId) => {
+                  const agent = agents.find((a) => a.id === agentId)
+                  const isActive = activeMultiTab === agentId
+                  const msgs = multiAgentMessages[agentId] || []
+                  const lastMsg = msgs[msgs.length - 1]
+                  const isDone = lastMsg && !lastMsg.isStreaming
+                  return (
+                    <button key={agentId} onClick={() => setActiveMultiTab(agentId)} style={{
+                      padding: '10px 16px', background: 'none', border: 'none',
+                      borderBottom: isActive ? '2px solid #6b5ce7' : '2px solid transparent',
+                      color: isActive ? '#6b5ce7' : '#888',
+                      fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 6,
+                    }}>
+                      {agent?.emoji || '🤖'} {agent?.name || agentId.slice(0, 8)}
+                      {!isDone && <span style={{ fontSize: 10 }}>⏳</span>}
+                      {isDone && <span style={{ fontSize: 10 }}>✓</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
             <div className="scrollable" style={{ flex: 1, padding: '16px 24px', overflowY: 'auto' }}>
-              {messages.length === 0 && (
+              {isMultiMode && activeMultiTab && multiAgentMessages[activeMultiTab] ? (
+                <>
+                  {multiAgentMessages[activeMultiTab].map((msg) => (
+                    <DesktopMessageBubble key={msg.id} message={msg} />
+                  ))}
+                </>
+              ) : !isMultiMode ? (
+                <>
+                  {messages.length === 0 && (
+                    <div style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center',
+                      justifyContent: 'center', height: '100%', color: '#888',
+                    }}>
+                      <div style={{ fontSize: 64, marginBottom: 16 }}>🤖</div>
+                      <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 8, color: '#fff' }}>AI Assistant</div>
+                      <div style={{ fontSize: 14 }}>Начните диалог с AI</div>
+                    </div>
+                  )}
+                  {messages.map((msg) => (
+                    <DesktopMessageBubble key={msg.id} message={msg} />
+                  ))}
+                </>
+              ) : (
                 <div style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center',
                   justifyContent: 'center', height: '100%', color: '#888',
                 }}>
-                  <div style={{ fontSize: 64, marginBottom: 16 }}>🤖</div>
-                  <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 8, color: '#fff' }}>AI Assistant</div>
-                  <div style={{ fontSize: 14 }}>Начните диалог с AI</div>
+                  <div style={{ fontSize: 48, marginBottom: 16 }}>🔀</div>
+                  <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 8, color: '#fff' }}>Multi-Agent Mode</div>
+                  <div style={{ fontSize: 13 }}>Выберите агентов и отправьте сообщение</div>
                 </div>
               )}
-              {messages.map((msg) => (
-                <DesktopMessageBubble key={msg.id} message={msg} />
-              ))}
               <div ref={messagesEndRef} />
             </div>
 
@@ -271,7 +331,7 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
                   }}
                 />
                 {isStreaming ? (
-                  <button onClick={stopStreaming} style={{
+                  <button onClick={isMultiMode ? stopMultiStreaming : stopStreaming} style={{
                     width: 40, height: 40, borderRadius: 20,
                     background: '#e74c3c', border: 'none',
                     color: '#fff', fontSize: 18, cursor: 'pointer', flexShrink: 0,
@@ -327,16 +387,31 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
           <div className="scrollable" style={{ flex: 1, padding: '12px' }}>
             {agentTab === 'agents' && (
               <>
-                <button onClick={() => setShowCreateAgent(true)} style={{
-                  width: '100%', padding: '8px 0', borderRadius: 8,
-                  background: 'rgba(107,92,231,0.15)', border: 'none',
-                  color: '#6b5ce7', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 8,
-                }}>+ Новый агент</button>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                  <button onClick={() => setShowCreateAgent(true)} style={{
+                    flex: 1, padding: '8px 0', borderRadius: 8,
+                    background: 'rgba(107,92,231,0.15)', border: 'none',
+                    color: '#6b5ce7', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  }}>+ Новый агент</button>
+                  <button onClick={() => {
+                    if (isMultiMode) {
+                      clearMultiSelection()
+                    } else {
+                      setIsMultiMode(true)
+                    }
+                  }} style={{
+                    padding: '8px 12px', borderRadius: 8,
+                    background: isMultiMode ? '#6b5ce7' : 'rgba(107,92,231,0.15)',
+                    border: 'none', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                  }}>
+                    {isMultiMode ? `✓ ${multiSelectedIds.length}` : '🔀'}
+                  </button>
+                </div>
                 {agents.filter((a) => a.isPreset).length > 0 && (
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Пресеты</div>
                     {agents.filter((a) => a.isPreset).map((agent) => (
-                      <AgentRow key={agent.id} agent={agent} selected={selectedAgentId === agent.id} onSelect={() => { selectAgent(agent.id) }} onEdit={() => {}} onClone={() => cloneAgent(agent.id)} />
+                      <AgentRow key={agent.id} agent={agent} selected={selectedAgentId === agent.id} onSelect={() => { if (!isMultiMode) selectAgent(agent.id) }} onEdit={() => {}} onClone={() => cloneAgent(agent.id)} multiMode={isMultiMode} multiSelected={multiSelectedIds.includes(agent.id)} onToggleMulti={() => toggleMultiAgent(agent.id)} />
                     ))}
                   </div>
                 )}
@@ -344,7 +419,7 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
                   <div>
                     <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Мои агенты</div>
                     {agents.filter((a) => !a.isPreset).map((agent) => (
-                      <AgentRow key={agent.id} agent={agent} selected={selectedAgentId === agent.id} onSelect={() => { selectAgent(agent.id) }} onEdit={() => {}} onDelete={() => deleteAgent(agent.id)} onClone={() => cloneAgent(agent.id)} />
+                      <AgentRow key={agent.id} agent={agent} selected={selectedAgentId === agent.id} onSelect={() => { if (!isMultiMode) selectAgent(agent.id) }} onEdit={() => {}} onDelete={() => deleteAgent(agent.id)} onClone={() => cloneAgent(agent.id)} multiMode={isMultiMode} multiSelected={multiSelectedIds.includes(agent.id)} onToggleMulti={() => toggleMultiAgent(agent.id)} />
                     ))}
                   </div>
                 )}
@@ -426,6 +501,61 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
                 ))}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {showNewChatModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={() => setShowNewChatModal(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            width: 400, maxHeight: '80vh',
+            background: '#1e1e36', borderRadius: 16,
+            border: '1px solid rgba(255,255,255,0.1)',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>Новый AI чат</span>
+              <button onClick={() => setShowNewChatModal(false)} style={{
+                background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
+                cursor: 'pointer', fontSize: 18, padding: 4,
+              }}>✕</button>
+            </div>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <button onClick={() => handleNewChatWithAgent()} style={{
+                width: '100%', padding: '10px 0', borderRadius: 10,
+                background: 'linear-gradient(135deg, #6b5ce7, #8b7cf7)',
+                border: 'none', color: '#fff', fontSize: 14, fontWeight: 600,
+                cursor: 'pointer',
+              }}>Без агента (по умолчанию)</button>
+            </div>
+            <div className="scrollable" style={{ flex: 1, padding: '8px 12px', overflowY: 'auto', maxHeight: '60vh' }}>
+              {agents.filter((a) => a.isPreset).length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1, padding: '4px 4px' }}>Пресеты</div>
+                  {agents.filter((a) => a.isPreset).map((agent) => (
+                    <ChatAgentRow key={agent.id} agent={agent} onSelect={() => handleNewChatWithAgent(agent.id)} />
+                  ))}
+                </div>
+              )}
+              {agents.filter((a) => !a.isPreset).length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1, padding: '4px 4px' }}>Мои агенты</div>
+                  {agents.filter((a) => !a.isPreset).map((agent) => (
+                    <ChatAgentRow key={agent.id} agent={agent} onSelect={() => handleNewChatWithAgent(agent.id)} />
+                  ))}
+                </div>
+              )}
+              {agents.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 20, color: '#888', fontSize: 13 }}>Нет агентов</div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -576,21 +706,36 @@ function DesktopMessageBubble({ message }: { message: AIMessage }) {
   )
 }
 
-function AgentRow({ agent, selected, onSelect, onEdit, onDelete, onClone }: {
+function AgentRow({ agent, selected, onSelect, onEdit, onDelete, onClone, multiMode, multiSelected, onToggleMulti }: {
   agent: AIAgentV2
   selected: boolean
   onSelect: () => void
   onEdit: () => void
   onDelete?: () => void
   onClone: () => void
+  multiMode?: boolean
+  multiSelected?: boolean
+  onToggleMulti?: () => void
 }) {
+  const handleClick = multiMode ? (onToggleMulti || onSelect) : onSelect
   return (
-    <div onClick={onSelect} style={{
+    <div onClick={handleClick} style={{
       display: 'flex', alignItems: 'center', gap: 8,
       padding: '8px 6px', borderRadius: 6, cursor: 'pointer',
-      background: selected ? 'rgba(107,92,231,0.1)' : 'transparent',
+      background: multiSelected ? 'rgba(107,92,231,0.15)' : selected ? 'rgba(107,92,231,0.1)' : 'transparent',
       marginBottom: 2,
     }}>
+      {multiMode && (
+        <div style={{
+          width: 18, height: 18, borderRadius: 4,
+          border: `2px solid ${multiSelected ? '#6b5ce7' : 'rgba(255,255,255,0.3)'}`,
+          background: multiSelected ? '#6b5ce7' : 'transparent',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, color: '#fff', flexShrink: 0,
+        }}>
+          {multiSelected && '✓'}
+        </div>
+      )}
       <span style={{ fontSize: 16 }}>{agent.emoji || '🤖'}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{agent.name}</div>
@@ -598,11 +743,34 @@ function AgentRow({ agent, selected, onSelect, onEdit, onDelete, onClone }: {
           {agent.model || agent.providerType}
         </div>
       </div>
-      {selected && <span style={{ color: '#6b5ce7', fontSize: 12 }}>✓</span>}
-      <div style={{ display: 'flex', gap: 2 }}>
-        <button onClick={(e) => { e.stopPropagation(); onEdit() }} style={{ color: '#888', fontSize: 11, background: 'none', border: 'none', cursor: 'pointer' }}>✏️</button>
-        <button onClick={(e) => { e.stopPropagation(); onClone() }} style={{ color: '#888', fontSize: 11, background: 'none', border: 'none', cursor: 'pointer' }}>📋</button>
-        {onDelete && <button onClick={(e) => { e.stopPropagation(); onDelete() }} style={{ color: '#e74c3c', fontSize: 11, background: 'none', border: 'none', cursor: 'pointer' }}>🗑️</button>}
+      {!multiMode && selected && <span style={{ color: '#6b5ce7', fontSize: 12 }}>✓</span>}
+      {!multiMode && (
+        <div style={{ display: 'flex', gap: 2 }}>
+          <button onClick={(e) => { e.stopPropagation(); onEdit() }} style={{ color: '#888', fontSize: 11, background: 'none', border: 'none', cursor: 'pointer' }}>✏️</button>
+          <button onClick={(e) => { e.stopPropagation(); onClone() }} style={{ color: '#888', fontSize: 11, background: 'none', border: 'none', cursor: 'pointer' }}>📋</button>
+          {onDelete && <button onClick={(e) => { e.stopPropagation(); onDelete() }} style={{ color: '#e74c3c', fontSize: 11, background: 'none', border: 'none', cursor: 'pointer' }}>🗑️</button>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ChatAgentRow({ agent, onSelect }: { agent: AIAgentV2; onSelect: () => void }) {
+  return (
+    <div onClick={onSelect} style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '10px 8px', borderRadius: 8, cursor: 'pointer',
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 18,
+        background: 'linear-gradient(135deg, #6b5ce7, #a855f7)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0,
+      }}>{agent.emoji || '🤖'}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>{agent.name}</div>
+        <div style={{ fontSize: 12, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {agent.description || agent.model || agent.providerType}
+        </div>
       </div>
     </div>
   )

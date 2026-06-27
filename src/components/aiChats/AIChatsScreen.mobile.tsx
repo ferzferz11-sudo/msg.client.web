@@ -18,6 +18,9 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
     loadChatMessages, renameChat, deleteChat, selectAgent,
     createAgent, updateAgent, deleteAgent, cloneAgent,
     searchMarketplace, installAgent, loadUsageStats,
+    multiSelectedIds, isMultiMode, multiAgentMessages, activeMultiTab,
+    toggleMultiAgent, clearMultiSelection, sendMultiAgentMessage, stopMultiStreaming,
+    setActiveMultiTab, setIsMultiMode,
   } = useAIChats()
 
   const [view, setView] = useState<MobileView>('chats')
@@ -36,6 +39,7 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
   const [settingsApiKey, setSettingsApiKey] = useState('')
   const [settingsModel, setSettingsModel] = useState('')
   const [settingsMessage, setSettingsMessage] = useState('')
+  const [showNewChatModal, setShowNewChatModal] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -75,7 +79,11 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
     setInputText('')
     const img = imagePreview
     setImagePreview(null)
-    await sendMessage(text, img || undefined)
+    if (isMultiMode && multiSelectedIds.length > 0) {
+      await sendMultiAgentMessage(text, img || undefined)
+    } else {
+      await sendMessage(text, img || undefined)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -95,7 +103,12 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
   }
 
   const handleNewChat = async () => {
-    await createNewChat()
+    setShowNewChatModal(true)
+  }
+
+  const handleNewChatWithAgent = async (agentId?: string) => {
+    setShowNewChatModal(false)
+    await createNewChat(agentId)
     setView('chat')
   }
 
@@ -231,29 +244,85 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
           <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>
             {chats.find((c) => c.id === activeChatId)?.name || 'AI Chat'}
           </span>
-          <button onClick={() => { loadAgents(); setView('agents') }} style={{
-            padding: '4px 8px', background: 'rgba(107,92,231,0.2)', color: '#6b5ce7',
-            border: 'none', borderRadius: 4, fontSize: 12, cursor: 'pointer',
-          }}>
-            {agents.find((a) => a.id === selectedAgentId)?.name || 'Выбрать агента'}
-          </button>
+          {isMultiMode ? (
+            <button onClick={() => { loadAgents(); setView('agents') }} style={{
+              padding: '4px 8px', background: '#6b5ce7', color: '#fff',
+              border: 'none', borderRadius: 4, fontSize: 12, cursor: 'pointer', fontWeight: 600,
+            }}>
+              🔀 {multiSelectedIds.length} агентов
+            </button>
+          ) : (
+            <button onClick={() => { loadAgents(); setView('agents') }} style={{
+              padding: '4px 8px', background: 'rgba(107,92,231,0.2)', color: '#6b5ce7',
+              border: 'none', borderRadius: 4, fontSize: 12, cursor: 'pointer',
+            }}>
+              {agents.find((a) => a.id === selectedAgentId)?.name || 'Выбрать агента'}
+            </button>
+          )}
         </div>
       }>
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {isMultiMode && Object.keys(multiAgentMessages).length > 0 && (
+            <div style={{
+              display: 'flex', overflowX: 'auto', borderBottom: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(26,26,46,0.5)',
+            }}>
+              {Object.keys(multiAgentMessages).map((agentId) => {
+                const agent = agents.find((a) => a.id === agentId)
+                const isActive = activeMultiTab === agentId
+                const msgs = multiAgentMessages[agentId] || []
+                const lastMsg = msgs[msgs.length - 1]
+                const isDone = lastMsg && !lastMsg.isStreaming
+                return (
+                  <button key={agentId} onClick={() => setActiveMultiTab(agentId)} style={{
+                    padding: '10px 14px', background: 'none', border: 'none',
+                    borderBottom: isActive ? '2px solid #6b5ce7' : '2px solid transparent',
+                    color: isActive ? '#6b5ce7' : '#888',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}>
+                    {agent?.emoji || '🤖'} {agent?.name || agentId.slice(0, 6)}
+                    {!isDone && <span style={{ fontSize: 9 }}>⏳</span>}
+                    {isDone && <span style={{ fontSize: 9 }}>✓</span>}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
           <div className="scrollable" style={{ flex: 1, padding: '12px 16px', overflowY: 'auto' }}>
-            {messages.length === 0 && (
+            {isMultiMode && activeMultiTab && multiAgentMessages[activeMultiTab] ? (
+              <>
+                {multiAgentMessages[activeMultiTab].map((msg) => (
+                  <MessageBubble key={msg.id} message={msg} />
+                ))}
+              </>
+            ) : !isMultiMode ? (
+              <>
+                {messages.length === 0 && (
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    justifyContent: 'center', height: '100%', color: '#888',
+                  }}>
+                    <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
+                    <div style={{ fontSize: 16, marginBottom: 8 }}>AI Assistant</div>
+                    <div style={{ fontSize: 13 }}>Начните диалог</div>
+                  </div>
+                )}
+                {messages.map((msg) => (
+                  <MessageBubble key={msg.id} message={msg} />
+                ))}
+              </>
+            ) : (
               <div style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
                 justifyContent: 'center', height: '100%', color: '#888',
               }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>🤖</div>
-                <div style={{ fontSize: 16, marginBottom: 8 }}>AI Assistant</div>
-                <div style={{ fontSize: 13 }}>Начните диалог</div>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>🔀</div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>Multi-Agent Mode</div>
+                <div style={{ fontSize: 12 }}>Выберите агентов и отправьте сообщение</div>
               </div>
             )}
-            {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
-            ))}
             <div ref={messagesEndRef} />
           </div>
 
@@ -304,7 +373,7 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
                 }}
               />
               {isStreaming ? (
-                <button onClick={stopStreaming} style={{
+                <button onClick={isMultiMode ? stopMultiStreaming : stopStreaming} style={{
                   width: 36, height: 36, borderRadius: 18,
                   background: '#e74c3c', border: 'none',
                   color: '#fff', fontSize: 18, cursor: 'pointer', flexShrink: 0,
@@ -356,11 +425,35 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
       }>
         {view === 'agents' ? (
           <div className="scrollable" style={{ padding: '12px 16px' }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <button onClick={() => {
+                if (isMultiMode) {
+                  clearMultiSelection()
+                } else {
+                  setIsMultiMode(true)
+                }
+              }} style={{
+                flex: 1, padding: '10px 0', borderRadius: 10,
+                background: isMultiMode ? '#6b5ce7' : 'rgba(107,92,231,0.15)',
+                border: 'none', color: '#fff', fontSize: 14, fontWeight: 600,
+                cursor: 'pointer',
+              }}>
+                {isMultiMode ? `Multi-Agent (${multiSelectedIds.length})` : '🔀 Multi-Agent'}
+              </button>
+              {isMultiMode && multiSelectedIds.length > 0 && (
+                <button onClick={() => { setView('chat') }} style={{
+                  padding: '10px 16px', borderRadius: 10,
+                  background: 'linear-gradient(135deg, #6b5ce7, #8b7cf7)',
+                  border: 'none', color: '#fff', fontSize: 14, fontWeight: 600,
+                  cursor: 'pointer',
+                }}>→ Чат</button>
+              )}
+            </div>
             {agents.filter((a) => a.isPreset).length > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Пресеты</div>
                 {agents.filter((a) => a.isPreset).map((agent) => (
-                  <AgentCard key={agent.id} agent={agent} selected={selectedAgentId === agent.id} onSelect={() => { selectAgent(agent.id); if (activeChatId) setView('chat') }} onEdit={() => { setEditingAgent(agent); setAgentForm({ name: agent.name, description: agent.description, providerType: agent.providerType, model: agent.model, systemPrompt: agent.systemPrompt, toolsEnabled: agent.toolsEnabled, ragEnabled: agent.ragEnabled, temperature: agent.temperature, maxTokens: agent.maxTokens, emoji: agent.emoji }); setView('agent-edit') }} onClone={() => cloneAgent(agent.id)} />
+                  <AgentCard key={agent.id} agent={agent} selected={selectedAgentId === agent.id} onSelect={() => { if (!isMultiMode) { selectAgent(agent.id); if (activeChatId) setView('chat') } }} onEdit={() => { if (!isMultiMode) { setEditingAgent(agent); setAgentForm({ name: agent.name, description: agent.description, providerType: agent.providerType, model: agent.model, systemPrompt: agent.systemPrompt, toolsEnabled: agent.toolsEnabled, ragEnabled: agent.ragEnabled, temperature: agent.temperature, maxTokens: agent.maxTokens, emoji: agent.emoji }); setView('agent-edit') } }} onClone={() => cloneAgent(agent.id)} multiMode={isMultiMode} multiSelected={multiSelectedIds.includes(agent.id)} onToggleMulti={() => toggleMultiAgent(agent.id)} />
                 ))}
               </div>
             )}
@@ -368,7 +461,7 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
               <div>
                 <div style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Мои агенты</div>
                 {agents.filter((a) => !a.isPreset).map((agent) => (
-                  <AgentCard key={agent.id} agent={agent} selected={selectedAgentId === agent.id} onSelect={() => { selectAgent(agent.id); if (activeChatId) setView('chat') }} onEdit={() => { setEditingAgent(agent); setAgentForm({ name: agent.name, description: agent.description, providerType: agent.providerType, model: agent.model, systemPrompt: agent.systemPrompt, toolsEnabled: agent.toolsEnabled, ragEnabled: agent.ragEnabled, temperature: agent.temperature, maxTokens: agent.maxTokens, emoji: agent.emoji }); setView('agent-edit') }} onDelete={() => deleteAgent(agent.id)} onClone={() => cloneAgent(agent.id)} />
+                  <AgentCard key={agent.id} agent={agent} selected={selectedAgentId === agent.id} onSelect={() => { if (!isMultiMode) { selectAgent(agent.id); if (activeChatId) setView('chat') } }} onEdit={() => { if (!isMultiMode) { setEditingAgent(agent); setAgentForm({ name: agent.name, description: agent.description, providerType: agent.providerType, model: agent.model, systemPrompt: agent.systemPrompt, toolsEnabled: agent.toolsEnabled, ragEnabled: agent.ragEnabled, temperature: agent.temperature, maxTokens: agent.maxTokens, emoji: agent.emoji }); setView('agent-edit') } }} onDelete={() => deleteAgent(agent.id)} onClone={() => cloneAgent(agent.id)} multiMode={isMultiMode} multiSelected={multiSelectedIds.includes(agent.id)} onToggleMulti={() => toggleMultiAgent(agent.id)} />
                 ))}
               </div>
             )}
@@ -599,7 +692,63 @@ export default function AIChatsScreenMobile({ onBack }: Props) {
     )
   }
 
-  return null
+  return (
+    <>
+      {showNewChatModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        }} onClick={() => setShowNewChatModal(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            width: '100%', maxHeight: '70vh',
+            background: '#1e1e36', borderRadius: '16px 16px 0 0',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>Новый AI чат</span>
+              <button onClick={() => setShowNewChatModal(false)} style={{
+                background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
+                cursor: 'pointer', fontSize: 18, padding: 4,
+              }}>✕</button>
+            </div>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <button onClick={() => handleNewChatWithAgent()} style={{
+                width: '100%', padding: '12px 0', borderRadius: 12,
+                background: 'linear-gradient(135deg, #6b5ce7, #8b7cf7)',
+                border: 'none', color: '#fff', fontSize: 15, fontWeight: 600,
+                cursor: 'pointer',
+              }}>Без агента (по умолчанию)</button>
+            </div>
+            <div className="scrollable" style={{ flex: 1, padding: '8px 12px', overflowY: 'auto', maxHeight: '50vh' }}>
+              {agents.filter((a) => a.isPreset).length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1, padding: '6px 4px' }}>Пресеты</div>
+                  {agents.filter((a) => a.isPreset).map((agent) => (
+                    <ChatAgentRow key={agent.id} agent={agent} onSelect={() => handleNewChatWithAgent(agent.id)} />
+                  ))}
+                </div>
+              )}
+              {agents.filter((a) => !a.isPreset).length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1, padding: '6px 4px' }}>Мои агенты</div>
+                  {agents.filter((a) => !a.isPreset).map((agent) => (
+                    <ChatAgentRow key={agent.id} agent={agent} onSelect={() => handleNewChatWithAgent(agent.id)} />
+                  ))}
+                </div>
+              )}
+              {agents.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 30, color: '#888', fontSize: 13 }}>Нет агентов</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  )
 }
 
 function MessageBubble({ message }: { message: AIMessage }) {
@@ -651,26 +800,41 @@ function MessageBubble({ message }: { message: AIMessage }) {
   )
 }
 
-function AgentCard({ agent, selected, onSelect, onEdit, onDelete, onClone }: {
+function AgentCard({ agent, selected, onSelect, onEdit, onDelete, onClone, multiMode, multiSelected, onToggleMulti }: {
   agent: AIAgentV2
   selected: boolean
   onSelect: () => void
   onEdit: () => void
   onDelete?: () => void
   onClone: () => void
+  multiMode?: boolean
+  multiSelected?: boolean
+  onToggleMulti?: () => void
 }) {
+  const handleClick = multiMode ? (onToggleMulti || onSelect) : onSelect
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
       borderBottom: '1px solid rgba(255,255,255,0.06)',
     }}>
-      <div onClick={onSelect} style={{
+      <div onClick={handleClick} style={{
         display: 'flex', alignItems: 'center', gap: 10, flex: 1, cursor: 'pointer',
-        opacity: selected ? 1 : 0.85,
+        opacity: selected || multiSelected ? 1 : 0.85,
       }}>
+        {multiMode && (
+          <div style={{
+            width: 22, height: 22, borderRadius: 6,
+            border: `2px solid ${multiSelected ? '#6b5ce7' : 'rgba(255,255,255,0.3)'}`,
+            background: multiSelected ? '#6b5ce7' : 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 12, color: '#fff', flexShrink: 0,
+          }}>
+            {multiSelected && '✓'}
+          </div>
+        )}
         <div style={{
           width: 36, height: 36, borderRadius: 18,
-          background: selected ? 'linear-gradient(135deg, #6b5ce7, #a855f7)' : 'rgba(255,255,255,0.08)',
+          background: multiSelected ? 'linear-gradient(135deg, #6b5ce7, #a855f7)' : selected ? 'linear-gradient(135deg, #6b5ce7, #a855f7)' : 'rgba(255,255,255,0.08)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
         }}>
           {agent.emoji || '🤖'}
@@ -681,11 +845,15 @@ function AgentCard({ agent, selected, onSelect, onEdit, onDelete, onClone }: {
             {agent.model || agent.providerType}
           </div>
         </div>
-        {selected && <span style={{ color: '#6b5ce7', fontSize: 14 }}>✓</span>}
+        {!multiMode && selected && <span style={{ color: '#6b5ce7', fontSize: 14 }}>✓</span>}
       </div>
-      <button onClick={onEdit} style={{ color: '#888', fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}>✏️</button>
-      <button onClick={onClone} style={{ color: '#888', fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}>📋</button>
-      {onDelete && <button onClick={onDelete} style={{ color: '#e74c3c', fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}>🗑️</button>}
+      {!multiMode && (
+        <>
+          <button onClick={onEdit} style={{ color: '#888', fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}>✏️</button>
+          <button onClick={onClone} style={{ color: '#888', fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}>📋</button>
+          {onDelete && <button onClick={onDelete} style={{ color: '#e74c3c', fontSize: 14, background: 'none', border: 'none', cursor: 'pointer' }}>🗑️</button>}
+        </>
+      )}
     </div>
   )
 }
@@ -794,6 +962,27 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (v: b
         background: '#fff', position: 'absolute', top: 2,
         left: checked ? 20 : 2, transition: 'left 0.2s',
       }} />
+    </div>
+  )
+}
+
+function ChatAgentRow({ agent, onSelect }: { agent: AIAgentV2; onSelect: () => void }) {
+  return (
+    <div onClick={onSelect} style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '10px 4px', borderRadius: 8, cursor: 'pointer',
+    }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: 20,
+        background: 'linear-gradient(135deg, #6b5ce7, #a855f7)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0,
+      }}>{agent.emoji || '🤖'}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: '#fff' }}>{agent.name}</div>
+        <div style={{ fontSize: 12, color: '#888', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {agent.description || agent.model || agent.providerType}
+        </div>
+      </div>
     </div>
   )
 }

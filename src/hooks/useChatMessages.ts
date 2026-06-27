@@ -8,6 +8,7 @@ import { useEffect, useCallback, useRef, useState } from 'react'
 import { useChatStore } from '@/store/chatStore'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useAuthStore } from '@/store/authStore'
+import { useErrorStore } from '@/store/errorStore'
 import { loadSharedKey, aesEncrypt, aesDecrypt } from '@/shared/crypto'
 import type { Message } from '@/shared/types'
 
@@ -35,6 +36,7 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
   const setSendingMessage = useChatStore((s) => s.setSendingMessage)
   const updateChat = useChatStore((s) => s.updateChat)
   const user = useAuthStore((s) => s.user)
+  const addError = useErrorStore((s) => s.addError)
 
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
@@ -89,6 +91,7 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
       setIsSelecting(false)
       setReplyToMessage(null)
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current)
       if (isTypingRef.current && chatIdRef.current && user) {
         isTypingRef.current = false
         if (chatV2SendRef.current) {
@@ -193,6 +196,7 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
       .catch((err) => {
         if (cancelled) return
         console.error('Failed to load messages:', err)
+        addError({ message: 'Не удалось загрузить сообщения', type: 'network' })
       })
       .finally(() => {
         if (!cancelled && chatIdRef.current === chatId) {
@@ -350,8 +354,11 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
 
         addMessage(message)
         setReplyToMessage(null)
-      } catch (err) {
-        console.error('Failed to send message:', err)
+      } catch (err: any) {
+        const msg = err?.message || ''
+        if (msg.includes('429')) addError({ message: 'Превышен лимит запросов', type: 'rate_limit' })
+        else if (msg.includes('413') || msg.includes('too large')) addError({ message: 'Файл слишком большой', type: 'server' })
+        else addError({ message: 'Не удалось отправить сообщение', type: 'network' })
       } finally {
         setSendingMessage(false)
       }
@@ -394,8 +401,11 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
         )
         addMessage(message)
         setReplyToMessage(null)
-      } catch (err) {
-        console.error('Failed to send media:', err)
+      } catch (err: any) {
+        const msg = err?.message || ''
+        if (msg.includes('413') || msg.includes('too large')) addError({ message: 'Файл слишком большой для загрузки', type: 'server' })
+        else if (msg.includes('404')) addError({ message: 'Сервер загрузки недоступен', type: 'network' })
+        else addError({ message: `Не удалось загрузить ${type === 'image' ? 'изображение' : type === 'voice' ? 'аудио' : 'файл'}`, type: 'network' })
       } finally {
         setSendingMessage(false)
       }
@@ -413,8 +423,8 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
         }
         setEditingMessageId(null)
         setEditingText('')
-      } catch (err) {
-        console.error('Failed to edit message:', err)
+      } catch (err: any) {
+        addError({ message: 'Не удалось отредактировать сообщение', type: 'network' })
       }
     },
     [chatId, updateMessage]
@@ -432,8 +442,8 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
         }
         setSelectedMessages([])
         setIsSelecting(false)
-      } catch (err) {
-        console.error('Failed to delete messages:', err)
+      } catch (err: any) {
+        addError({ message: 'Не удалось удалить сообщение', type: 'network' })
       }
     },
     [chatId, removeMessageFromChat]
@@ -444,8 +454,8 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
       if (!chatId || !user?.username) return
       try {
         await grpcClient.setReactionV2(messageId, emoji)
-      } catch (err) {
-        console.error('Failed to set reaction:', err)
+      } catch (err: any) {
+        addError({ message: 'Не удалось поставить реакцию', type: 'network' })
       }
     },
     [chatId, user]
