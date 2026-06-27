@@ -371,7 +371,7 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
         if (type === 'image') {
           url = await grpcClient.uploadImage(file)
         } else if (type === 'voice') {
-          const result = await fetch('/upload-audio', {
+          const result = await fetch('/api/upload-audio', {
             method: 'POST',
             headers: { Authorization: `Bearer ${useAuthStore.getState().tokens?.accessToken || ''}` },
             body: (() => { const fd = new FormData(); fd.append('audio', file); fd.append('duration', String(duration || 0)); return fd })(),

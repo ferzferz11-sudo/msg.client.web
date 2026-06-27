@@ -1689,7 +1689,7 @@ class GrpcClient {
     const formData = new FormData()
     formData.append('avatar', avatar)
     if (avatarFull) formData.append('avatar_full', avatarFull)
-    const response = await fetch('/upload-avatar', {
+    const response = await fetch('/api/upload-avatar', {
       method: 'POST',
       headers: { Authorization: `Bearer ${tokens?.accessToken || ''}` },
       body: formData,
@@ -1701,19 +1701,19 @@ class GrpcClient {
 
   async uploadImage(file: File): Promise<string> {
     const compressed = await compressImage(file)
-    return this.uploadFile('/upload-image', 'image', compressed)
+    return this.uploadFile('/api/upload-image', 'image', compressed)
   }
 
   async uploadFile_(file: File): Promise<string> {
-    return this.uploadFile('/upload-file', 'file', file)
+    return this.uploadFile('/api/upload-file', 'file', file)
   }
 
   async uploadAudio(file: File): Promise<string> {
-    return this.uploadFile('/upload-audio', 'audio', file)
+    return this.uploadFile('/api/upload-audio', 'audio', file)
   }
 
   async uploadBackground(file: File): Promise<string> {
-    return this.uploadFile('/upload-background', 'background', file)
+    return this.uploadFile('/api/upload-background', 'background', file)
   }
 
   // --- Typing Stream ---
