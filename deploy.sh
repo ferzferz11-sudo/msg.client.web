@@ -11,6 +11,9 @@ npm run build
 echo "==> Syncing dist/ to server..."
 rsync -avz --delete -e ssh dist/ ${REMOTE_HOST}:${REMOTE_DIR}/dist/
 
+echo "==> Fixing nginx proxy_pass..."
+ssh ${REMOTE_HOST} "sudo sed -i 's|proxy_pass http://127.0.0.1:8082;|proxy_pass http://127.0.0.1:8082/;|' /etc/nginx/sites-enabled/lavender"
+
 echo "==> Reloading nginx..."
 ssh ${REMOTE_HOST} "nginx -t && systemctl reload nginx"
 
