@@ -70,7 +70,7 @@ src/
 
 ## Статус интеграции (с сервером v1.3.0.23)
 
-**Web клиент:** v1.4.1 | **Дата проверки:** 2026-06-27
+**Web клиент:** v1.4.3 | **Дата проверки:** 2026-06-27
 
 ### ✅ Реализовано
 
@@ -111,13 +111,14 @@ src/
 | **Pin Messages** | | | |
 | PinMessage / UnPinMessage | ✅ | v1.1.1 | userId required |
 | GetPinnedMessages | ✅ | v1.0.0 | chat_id |
+| **Read Receipts** | | | |
+| Automatic MarkRead | ✅ | v1.4.2 | on chat open + unreadCount reset |
 | **Profile** | | | |
-| GetProfile (ProfileService v2) | ✅ | v1.0.0 | JWT-only, separate gRPC service |
-| UpdateProfile | ✅ | v1.0.0 | username, bio, status, locale |
-| UpdateAvatar | ✅ | v1.0.0 | avatar_url, full_avatar_url |
-| DeleteProfile | ✅ | v1.1.0 | requires password |
-| GetUserSettings | ✅ | v1.0.0 | locale, theme_id, push_enabled, custom |
-| UpdateUserSettings | ✅ | v1.0.0 | locale, theme_id, push_enabled, custom |
+| GetProfile (ProfileService v2 + ChatService fallback) | ✅ | v1.4.3 | tries v2, fallback on UNIMPLEMENTED |
+| UpdateProfile (ProfileService v2 + ChatService fallback) | ✅ | v1.4.3 | tries v2, fallback on UNIMPLEMENTED |
+| UpdateAvatar (ProfileService v2 + ChatService fallback) | ✅ | v1.4.3 | tries v2, fallback on UNIMPLEMENTED |
+| DeleteProfile (ProfileService v2 + ChatService fallback) | ✅ | v1.4.3 | tries v2, fallback on UNIMPLEMENTED |
+| GetUserSettings / UpdateUserSettings | ✅ | v1.4.3 | graceful degradation (defaults on failure) |
 | **Users** | | | |
 | GetAllUsers | ✅ | v1.0.0 | UserInfo: username, avatar, userId, isSuperAdmin |
 | GetUserProfile | ✅ | v1.0.0 | username → profile |
@@ -134,6 +135,8 @@ src/
 | GetThemes / SaveTheme / SetCurrentTheme / DeleteTheme | ✅ | v1.0.0 | custom themes |
 | **Typing** | | | |
 | Typing Indicators | ✅ | v1.3.1 | via ChatV2 stream (BiDi v1 not supported) |
+| **Read Receipts** | | | |
+| Automatic MarkRead | ✅ | v1.4.2 | on chat open + unreadCount reset |
 | **HTTP Uploads** | | | |
 | Upload Avatar/Image/File/Audio/Background | ✅ | v1.3.2 | JWT auth, multipart/form-data |
 | Send Media Messages | ✅ | v1.3.2 | sendMessageV2Media (image/file/voice) |
@@ -161,7 +164,7 @@ src/
 | useWebRTC Hook | ✅ | v1.4.0 | STUN servers, peer connection |
 | CallScreen UI | ✅ | v1.4.0 | full-screen video/audio controls |
 | Signaling via CallSession | ✅ | v1.4.0 | BiDi stream |
-| TURN Credentials | ✅ | v1.4.1 | fetchICEServers |
+| TURN Credentials (lazy load) | ✅ | v1.4.3 | fetch on call start, not on mount (fixes 401) |
 | **Bot Commands** | | | |
 | ProcessBotCommand / GetBotCommands | ✅ | v1.0.0 | |
 | **Resilience** | | | |
@@ -187,32 +190,28 @@ src/
 
 | Модуль | RPC | Приоритет | Описание |
 |--------|-----|-----------|----------|
-| WebRTC NAT Traversal | TURN endpoint | P2 | TURN credentials endpoint уже работает, нужен полный TURN сервер |
-| Multi-Agent AI Chat | client-side routing | P3 | параллельные ChatWithAIV2 запросы для нескольких агентов |
-| E2EE Secret Chat UI | полный UI | P2 | Crypto модуль есть, нужен完整的UI поток |
-| Image Preview | lightbox | P3 | клик по изображению → полноэкранный просмотр |
 | Message Search | searchMessages | P2 | поиск по сообщениям внутри чата |
+| E2EE Secret Chat UI | полный UI поток | P2 | Crypto модуль есть, нужен完整的UI |
+| Pinned Messages Screen | getPinnedMessages UI | P2 | экран закреплённых сообщений |
+| Image Preview | lightbox | P3 | клик по изображению → полноэкранный просмотр |
 | Chat Background | uploadBackground | P3 | пользовательский фон чата |
-| Read Receipts Sync | MarkRead v2 | P2 | автоматическая отправка read receipt |
 | Voice Messages Recording | MediaRecorder API | P3 | запись + отправка голосовых |
 | File Download Progress | — | P3 | прогресс-бар при скачивании файлов |
-| Pinned Messages Screen | getPinnedMessages UI | P2 | экран закреплённых сообщений |
+| Multi-Agent AI Chat | client-side routing | P3 | параллельные ChatWithAIV2 запросы |
+| ChatV2 полный переход | dual-write removal | P2 | когда messages_v2 заполнена |
 
-## Следующие шаги
+## Следующие шаги (для следующей сессии)
 
-### Приоритет 1 — Критичное
-- **ChatV2 полный переход**: когда messages_v2 будет заполнена, убрать v1 fallback
-- **Empty message fix**: исправлен SendMessageV2 oneof serialization (v1.4.1)
+### Приоритет 1 — Улучшения UX
+- **Message Search UI**: поиск по сообщениям внутри чата (RPC `searchMessages` уже есть)
+- **Image Lightbox**: полноэкранный просмотр изображений по клику
+- **Pinned Messages Screen**: UI для просмотра закреплённых сообщений
 
-### Приоритет 2 — Улучшения
-- **Message Search UI**: поиск по сообщениям внутри чата
-- **Read Receipts v2**: автоматический MarkRead при входе в чат
-- **E2EE полный UI**:SecretChatScreen с шифрованием/дешифрованием сообщений
-- **Image Lightbox**: полноэкранный просмотр изображений
-- **Pinned Messages Screen**: UI для закреплённых сообщений
-
-### Приоритет 3 — Фичи
-- **Voice Recording**: MediaRecorder API для записи голосовых
-- **File Download Progress**: прогресс-бар при скачивании
+### Приоритет 2 — Фичи
+- **E2EE полный UI**: SecretChatScreen с полным потоком шифрования/дешифрования
+- **Voice Recording**: MediaRecorder API для записи + отправки голосовых
 - **Chat Background**: пользовательский фон чата
+
+### Приоритет 3 — Технический долг
+- **ChatV2 полный переход**: когда messages_v2 заполнена, убрать v1 fallback
 - **Multi-Agent AI**: параллельные запросы к нескольким AI агентам

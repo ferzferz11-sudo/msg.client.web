@@ -2,6 +2,17 @@
 
 ## Proto Gotchas
 
+### ProfileService v2 — UNIMPLEMENTED on server (v1.4.3 fix)
+
+Сервер v1.3.0.24 регистрирует `ProfileService`, но大部分 методов возвращают UNIMPLEMENTED. Сервер отвечает `profile: "1.0"` на `/info`.
+
+**Решение**: все profile методы пробуют ProfileService v2, при ошибке fallback на ChatService:
+- `getProfile` → fallback `getUserProfile`
+- `updateProfile` → fallback `updateProfile` (ChatService)
+- `updateAvatar` → fallback `updateAvatar` (ChatService)
+- `deleteProfile` → fallback `deleteProfile` (ChatService)
+- `getUserSettings`/`updateUserSettings` → graceful degradation (defaults/false)
+
 ### SendMessageV2 oneof content (CRITICAL — v1.4.2 fix)
 
 `SendMessageV2Request` использует `oneof content { text, media }`. При использовании `any`-типа flat-объект `{ roomId, text: content }` serialized protobuf отправляет `text` как неизвестное верхнеуровневое поле — сервер игнорирует его, `content` oneof остаётся nil → пустое сообщение в БД.
@@ -26,6 +37,12 @@ const request = new SendMessageV2Request({
   content: { case: 'media', value: { type, url, duration } },
 })
 ```
+
+### TURN credentials — 401 on page load (v1.4.3 fix)
+
+`/turn-credentials` требует JWT auth. При загрузке страницы токены ещё не готовы → 401.
+
+**Решение**: ленивая загрузка — `fetchICEServers()` вызывается только при начале звонка (`startCall`/`answerCall`), не при монтировании хука.
 
 ### GetChats / GetChatsV2
 Proto содержит оба RPC → codegen схлопывает в `getChats` с name `GetChats`. Сервер реализует только V2 → вызывать `this.chatClient.getChatsV2()` вместо `this.chatClient.getChats()`.
