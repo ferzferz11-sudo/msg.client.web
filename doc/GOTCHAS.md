@@ -2,7 +2,7 @@
 
 ## Proto Gotchas
 
-### ProfileService v2 — UNIMPLEMENTED on server (v1.4.3 fix)
+### ProfileService v2 — UNIMPLEMENTED on server (v0.1.4.3 fix)
 
 Сервер v1.3.0.24 регистрирует `ProfileService`, но大部分 методов возвращают UNIMPLEMENTED. Сервер отвечает `profile: "1.0"` на `/info`.
 
@@ -13,7 +13,7 @@
 - `deleteProfile` → fallback `deleteProfile` (ChatService)
 - `getUserSettings`/`updateUserSettings` → graceful degradation (defaults/false)
 
-### SendMessageV2 oneof content (CRITICAL — v1.4.2 fix)
+### SendMessageV2 oneof content (CRITICAL — v0.1.4.2 fix)
 
 `SendMessageV2Request` использует `oneof content { text, media }`. При использовании `any`-типа flat-объект `{ roomId, text: content }` serialized protobuf отправляет `text` как неизвестное верхнеуровневое поле — сервер игнорирует его, `content` oneof остаётся nil → пустое сообщение в БД.
 
@@ -38,7 +38,7 @@ const request = new SendMessageV2Request({
 })
 ```
 
-### TURN credentials — 401 on page load (v1.4.3 fix)
+### TURN credentials — 401 on page load (v0.1.4.3 fix)
 
 `/turn-credentials` требует JWT auth. При загрузке страницы токены ещё не готовы → 401.
 
@@ -73,12 +73,12 @@ Proto содержит оба RPC → codegen схлопывает в `getChats`
 
 ## Known Issues (Fixed)
 
-### v1 Typing BiDi Stream (v1.4.1 fixed)
+### v1 Typing BiDi Stream (v0.1.4.1 fixed)
 v1 `typing()` RPC — BiDi stream. `@connectrpc/connect-web` использует fetch, который НЕ поддерживает streaming request bodies. Результат: `ConnectError: The fetch API does not support streaming request bodies`.
 
 **Решение**: typing отправляется через ChatV2 stream (`openChatV2Stream` → `send({ typing: { isTyping } })`). Глобальный typing stream из chat list удалён.
 
-### openChatV2Stream return type (v1.4.1)
+### openChatV2Stream return type (v0.1.4.1)
 `openChatV2Stream` теперь возвращает `{ cleanup, send }` вместо `cleanup`. Все вызывающие коды обновлены.
 
 ### DeleteProfileV2Request

@@ -70,113 +70,117 @@ src/
 
 ## Статус интеграции (с сервером v1.3.0.23)
 
-**Web клиент:** v1.4.3 | **Дата проверки:** 2026-06-27
+**Web клиент:** v0.1.4.4 | **Дата проверки:** 2026-06-27
 
 ### ✅ Реализовано
 
 | Модуль | Готово | Версия | Детали |
 |--------|--------|--------|--------|
 | **Auth** | | | |
-| Auth V2 (JWT) | ✅ | v1.0.0 | signInV2, signUpV2, refresh, signOut |
-| Auth Interceptor | ✅ | v1.3.0 | isRefreshing, refreshFailedAt cooldown, stale token |
-| RevokeDevice | ✅ | v1.0.0 | revokeDevice |
-| Password Reset | ✅ | v1.3.9 | requestPasswordReset, resetPassword |
-| Capability Negotiation | ✅ | v1.1.0 | GET /info |
-| Health Check | ✅ | v1.0.0 | GET /health |
+| Auth V2 (JWT) | ✅ | v0.1.0.0 | signInV2, signUpV2, refresh, signOut |
+| Auth Interceptor | ✅ | v0.1.3.0 | isRefreshing, refreshFailedAt cooldown, stale token |
+| RevokeDevice | ✅ | v0.1.0.0 | revokeDevice |
+| Password Reset | ✅ | v0.1.3.9 | requestPasswordReset, resetPassword |
+| Capability Negotiation | ✅ | v0.1.1.0 | GET /info |
+| Health Check | ✅ | v0.1.0.0 | GET /health |
 | **Chat** | | | |
 | Chat Stream v1 | ✅ | v0.5.0 | BiDi stream, send/receive |
-| ChatV2 Stream | ✅ | v1.2.0 | BiDi stream, typing, system events |
-| Chat List (GetChatsV2) | ✅ | v1.1.2 | cursor-based pagination, filter |
-| CreateDirectChat | ✅ | v1.0.0 | user1_id, user2_id |
-| CreateGroupChat | ✅ | v1.0.0 | name, participant_ids |
-| DeleteChat | ✅ | v1.0.0 | chat_id, requester_user_id |
-| AddParticipant / RemoveParticipant | ✅ | v1.1.1 | chat_id, username, user_id |
-| Pin/Unpin Chat | ✅ | v1.1.1 | userId required |
-| Archive/Unarchive Chat | ✅ | v1.1.1 | userId required |
-| Muted Chats | ✅ | v1.0.0 | getMutedChats, setMutedChat |
-| Search Chats | ✅ | v1.0.0 | searchChats |
-| ChatList Version | ✅ | v1.0.0 | getChatListVersion |
+| ChatV2 Stream | ✅ | v0.1.2.0 | BiDi stream, typing, system events |
+| Chat List (GetChatsV2) | ✅ | v0.1.1.2 | cursor-based pagination, filter |
+| CreateDirectChat | ✅ | v0.1.0.0 | user1_id, user2_id |
+| CreateGroupChat | ✅ | v0.1.0.0 | name, participant_ids |
+| DeleteChat | ✅ | v0.1.0.0 | chat_id, requester_user_id |
+| AddParticipant / RemoveParticipant | ✅ | v0.1.1.1 | chat_id, username, user_id |
+| Pin/Unpin Chat | ✅ | v0.1.1.1 | userId required |
+| Archive/Unarchive Chat | ✅ | v0.1.1.1 | userId required |
+| Muted Chats | ✅ | v0.1.0.0 | getMutedChats, setMutedChat |
+| Search Chats | ✅ | v0.1.0.0 | searchChats |
+| ChatList Version | ✅ | v0.1.0.0 | getChatListVersion |
 | **Messages v1** | | | |
 | GetHistory | ✅ | v0.5.0 | limit + room |
 | SendMessage | ✅ | v0.5.0 | ephemeral BiDi stream |
-| EditMessage | ✅ | v1.0.0 | messageId, text |
-| DeleteMessages | ✅ | v1.0.0 | messages[], requesterUsername |
-| SetReaction | ✅ | v1.0.0 | nested { message_id, reaction: { user, emoji } } |
+| EditMessage | ✅ | v0.1.0.0 | messageId, text |
+| DeleteMessages | ✅ | v0.1.0.0 | messages[], requesterUsername |
+| SetReaction | ✅ | v0.1.0.0 | nested { message_id, reaction: { user, emoji } } |
 | **Messages v2** | | | |
-| GetHistoryV2 | ✅ | v1.2.0 | cursor-based pagination |
-| SendMessageV2 | ✅ | v1.2.0 | oneof content (text/media), unary RPC |
-| EditMessageV2 | ✅ | v1.2.0 | messageId, text |
-| DeleteMessageV2 | ✅ | v1.2.0 | message_ids[], requester_user_id |
-| SetReactionV2 | ✅ | v1.2.0 | message_id, emoji |
+| GetHistoryV2 | ✅ | v0.1.2.0 | cursor-based pagination |
+| SendMessageV2 | ✅ | v0.1.2.0 | oneof content (text/media), unary RPC |
+| EditMessageV2 | ✅ | v0.1.2.0 | messageId, text |
+| DeleteMessageV2 | ✅ | v0.1.2.0 | message_ids[], requester_user_id |
+| SetReactionV2 | ✅ | v0.1.2.0 | message_id, emoji |
 | **Pin Messages** | | | |
-| PinMessage / UnPinMessage | ✅ | v1.1.1 | userId required |
-| GetPinnedMessages | ✅ | v1.0.0 | chat_id |
+| PinMessage / UnPinMessage | ✅ | v0.1.1.1 | userId required |
+| GetPinnedMessages | ✅ | v0.1.0.0 | chat_id |
 | **Read Receipts** | | | |
-| Automatic MarkRead | ✅ | v1.4.2 | on chat open + unreadCount reset |
+| Automatic MarkRead | ✅ | v0.1.4.2 | on chat open + unreadCount reset |
 | **Profile** | | | |
-| GetProfile (ProfileService v2 + ChatService fallback) | ✅ | v1.4.3 | tries v2, fallback on UNIMPLEMENTED |
-| UpdateProfile (ProfileService v2 + ChatService fallback) | ✅ | v1.4.3 | tries v2, fallback on UNIMPLEMENTED |
-| UpdateAvatar (ProfileService v2 + ChatService fallback) | ✅ | v1.4.3 | tries v2, fallback on UNIMPLEMENTED |
-| DeleteProfile (ProfileService v2 + ChatService fallback) | ✅ | v1.4.3 | tries v2, fallback on UNIMPLEMENTED |
-| GetUserSettings / UpdateUserSettings | ✅ | v1.4.3 | graceful degradation (defaults on failure) |
+| GetProfile (ProfileService v2 + ChatService fallback) | ✅ | v0.1.4.3 | tries v2, fallback on UNIMPLEMENTED |
+| UpdateProfile (ProfileService v2 + ChatService fallback) | ✅ | v0.1.4.3 | tries v2, fallback on UNIMPLEMENTED |
+| UpdateAvatar (ProfileService v2 + ChatService fallback) | ✅ | v0.1.4.3 | tries v2, fallback on UNIMPLEMENTED |
+| DeleteProfile (ProfileService v2 + ChatService fallback) | ✅ | v0.1.4.3 | tries v2, fallback on UNIMPLEMENTED |
+| GetUserSettings / UpdateUserSettings | ✅ | v0.1.4.3 | graceful degradation (defaults on failure) |
 | **Users** | | | |
-| GetAllUsers | ✅ | v1.0.0 | UserInfo: username, avatar, userId, isSuperAdmin |
-| GetUserProfile | ✅ | v1.0.0 | username → profile |
-| GetUserId | ✅ | v1.0.0 | username → UUID |
+| GetAllUsers | ✅ | v0.1.0.0 | UserInfo: username, avatar, userId, isSuperAdmin |
+| GetUserProfile | ✅ | v0.1.0.0 | username → profile |
+| GetUserId | ✅ | v0.1.0.0 | username → UUID |
 | **Contacts** | | | |
-| GetContacts | ✅ | v1.1.0 | string[] (usernames) |
-| AddContact / RemoveContact | ✅ | v1.1.0 | contactUsername, username |
+| GetContacts | ✅ | v0.1.1.0 | string[] (usernames) |
+| AddContact / RemoveContact | ✅ | v0.1.1.0 | contactUsername, username |
 | **Favorites** | | | |
-| AddFavorite / RemoveFavorite / GetFavorites | ✅ | v1.3.6 | self-chat chatScreen wrapper |
-| Favorites sync | ✅ | v1.3.6 | sendMessageV2 |
+| AddFavorite / RemoveFavorite / GetFavorites | ✅ | v0.1.3.6 | self-chat chatScreen wrapper |
+| Favorites sync | ✅ | v0.1.3.6 | sendMessageV2 |
 | **Drafts** | | | |
-| SaveDraft / GetDraft / DeleteDraft | ✅ | v1.3.3 | server-side drafts |
+| SaveDraft / GetDraft / DeleteDraft | ✅ | v0.1.3.3 | server-side drafts |
 | **Themes** | | | |
-| GetThemes / SaveTheme / SetCurrentTheme / DeleteTheme | ✅ | v1.0.0 | custom themes |
+| GetThemes / SaveTheme / SetCurrentTheme / DeleteTheme | ✅ | v0.1.0.0 | custom themes |
 | **Typing** | | | |
-| Typing Indicators | ✅ | v1.3.1 | via ChatV2 stream (BiDi v1 not supported) |
+| Typing Indicators | ✅ | v0.1.3.1 | via ChatV2 stream (BiDi v1 not supported) |
 | **Read Receipts** | | | |
-| Automatic MarkRead | ✅ | v1.4.2 | on chat open + unreadCount reset |
+| Automatic MarkRead | ✅ | v0.1.4.2 | on chat open + unreadCount reset |
 | **HTTP Uploads** | | | |
-| Upload Avatar/Image/File/Audio/Background | ✅ | v1.3.2 | JWT auth, multipart/form-data |
-| Send Media Messages | ✅ | v1.3.2 | sendMessageV2Media (image/file/voice) |
+| Upload Avatar/Image/File/Audio/Background | ✅ | v0.1.3.2 | JWT auth, multipart/form-data |
+| Send Media Messages | ✅ | v0.1.3.2 | sendMessageV2Media (image/file/voice) |
 | **Notifications** | | | |
-| SubscribeNotifications | ✅ | v1.0.0 | Server Streaming |
-| Notification History / MarkRead / UnreadCount | ✅ | v1.0.0 | |
-| Native Browser Notifications | ✅ | v1.4.0 | Notification API |
+| SubscribeNotifications | ✅ | v0.1.0.0 | Server Streaming |
+| Notification History / MarkRead / UnreadCount | ✅ | v0.1.0.0 | |
+| Native Browser Notifications | ✅ | v0.1.4.0 | Notification API |
 | **Push (FCM)** | | | |
-| RegisterPushToken | ✅ | v1.0.0 | user, token, pushEnabled, userId |
-| GetDevices / DeleteOtherDevices | ✅ | v1.0.0 | |
+| RegisterPushToken | ✅ | v0.1.0.0 | user, token, pushEnabled, userId |
+| GetDevices / DeleteOtherDevices | ✅ | v0.1.0.0 | |
 | **AI v2** | | | |
-| ChatWithAIV2 (Streaming) | ✅ | v1.0.0 | token, toolCalls, agentId, imageUrl |
-| AI Agents CRUD | ✅ | v1.0.0 | create, update, delete, get, list, clone |
-| AI Marketplace | ✅ | v1.0.0 | listMarketplaceAgents, rate, reviews, stats, share, install |
-| AI Chat Settings | ✅ | v1.3.4 | getAIChatSettings, updateAIChatSettings |
-| AI Usage Stats | ✅ | v1.0.0 | getAIUsageStats |
-| AI Tools List | ✅ | v1.0.0 | listAITools |
-| ListAIV2Chats | ✅ | v1.4.1 | list AI chat sessions |
-| GetAIV2ChatHistory | ✅ | v1.4.1 | chat history with agent metadata |
+| ChatWithAIV2 (Streaming) | ✅ | v0.1.0.0 | token, toolCalls, agentId, imageUrl |
+| AI Agents CRUD | ✅ | v0.1.0.0 | create, update, delete, get, list, clone |
+| AI Marketplace | ✅ | v0.1.0.0 | listMarketplaceAgents, rate, reviews, stats, share, install |
+| AI Chat Settings | ✅ | v0.1.3.4 | getAIChatSettings, updateAIChatSettings |
+| AI Usage Stats | ✅ | v0.1.0.0 | getAIUsageStats |
+| AI Tools List | ✅ | v0.1.0.0 | listAITools |
+| ListAIV2Chats | ✅ | v0.1.4.1 | list AI chat sessions |
+| GetAIV2ChatHistory | ✅ | v0.1.4.1 | chat history with agent metadata |
 | **Secret Chats (E2EE)** | | | |
-| Crypto Module | ✅ | v1.4.0 | RSA-OAEP 2048 + AES-GCM 256 |
-| CreateSecretChat | ✅ | v1.4.0 | key exchange UI |
-| ExchangeSecretKey / GetSecretChatKey | ✅ | v1.4.0 | |
+| Crypto Module | ✅ | v0.1.4.0 | RSA-OAEP 2048 + AES-GCM 256 |
+| CreateSecretChat | ✅ | v0.1.4.0 | key exchange UI |
+| ExchangeSecretKey / GetSecretChatKey | ✅ | v0.1.4.0 | |
 | **WebRTC Calls** | | | |
-| useWebRTC Hook | ✅ | v1.4.0 | STUN servers, peer connection |
-| CallScreen UI | ✅ | v1.4.0 | full-screen video/audio controls |
-| Signaling via CallSession | ✅ | v1.4.0 | BiDi stream |
-| TURN Credentials (lazy load) | ✅ | v1.4.3 | fetch on call start, not on mount (fixes 401) |
+| useWebRTC Hook | ✅ | v0.1.4.0 | STUN servers, peer connection |
+| CallScreen UI | ✅ | v0.1.4.0 | full-screen video/audio controls |
+| Signaling via CallSession | ✅ | v0.1.4.0 | BiDi stream |
+| TURN Credentials (lazy load) | ✅ | v0.1.4.3 | fetch on call start, not on mount (fixes 401) |
 | **Bot Commands** | | | |
-| ProcessBotCommand / GetBotCommands | ✅ | v1.0.0 | |
+| ProcessBotCommand / GetBotCommands | ✅ | v0.1.0.0 | |
 | **Resilience** | | | |
-| Graceful Shutdown | ✅ | v1.1.0 | SERVER_SHUTTINGDOWN handling |
-| Offline Mode | ✅ | v1.1.0 | indicators + cached data |
-| Auto Reconnect | ✅ | v1.1.0 | exponential backoff (max 30s) |
-| Auto Update | ✅ | v1.3.8 | version.json + UpdateBanner + cache clear |
+| Graceful Shutdown | ✅ | v0.1.1.0 | SERVER_SHUTTINGDOWN handling |
+| Offline Mode | ✅ | v0.1.1.0 | indicators + cached data |
+| Auto Reconnect | ✅ | v0.1.1.0 | exponential backoff (max 30s) |
+| Auto Update | ✅ | v0.1.3.8 | version.json + UpdateBanner + cache clear |
 | **UI** | | | |
-| Desktop Sidebar Nav | ✅ | v1.4.0 | AI Chats, Search, Archive, Notifications, Settings |
-| Lazy Avatar | ✅ | v1.4.0 | IntersectionObserver-based |
-| Desktop Right Panel | ✅ | v1.3.10 | profile, contacts, favorites in right panel |
-| Password Reset UI | ✅ | v1.3.9 | 3-step flow: email → code + password → success |
+| Desktop Sidebar Nav | ✅ | v0.1.4.0 | AI Chats, Search, Archive, Notifications, Settings |
+| Lazy Avatar | ✅ | v0.1.4.0 | IntersectionObserver-based |
+| Desktop Right Panel | ✅ | v0.1.3.10 | profile, contacts, favorites in right panel |
+| Password Reset UI | ✅ | v0.1.3.9 | 3-step flow: email → code + password → success |
+| Image Lightbox | ✅ | v0.1.4.4 | fullscreen image preview overlay |
+| Pinned Messages Screen | ✅ | v0.1.4.4 | desktop overlay + mobile full-screen |
+| Voice Recording | ✅ | v0.1.4.4 | MediaRecorder API, send as voice message |
+| Real-time Messages | ✅ | v0.1.4.4 | ChatV2 stream auth deadlock fix + server broadcast |
 
 ### ⚠️ Частично реализовано / Known Issues
 
@@ -192,10 +196,7 @@ src/
 |--------|-----|-----------|----------|
 | Message Search | searchMessages | P2 | поиск по сообщениям внутри чата |
 | E2EE Secret Chat UI | полный UI поток | P2 | Crypto модуль есть, нужен完整的UI |
-| Pinned Messages Screen | getPinnedMessages UI | P2 | экран закреплённых сообщений |
-| Image Preview | lightbox | P3 | клик по изображению → полноэкранный просмотр |
 | Chat Background | uploadBackground | P3 | пользовательский фон чата |
-| Voice Messages Recording | MediaRecorder API | P3 | запись + отправка голосовых |
 | File Download Progress | — | P3 | прогресс-бар при скачивании файлов |
 | Multi-Agent AI Chat | client-side routing | P3 | параллельные ChatWithAIV2 запросы |
 | ChatV2 полный переход | dual-write removal | P2 | когда messages_v2 заполнена |
@@ -203,15 +204,11 @@ src/
 ## Следующие шаги (для следующей сессии)
 
 ### Приоритет 1 — Улучшения UX
-- **Message Search UI**: поиск по сообщениям внутри чата (RPC `searchMessages` уже есть)
-- **Image Lightbox**: полноэкранный просмотр изображений по клику
-- **Pinned Messages Screen**: UI для просмотра закреплённых сообщений
+- **Message Search UI**: серверный промт готов (`doc/PROMPT_SEARCH_MESSAGES.md`), нужна реализация на сервере + клиент-сайд UI
 
 ### Приоритет 2 — Фичи
 - **E2EE полный UI**: SecretChatScreen с полным потоком шифрования/дешифрования
-- **Voice Recording**: MediaRecorder API для записи + отправки голосовых
 - **Chat Background**: пользовательский фон чата
 
 ### Приоритет 3 — Технический долг
 - **ChatV2 полный переход**: когда messages_v2 заполнена, убрать v1 fallback
-- **Multi-Agent AI**: параллельные запросы к нескольким AI агентам

@@ -1,6 +1,44 @@
 # Changelog
 
-## v1.4.3 (2026-06-27)
+## v0.1.4.4 (2026-06-27)
+
+Image Lightbox, Pinned Messages Screen, Voice Recording, ChatV2 stream fixes, version scheme v0.1.x.x.
+
+### Image Lightbox
+
+- **ImageLightbox component**: fullscreen image preview overlay with dark background
+- **Desktop + Mobile**: clicking image in chat opens lightbox instead of new tab
+- **Keyboard**: Escape key closes lightbox
+- **Click outside**: clicking backdrop closes lightbox
+
+### Pinned Messages Screen
+
+- **Mobile**: full-screen pinned messages view with back navigation
+- **Desktop**: right-side overlay panel (400px) within chat
+- **Telegram dark theme**: consistent colors, user name, timestamp, image preview
+- **Unpin**: button to unpin messages directly from the list
+- **Integration**: ✓ menu → "Закреплённые" in both mobile and desktop ChatScreen
+
+### Voice Recording
+
+- **useVoiceRecorder hook**: MediaRecorder API with echo cancellation, noise suppression
+- **Desktop + Mobile**: microphone button when input empty, tap to start recording
+- **Recording UI**: timer display, cancel button, stop button
+- **Auto-send**: recording stops → audio blob → sendMediaMessage as voice type
+- **Cleanup**: stream tracks stopped on cancel/stop
+
+### ChatV2 Stream Fixes (Critical)
+
+- **Auth deadlock fix** (web client): auth JWT was sent only after receiving first server message, but server waits for auth before sending anything — deadlock. Fix: auth message pushed to input stream queue immediately after stream creation.
+- **Server: SendMessageV2 ChatV2 broadcast**: SendMessageV2 now broadcasts the actual message via ChatV2 stream (was only broadcasting `NEW_MESSAGE_V2:<id>` via v1 stream). Ensures real-time delivery to all ChatV2-connected clients.
+- **Android: v1 stream filter**: filter out `NEW_MESSAGE_V2:`/`EDIT_MESSAGE_V2:`/`DELETE_MESSAGE_V2:` system messages from v1 Chat stream — no longer shown as text.
+
+### Version Scheme
+
+- **v0.1.x.x**: changed from v1.x.x to reflect alpha status
+- All previous versions updated in docs and package.json
+
+## v0.1.4.3 (2026-06-27)
 
 ProfileService fallback, TURN credentials lazy load, landing page version badge.
 
@@ -22,7 +60,7 @@ ProfileService fallback, TURN credentials lazy load, landing page version badge.
 
 - **"Войти" version badge**: web version badge added next to "Войти" button
 
-## v1.4.2 (2026-06-27)
+## v0.1.4.2 (2026-06-27)
 
 Fix empty messages, Read Receipts, landing page multilingual, doc overhaul.
 
@@ -56,7 +94,7 @@ Fix empty messages, Read Receipts, landing page multilingual, doc overhaul.
 - **ARCHITECTURE.md**: added E2EE flow, WebRTC, new screens (SecretChat, Call)
 - **GOTCHAS.md**: added SendMessageV2 oneof gotcha
 
-## v1.4.1 (2026-06-22)
+## v0.1.4.1 (2026-06-22)
 
 Typing stream fix, TURN credentials, E2EE encryption, call button.
 
@@ -81,7 +119,7 @@ Typing stream fix, TURN credentials, E2EE encryption, call button.
 - **Desktop header**: 📞 call button added to ChatScreen header (dispatches `start-call` custom event)
 - **Mobile header**: 📞 call button added to ChatScreen mobile header
 
-## v1.4.0 (2026-06-22)
+## v0.1.4.0 (2026-06-22)
 
 E2EE Secret Chats, WebRTC Calls, Desktop Sidebar Navigation, Native Notifications.
 
@@ -123,7 +161,7 @@ E2EE Secret Chats, WebRTC Calls, Desktop Sidebar Navigation, Native Notification
 - **Chat list avatars**: avatars now load lazily as they scroll into view
 - **Fallback**: shows first letter while avatar loads
 
-## v1.3.10 (2026-06-22)
+## v0.1.3.10 (2026-06-22)
 
 Auth interceptor fix, v1/v2 merge, desktop UI, reactions.
 
@@ -168,7 +206,7 @@ Auth interceptor fix, v1/v2 merge, desktop UI, reactions.
 
 ---
 
-## v1.3.9 (2026-06-21)
+## v0.1.3.9 (2026-06-21)
 
 Технический долг + P3 фичи + Password Reset.
 
@@ -193,7 +231,7 @@ Auth interceptor fix, v1/v2 merge, desktop UI, reactions.
 
 ---
 
-## v1.3.8 (2026-06-21)
+## v0.1.3.8 (2026-06-21)
 
 Автообновление клиента — Telegram-style "Обновить" баннер.
 
@@ -207,7 +245,7 @@ Auth interceptor fix, v1/v2 merge, desktop UI, reactions.
 
 ---
 
-## v1.3.7 (2026-06-21)
+## v0.1.3.7 (2026-06-21)
 
 Избранное — пересборка для сброса кэша.
 
@@ -216,7 +254,7 @@ Auth interceptor fix, v1/v2 merge, desktop UI, reactions.
 
 ---
 
-## v1.3.6 (2026-06-21)
+## v0.1.3.6 (2026-06-21)
 
 Избранное — полный функционал чата.
 
@@ -230,7 +268,7 @@ Auth interceptor fix, v1/v2 merge, desktop UI, reactions.
 
 ---
 
-## v1.3.5 (2026-06-21)
+## v0.1.3.5 (2026-06-21)
 
 Исправление имён личных чатов + работающие вложения.
 
@@ -250,7 +288,7 @@ Auth interceptor fix, v1/v2 merge, desktop UI, reactions.
 
 ---
 
-## v1.3.4 (2026-06-21)
+## v0.1.3.4 (2026-06-21)
 
 AI Chat Settings — настройки API ключа и модели.
 
@@ -263,7 +301,7 @@ AI Chat Settings — настройки API ключа и модели.
 
 ---
 
-## v1.3.3 (2026-06-21)
+## v0.1.3.3 (2026-06-21)
 
 Drafts server integration — замена localStorage на серверные RPC.
 
@@ -276,7 +314,7 @@ Drafts server integration — замена localStorage на серверные 
 
 ---
 
-## v1.3.2 (2026-06-21)
+## v0.1.3.2 (2026-06-21)
 
 HTTP uploads — отправка изображений, файлов и аудио.
 
@@ -290,7 +328,7 @@ HTTP uploads — отправка изображений, файлов и ауд
 
 ---
 
-## v1.3.1 (2026-06-21)
+## v0.1.3.1 (2026-06-21)
 
 Typing indicators — отправка и отображение в чате и списке чатов.
 
@@ -308,7 +346,7 @@ Typing indicators — отправка и отображение в чате и 
 
 ---
 
-## v1.3.0 (2026-06-21)
+## v0.1.3.0 (2026-06-21)
 
 Messages V2 + Favorites self-chat + Auth interceptor fix.
 
@@ -337,7 +375,7 @@ Messages V2 + Favorites self-chat + Auth interceptor fix.
 
 ---
 
-## v1.2.0 (2026-06-21)
+## v0.1.2.0 (2026-06-21)
 
 Messages V2 интеграция — lean message type, cursor pagination, ChatV2 stream.
 
@@ -367,7 +405,7 @@ Messages V2 интеграция — lean message type, cursor pagination, ChatV
 
 ---
 
-## v1.1.4 (2026-06-21)
+## v0.1.1.4 (2026-06-21)
 
 Hotfix: GetChatsV2 RPC name.
 
@@ -377,7 +415,7 @@ Hotfix: GetChatsV2 RPC name.
 
 ---
 
-## v1.1.3 (2026-06-21)
+## v0.1.1.3 (2026-06-21)
 
 AI v2 images, HTTP uploads, typing stream, secret chat E2EE.
 
@@ -407,7 +445,7 @@ AI v2 images, HTTP uploads, typing stream, secret chat E2EE.
 
 ---
 
-## v1.1.2 (2026-06-21)
+## v0.1.1.2 (2026-06-21)
 
 Синхронизация proto с сервером v1.3.0.18 + cursor pagination + AI v2 RPCs.
 
@@ -432,7 +470,7 @@ AI v2 images, HTTP uploads, typing stream, secret chat E2EE.
 
 ---
 
-## v1.1.1 (2026-06-21)
+## v0.1.1.1 (2026-06-21)
 
 Исправления proto field mismatches + пагинация + автономный аудит.
 
@@ -454,7 +492,7 @@ AI v2 images, HTTP uploads, typing stream, secret chat E2EE.
 
 ---
 
-## v1.1.0 (2026-06-20)
+## v0.1.1.0 (2026-06-20)
 
 Массовое исправление багов + Telegram Web UI + серверная интеграция.
 
@@ -524,7 +562,7 @@ AI v2 images, HTTP uploads, typing stream, secret chat E2EE.
 - Envoy на --network host
 - Nginx прокси для /info, /health, /files
 
-### Исправления (после v1.0.0)
+### Исправления (после v0.1.0.0)
 
 - Auth token expiry: use accessExpiresAt/refreshExpiresAt (не expiresAt)
 - GetChatsV2: правильное имя RPC (сервер не реализует GetChats)

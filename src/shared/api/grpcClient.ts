@@ -1233,7 +1233,6 @@ class GrpcClient {
     const tokens = this._getTokens?.()
     const jwtToken = tokens?.accessToken || ''
 
-    let authSent = false
     const sendQueue: any[] = []
     let sendResolve: ((value: IteratorResult<any>) => void) | null = null
 
@@ -1254,21 +1253,13 @@ class GrpcClient {
 
     const stream = this.chatClient.chatV2(inputStream, { signal })
 
+    // Send auth immediately — server waits for JWT before sending anything
+    sendQueue.push({ jwtToken, roomId })
+
     const processStream = async () => {
       try {
         for await (const v2Msg of stream) {
           if (signal.aborted) break
-
-          if (!authSent) {
-            authSent = true
-            sendQueue.push({ jwtToken, roomId })
-            if (sendResolve) {
-              sendResolve({ value: sendQueue.shift()!, done: false })
-              sendResolve = null
-            }
-            continue
-          }
-
           handleChatV2Message(v2Msg, callback)
         }
       } catch (err: any) {

@@ -4,7 +4,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
-import { Screen } from '@/components/common'
+import { Screen, ImageLightbox } from '@/components/common'
 import { useChatMessages } from '@/hooks/useChatMessages'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
 import { useChatStore } from '@/store/chatStore'
@@ -13,6 +13,7 @@ import { grpcClient } from '@/shared/api/grpcClient'
 import { t } from '@/shared/types'
 import type { Message } from '@/shared/types'
 import { useChatListV2 } from '@/hooks/useChatListV2'
+import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 
 interface ChatScreenProps {
   chatId: string
@@ -89,6 +90,8 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
   const [inputText, setInputText] = useState('')
   const [longPressMenu, setLongPressMenu] = useState<{ messageId: string; x: number; y: number } | null>(null)
   const [reactionPicker, setReactionPicker] = useState<{ messageId: string; x: number; y: number } | null>(null)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const voiceRecorder = useVoiceRecorder()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -137,6 +140,22 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
     if (e.key === 'Escape' && editingMessageId) { cancelEditing(); setInputText(draft) }
   }, [handleSend, editingMessageId, cancelEditing, draft])
+
+  const handleVoiceToggle = useCallback(async () => {
+    if (voiceRecorder.isRecording) {
+      const blob = await voiceRecorder.stopRecording()
+      if (blob) {
+        const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type })
+        sendMediaMessage(file, 'voice')
+      }
+    } else {
+      await voiceRecorder.startRecording()
+    }
+  }, [voiceRecorder, sendMediaMessage])
+
+  const handleVoiceCancel = useCallback(() => {
+    voiceRecorder.cancelRecording()
+  }, [voiceRecorder])
 
   const handleInputTextChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value)
@@ -208,6 +227,7 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
   const typingNames = Array.from(typingUsers.keys())
 
   return (
+    <>
     <Screen
       header={
         <div className="safe-top" style={{ display: 'flex', alignItems: 'center', height: 56, padding: '0 4px', background: TG.headerBg, borderBottom: `1px solid ${TG.border}` }}>
@@ -333,20 +353,35 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
             <div style={{ flex: 1, background: '#242F3D', borderRadius: 20, display: 'flex', alignItems: 'center', padding: '0 14px', height: 40 }}>
               <input ref={inputRef} type="text" value={editingMessageId ? editingText : inputText} onChange={editingMessageId ? (e) => setEditingText(e.target.value) : handleInputTextChange} onKeyDown={handleKeyDown} placeholder={editingMessageId ? 'Редактировать...' : t('writeMessage')} disabled={isSendingMessage} style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: TG.text, fontSize: 16, padding: 0, opacity: isSendingMessage ? 0.5 : 1 }} />
             </div>
-            <button onClick={handleSend} disabled={!(editingMessageId ? editingText : inputText).trim() || isSendingMessage} style={{
-              width: 40, height: 40, borderRadius: '50%',
-              background: (editingMessageId ? editingText : inputText).trim() ? TG.accent : 'transparent',
-              border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: (editingMessageId ? editingText : inputText).trim() ? 'pointer' : 'default', flexShrink: 0,
-            }}>
-              {editingMessageId ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 13L9 17L19 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              ) : (editingMessageId ? editingText : inputText).trim() ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M3.4 20.4l17.45-7.48a1 1 0 000-1.84L3.4 3.6a.993.993 0 00-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .71.73 1.2 1.39.91z" /></svg>
-              ) : (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill={TG.textSecondary}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" /></svg>
-              )}
-            </button>
+            {voiceRecorder.isRecording ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <button onClick={handleVoiceCancel} style={{ background: 'none', border: 'none', color: '#E53935', fontSize: 16, cursor: 'pointer', padding: 4 }}>
+                  ✕
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#E53935', fontSize: 13, fontWeight: 500 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#E53935', animation: 'pulse 1s infinite' }} />
+                  {Math.floor(voiceRecorder.recordingTime / 60)}:{(voiceRecorder.recordingTime % 60).toString().padStart(2, '0')}
+                </div>
+                <button onClick={handleVoiceToggle} style={{ width: 36, height: 36, borderRadius: '50%', background: TG.accent, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+                </button>
+              </div>
+            ) : (
+              <button onClick={voiceRecorder.error ? undefined : ((editingMessageId ? editingText : inputText).trim() ? handleSend : handleVoiceToggle)} disabled={!!editingMessageId || isSendingMessage} style={{
+                width: 40, height: 40, borderRadius: '50%',
+                background: (editingMessageId ? editingText : inputText).trim() ? TG.accent : 'transparent',
+                border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', flexShrink: 0,
+              }}>
+                {editingMessageId ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 13L9 17L19 7" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                ) : (editingMessageId ? editingText : inputText).trim() ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M3.4 20.4l17.45-7.48a1 1 0 000-1.84L3.4 3.6a.993.993 0 00-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .71.73 1.2 1.39.91z" /></svg>
+                ) : (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill={TG.textSecondary}><path d="M12 2a3 3 0 00-3 3v6a3 3 0 006 0V5a3 3 0 00-3-3zm-1 14.93A7.006 7.006 0 015 11h2a5 5 0 0010 0h2a7.006 7.006 0 01-6 6.93V21h3v2H9v-2h3v-3.07z" /></svg>
+                )}
+              </button>
+            )}
           </div>
         </div>
       }
@@ -373,6 +408,7 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
                 onLongPressMove={handleTouchMove}
                 onContextMenu={(e) => { e.preventDefault(); if (!isSelecting) setLongPressMenu({ messageId: msg.id, x: e.clientX, y: e.clientY }) }}
                 onReaction={(emoji) => toggleReaction(msg.id, emoji)}
+                onImageClick={(url) => setLightboxUrl(url)}
               />
             )}
             followOutput="smooth"
@@ -436,6 +472,8 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
         </div>
       )}
     </Screen>
+    {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
+    </>
   )
 }
 
@@ -465,7 +503,7 @@ function MobileMenuItem({ emoji, label, onClick, destructive }: { emoji: string;
   )
 }
 
-function MessageBubble({ message, isOwn, isSelecting, isSelected, onLongPressStart, onSelect, onLongPress, onLongPressEnd, onLongPressMove, onContextMenu }: MessageBubbleProps) {
+function MessageBubble({ message, isOwn, isSelecting, isSelected, onLongPressStart, onSelect, onLongPress, onLongPressEnd, onLongPressMove, onContextMenu, onImageClick }: MessageBubbleProps) {
   const reactions = message.reactions || {}
 
   return (
@@ -523,7 +561,7 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, onLongPressSta
           {/* Image */}
           {message.imageUrl && (
             <div style={{ marginBottom: 4 }}>
-              <img src={message.imageUrl} alt="" style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 8, cursor: 'pointer' }} onClick={() => window.open(message.imageUrl, '_blank')} />
+              <img src={message.imageUrl} alt="" style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 8, cursor: 'pointer' }} onClick={() => onImageClick?.(message.imageUrl!)} />
             </div>
           )}
 
@@ -601,4 +639,5 @@ interface MessageBubbleProps {
   onLongPressMove: () => void
   onContextMenu: (e: React.MouseEvent) => void
   onReaction: (emoji: string) => void
+  onImageClick?: (url: string) => void
 }

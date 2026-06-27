@@ -9,6 +9,7 @@ import { AuthScreen } from '@/components/auth/AuthScreen'
 import { ProfileScreen } from '@/components/profile/ProfileScreen'
 import { FavoritesScreen } from '@/components/favorites/FavoritesScreen'
 import { CallScreen } from '@/components/calls/CallScreen'
+import { PinnedMessagesScreen } from '@/components/pinned/PinnedMessagesScreen'
 import { useWebRTC } from '@/hooks/useWebRTC'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
@@ -16,7 +17,7 @@ import { useAuthStore } from '@/store/authStore'
 import { isMobile } from '@/shared/utils'
 import '@/styles/global.css'
 
-type Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites' | 'contacts' | 'aiChats' | 'settings' | 'archive' | 'search'
+type Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites' | 'contacts' | 'aiChats' | 'settings' | 'archive' | 'search' | 'pinned'
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth')
@@ -35,6 +36,7 @@ export default function App() {
   useIOSKeyboard()
 
   const [callTarget, setCallTarget] = useState<{ id: string; username: string; roomId: string } | null>(null)
+  const [pinnedChatId, setPinnedChatId] = useState<string | null>(null)
   const {
     callState, remoteStream, localStream,
     isMuted, isVideoEnabled,
@@ -52,6 +54,18 @@ export default function App() {
     window.addEventListener('start-call', handler)
     return () => window.removeEventListener('start-call', handler)
   }, [startCall])
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.chatId) {
+        setPinnedChatId(detail.chatId)
+        setCurrentScreen('pinned')
+      }
+    }
+    window.addEventListener('show-pinned', handler)
+    return () => window.removeEventListener('show-pinned', handler)
+  }, [])
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -218,6 +232,10 @@ export default function App() {
     setCurrentScreen('search')
   }, [])
 
+  const handlePinnedBack = useCallback(() => {
+    setCurrentScreen('chat')
+  }, [])
+
   // --- Update Check ---
   useEffect(() => {
     const checkForUpdate = async () => {
@@ -307,6 +325,15 @@ export default function App() {
           }
           onCloseRightPanel={handleBack}
         />
+        {currentScreen === 'pinned' && pinnedChatId && (
+          <div style={{
+            position: 'fixed', top: 0, right: 0, bottom: 0, width: 400,
+            zIndex: 500, background: '#0E1621',
+            borderLeft: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <PinnedMessagesScreen chatId={pinnedChatId} onBack={handlePinnedBack} />
+          </div>
+        )}
         {callState !== 'idle' && callTarget && (
           <CallScreen
             callState={callState}
@@ -369,6 +396,12 @@ export default function App() {
       {currentScreen === 'favorites' && (
         <div key="favorites" className="screen-enter" style={{ width: '100%', height: '100%' }}>
           <FavoritesScreen onBack={handleBack} />
+        </div>
+      )}
+
+      {currentScreen === 'pinned' && pinnedChatId && (
+        <div key="pinned" className="screen-enter" style={{ width: '100%', height: '100%' }}>
+          <PinnedMessagesScreen chatId={pinnedChatId} onBack={handlePinnedBack} />
         </div>
       )}
 
