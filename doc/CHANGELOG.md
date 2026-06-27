@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.1.6.1 (2026-06-27)
+
+Delete for all messages, nginx proxy fix.
+
+### Delete for All Messages
+
+- **Context menu**: "🗑 Удалить" now visible for all messages (not just own)
+- Edit remains owner-only
+- Works for images, files, voice, text — any message type
+
+### Nginx Proxy Fix (Critical)
+
+- **proxy_pass trailing slash**: `proxy_pass http://127.0.0.1:8082;` → `proxy_pass http://127.0.0.1:8082/;`
+- Without trailing slash, nginx forwarded `/api/upload-image` as-is, server only knows `/upload-image`
+- Added to deploy.sh to persist across deploys
+
 ## v0.1.6.0 (2026-06-27)
 
 Upload fix, image compression, [deleted] filter, full v1→v2 cleanup.
