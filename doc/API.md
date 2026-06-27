@@ -30,8 +30,7 @@
 | Метод | Описание |
 |-------|----------|
 | `getChats(userId, username?, options?)` | GetChatsV2: cursor-based pagination, фильтр (all/pinned/archived/muted) |
-| `getHistory(roomId, limit)` | История v1: limit + room |
-| `getHistoryV2(roomId, limit, cursor)` | История v2: cursor-based pagination (merge v1+v2) |
+| `getHistoryV2(roomId, limit, cursor)` | История v2: cursor-based pagination |
 | `createDirectChat(user1, user2, user1Id, user2Id)` | Создать личный чат |
 | `createGroupChat(name, participants, creator, creatorId, participantIds)` | Создать группу |
 | `deleteChat(chatId, requesterUsername, requesterUserId)` | Удалить чат |
@@ -43,16 +42,6 @@
 | `searchChats(query, limit, offset)` | Поиск чатов |
 | `getChatListVersion()` | Версия списка для кэширования |
 
-## Messages v1
-
-| Метод | Описание |
-|-------|----------|
-| `sendMessage(roomId, content, userId)` | Отправить (ephemeral BiDi stream) |
-| `openReceiveStream(roomId, callback)` | Получать сообщения (persistent BiDi stream) |
-| `setReaction(messageId, emoji)` | Реакция |
-| `deleteMessages(messageIds, roomId, userId)` | Удалить сообщения |
-| `editMessage(messageId, roomId, userId, newText)` | Редактировать |
-
 ## Messages v2
 
 | Метод | Описание |
@@ -61,8 +50,9 @@
 | `sendMessageV2Media(roomId, media, replyToId?)` | Отправить медиа (image/file/voice) |
 | `editMessageV2(messageId, newText)` | Редактировать |
 | `deleteMessageV2(messageIds, requesterUserId)` | Удалить |
-| `setReactionV2(messageId, emoji)` | Реакция |
+| `setReactionV2(messageId, emoji)` | Реакция (пустая = удалить) |
 | `openChatV2Stream(roomId, callback)` | BiDi stream (oneof: message/typing/system) |
+| `searchMessages(roomId, query, limit)` | Поиск сообщений (single-chat or cross-chat) |
 
 ## ChatList v2
 

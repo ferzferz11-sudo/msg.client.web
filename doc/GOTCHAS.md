@@ -53,20 +53,23 @@ Proto содержит оба RPC → codegen схлопывает в `getChats`
 ### HTTP endpoints vs gRPC
 `/info` и `/health` — HTTP REST (порт 8082), НЕ gRPC. Нужен nginx прокси. `fetchServerInfo()` и `checkHealth()` используют корневой путь `/info`, `/health` (не `/messenger/...`).
 
-### DeleteMessagesRequest
-Ожидает `messages: Message[]` (полные объекты), НЕ `messageIds: string[]`.
+### DeleteMessageV2Request
+Использует `messageIds: string[]` + `requesterUserId: string`.
 
-### ReactionRequest
-Вложенная структура: `{ message_id, reaction: { user, emoji } }`.
+### SetReactionV2Request
+`{ messageId, emoji }` — emoji пустая строка = удалить реакцию.
 
-### EditMessageRequest
-Только `{ message_id, text }` — без roomId/userId.
+### EditMessageV2Request
+Только `{ messageId, text }`.
 
 ### GetContactsResponse
 Возвращает `repeated string contacts` — просто массив username строк.
 
-### GetHistoryRequest
-Только `limit` + `room` — НЕТ cursor/offset поля.
+### GetHistoryV2Request
+Cursor-based: `roomId`, `limit`, `cursor` (пустая строка = первая страница).
+
+### SearchMessagesRequest
+`{ roomId, query, limit }` — `roomId` опциональный (пустой = поиск по всем чатам).
 
 ### ListAITools vs ListAIAgents
 Разные RPC, не путать.
@@ -95,14 +98,15 @@ v1 `typing()` RPC — BiDi stream. `@connectrpc/connect-web` используе�
 
 ---
 
-## Server Proto Field Conventions (cross-reference 2026-06-20)
+## Server Proto Field Conventions (cross-reference 2026-06-27)
 
 - Множество ChatService RPCs требуют `user_id` даже когда клиент опускает (pinChat, archiveChat, pinMessage, setMutedChat и т.д.)
-- `DeleteMessagesRequest` ожидает `messages: Message[]` (полные объекты), НЕ `messageIds: string[]`
-- `ReactionRequest` — вложенная структура `{ message_id, reaction: { user, emoji } }`
-- `EditMessageRequest` — только `{ message_id, text }`
+- `DeleteMessageV2Request` — `messageIds: string[]`, `requesterUserId: string`
+- `SetReactionV2Request` — `messageId`, `emoji` (пустая = удалить)
+- `EditMessageV2Request` — `messageId`, `text`
+- `GetHistoryV2Request` — `roomId`, `limit`, `cursor`
+- `SearchMessagesRequest` — `roomId` (опциональный), `query`, `limit`
 - `GetContactsResponse` — `repeated string contacts` (только username строки)
-- `GetHistoryRequest` — только `limit` + `room` (без cursor/offset)
 - `ListAITools` — отдельный RPC от `ListAIAgents`
 - `DeleteProfileV2Request` — требует `password`
 - `TokenRequest` (push) — требует `user_id`
@@ -121,23 +125,12 @@ v1 `typing()` RPC — BiDi stream. `@connectrpc/connect-web` используе�
 
 ## Applied Proto Fixes
 
-### Batch 2 (2026-06-20)
-- Message reply fields: `repliedToMessageId`, `repliedToUser`, `repliedToText` в sendMessage
-- `useChatMessages` edit/delete/reaction — gRPC вызовы verified
-- `useChats.ts` hardcoded `'user-2-id'` — resolved
-- `usePushNotifications.ts` hardcoded `'user-1'` — resolved
-- `useChatMessages.loadMore` — fixed duplicate filtering pagination
-- `usePinnedMessages.ts` — added userId к pinMessage/unPinMessage
-
-### Batch 3 (2026-06-21 — proto sync v1.3.0.18)
-- Proto synced из сервера v1.3.0.18 (1984 строки)
-- **GetChatsV2**: cursor-based pagination (cursor, nextCursor, hasMore)
-- **AI v2 RPCs**: 15 новых RPC (chatWithAIV2, createAIAgent и т.д.)
-- **ChatWithAIV2Request**: images (Uint8Array[]), toolCalls (ToolCallV2[])
-- **ChatWithAIV2Response**: agentId, agentName, toolCalls, hasRagContext, modelUsed, tokenCount, imageUrl
-- **UserInfo**: userId (field 6), isSuperAdmin (field 7)
-- **Drafts**: draftText поле (было text)
-- **SetCurrentTheme**: username поле добавлено
+### Batch 5 (2026-06-27 — v0.1.5.0 v1→v2 migration)
+- Removed all v1 message RPCs from client (getHistory, sendMessage BiDi, setReaction, deleteMessages, editMessage, openReceiveStream)
+- Removed v1 fallback in getHistoryV2 (server removed dual-write)
+- Added SearchMessages RPC + client method
+- getPinnedMessages/getFavorites now use protoToMessageV2
+- Removed v1 getHistory fallback in useAIChats
 
 ### Batch 4 (2026-06-21 — post-proto-sync)
 - **chatWithAIV2**: base64→Uint8Array для images, imageUrl response handling
@@ -171,29 +164,27 @@ v1 `typing()` RPC — BiDi stream. `@connectrpc/connect-web` используе�
 `grpcClient.ts:130` триггерит refresh когда `now >= accessExpiresAt`. При перезагрузке с валидным токеном сервер отклоняет refresh как "revoked or expired".
 **Решение**: `isRefreshing` флаг блокирует рекурсию, 30s cooldown после ошибки, stale token fallback.
 
-### v1/v2 Message Merge
-Сервер dual-write: новые сообщения в `messages_v2`, старые только в `messages`. getHistoryV2 возвращает только v2 subset для смешанных чатов.
-**Решение** (v1.3.10): getHistoryV2 всегда загружает v1 и мержит с v2 (дедупликация по ID, сортировка по дате).
+### v1/v2 Message Migration (Completed v0.1.5.0)
+Сервер завершил миграцию v1→v2, убрал dual-write. Все сообщения теперь только в `messages_v2`.
+Клиент полностью переключен на v2 RPC.
 
-### v1 Reactions Format
-V1 reactions: `[{user, emoji}]` array. UI ожидает `Record<string, string[]>`.
-**Решение** (v1.3.10): `protoToMessage` конвертирует в правильный формат.
+### v1 Reactions Format (Legacy)
+V1 reactions: `[{user, emoji}]` array. V2 reactions: `bytes reactions` (JSON `{"uuid":"emoji"}`).
+`protoToMessageV2` парсит JSONB reactions из v2.
 
 ### Typing Stream — BiDi Not Supported
 `openTypingStream` использует BiDi stream (fetch streaming request bodies), не поддерживается браузерами.
 **Решение** (v1.3.10): обёрнуто в try-catch, ошибки не крашат приложение.
 
 ### Favorites Server Query
-`GetFavorites` SQL (`db_messages.go:207-212`) делает JOIN favorites с messages, вызывает `decrypt()`. Subqueries резолвят user_id из username — если нет строк, запрос возвращает пусто молча.
-**Данные**: favorites хранятся в `messages` с `room_id='favorites_<username>'`.
+`GetFavorites` возвращает сообщения с `room_id='favorites_<username>'`. Использует `protoToMessageV2` для конвертации.
 
-### messages_v2 Table Empty
-Dual-write на сервере (`server_chat.go:341+`) пишет только НОВЫЕ сообщения, не ретроактивно. Все существующие — только в `messages`.
-**Решение**: getHistoryV2 без fallback (v1.3.9+)
+### messages_v2 Table
+Сервер завершил миграцию (v0.1.5.0). Dual-write удалён. Все сообщения только в `messages_v2`.
 
 ### Proto Codegen
 `npm run proto:generate` падает из-за node_modules protobuf ошибок.
-**Решение**: `buf generate --path proto/messenger.proto` (обновлено в v1.3.9)
+**Решение**: `buf generate --path proto/messenger.proto`
 
 ---
 
