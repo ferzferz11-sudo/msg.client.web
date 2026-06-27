@@ -456,7 +456,7 @@ export function protoToUser(u: any): User {
 }
 
 async function compressImage(file: File, maxDim = 1920, quality = 0.85): Promise<File> {
-  if (!file.type.startsWith('image/') || file.size < 2 * 1024 * 1024) return file
+  if (!file.type.startsWith('image/')) return file
   const bitmap = await createImageBitmap(file)
   const canvas = document.createElement('canvas')
   const ratio = Math.min(maxDim / bitmap.width, maxDim / bitmap.height, 1)
@@ -467,7 +467,7 @@ async function compressImage(file: File, maxDim = 1920, quality = 0.85): Promise
   bitmap.close()
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
-      resolve(blob ? new File([blob], file.name, { type: 'image/jpeg' }) : file)
+      resolve(blob ? new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }) : file)
     }, 'image/jpeg', quality)
   })
 }
