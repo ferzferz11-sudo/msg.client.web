@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.1.5.1 (2026-06-27)
+
+Message Search UI, Contact Profile Modal.
+
+### Message Search UI
+
+- **Search icon**: 🔍 button in chat header (desktop + mobile)
+- **Search panel**: opens overlay with search input + debounced results (300ms)
+- **Results list**: shows message preview, sender name, timestamp
+- **Click to navigate**: scrolls to the message in chat via Virtuoso
+
+### Contact Profile Modal
+
+- **Click avatar/name**: clicking the avatar or name in chat header opens a profile modal
+- **ProfileModal**: shows username, avatar, bio, status
+- **Direct chats only**: only works for 1-on-1 chats (not groups)
+
 ## v0.1.5.0 (2026-06-27)
 
 v1→v2 Message Migration, SearchMessages, Copy Text, Version Display.

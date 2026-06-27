@@ -70,7 +70,7 @@ src/
 
 ## Статус интеграции (с сервером v1.3.0.25)
 
-**Web клиент:** v0.1.5.0 | **Дата проверки:** 2026-06-27
+**Web клиент:** v0.1.5.1 | **Дата проверки:** 2026-06-27
 
 ### ✅ Реализовано
 
@@ -180,6 +180,8 @@ src/
 | Real-time Messages | ✅ | v0.1.4.4 | ChatV2 stream auth deadlock fix + server broadcast |
 | Copy Text | ✅ | v0.1.5.0 | context menu copy + text selection on bubbles |
 | Version Display | ✅ | v0.1.5.0 | app version on select chat screen |
+| Message Search UI | ✅ | v0.1.5.1 | search icon in chat header, results with click-to-navigate |
+| Contact Profile Modal | ✅ | v0.1.5.1 | click avatar/name in header opens profile modal |
 
 ### ⚠️ Частично реализовано / Known Issues
 
@@ -191,7 +193,6 @@ src/
 
 | Модуль | RPC | Приоритет | Описание |
 |--------|-----|-----------|----------|
-| Message Search UI | searchMessages | P2 | RPC готов, нужен UI поиска |
 | E2EE Secret Chat UI | полный UI поток | P2 | Crypto модуль есть, нужен完整的UI |
 | Chat Background | uploadBackground | P3 | пользовательский фон чата |
 | File Download Progress | — | P3 | прогресс-бар при скачивании файлов |
@@ -199,8 +200,8 @@ src/
 
 ## Следующие шаги (для следующей сессии)
 
-### Приоритет 1 — Улучшения UX
-- **Message Search UI**: RPC `searchMessages` готов, нужен UI — поле поиска + список результатов с навигацией
+### Приоритет 1 — Фичи
+- **E2EE полный UI**: SecretChatScreen с полным потоком шифрования/дешифрования
 
 ### Приоритет 2 — Фичи
 - **E2EE полный UI**: SecretChatScreen с полным потоком шифрования/дешифрования
