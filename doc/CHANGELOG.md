@@ -1,5 +1,128 @@
 # Changelog
 
+## v1.4.3 (2026-06-27)
+
+ProfileService fallback, TURN credentials lazy load, landing page version badge.
+
+### ProfileService Fallback (Critical)
+
+- **getProfile**: tries ProfileService v2 first, falls back to ChatService `getUserProfile`
+- **updateProfile**: tries ProfileService v2, falls back to ChatService `updateProfile`
+- **updateAvatar**: tries ProfileService v2, falls back to ChatService `updateAvatar`
+- **deleteProfile**: tries ProfileService v2, falls back to ChatService `deleteProfile`
+- **getUserSettings/updateUserSettings**: graceful degradation — returns defaults on failure
+- **Root cause**: server v1.3.0.24 has profile "1.0" — ProfileService registered but methods return UNIMPLEMENTED
+
+### WebRTC TURN Credentials
+
+- **Lazy load**: TURN credentials now fetched only when a call starts (was: on mount)
+- **Fixes 401 on load**: `/turn-credentials` requires JWT auth, but tokens weren't ready on mount
+
+### Landing Page
+
+- **"Войти" version badge**: web version badge added next to "Войти" button
+
+## v1.4.2 (2026-06-27)
+
+Fix empty messages, Read Receipts, landing page multilingual, doc overhaul.
+
+### Empty Message Fix (Critical)
+
+- **SendMessageV2 oneof serialization**: fixed `any`-typed request causing `text` field to be sent as unknown top-level field instead of properly setting the `content` oneof case
+- **SendMessageV2Request.create → new SendMessageV2Request**: use typed constructor with `{ case: 'text', value: content }` oneof
+- **SendMessageV2Media**: same fix — `{ case: 'media', value: { type, url, duration } }`
+- **Empty message validation**: added `if (!content || !content.trim())` guard before sending
+- **Root cause**: `@connectrpc/connect` with `protobuf-es v2` ignores flat `text` field when using `any` type — oneof `content` stays nil, server saves empty message
+
+### Read Receipts v2
+
+- **Automatic MarkRead**: when user opens a chat, `markRead` is called on the server
+- **Unread count reset**: `unreadCount` set to 0 locally after MarkRead
+
+### Landing Page (http://13.140.25.249/)
+
+- **"Что нового" → "Войти"**: replaced button with web login link (`/web` target="_blank")
+- **Download button**: changed from "Скачать последнюю версию" to "Скачать приложение Android" with version badge
+- **Web client link**: opens in new tab (`target="_blank"`)
+- **Full i18n**: all 10 languages translated (ru, en, zh, es, hi, ar, pt, de, ja, ko)
+  - Added missing keys: `web_login`, `view_releases`, `name` for all languages
+  - Fixed broken Japanese `clients` (クラ¤Аント → クライアント)
+  - Fixed broken Hindi `clients` (कऽलाइंट → क्लाइंट)
+
+### Documentation
+
+- **INDEX.md**: complete rewrite — server v1.3.0.23 compliance, full integration status table
+- **API.md**: added ListAIV2Chats, GetAIV2ChatHistory, TURN credentials, HTTP upload extensions
+- **ARCHITECTURE.md**: added E2EE flow, WebRTC, new screens (SecretChat, Call)
+- **GOTCHAS.md**: added SendMessageV2 oneof gotcha
+
+## v1.4.1 (2026-06-22)
+
+Typing stream fix, TURN credentials, E2EE encryption, call button.
+
+### Typing Stream Fix
+
+- **Removed v1 BiDi typing stream**: fetch API doesn't support streaming request bodies, causing `ConnectError` on `openTypingStream`
+- **Typing via ChatV2 stream**: `openChatV2Stream` now returns `{ cleanup, send }` — typing events sent through the same stream
+- **ChatList typing removed**: desktop and mobile chat lists no longer use global typing stream (typing works in active chat only)
+
+### TURN Credentials
+
+- **fetchICEServers**: client now fetches TURN credentials from `/turn-credentials` endpoint on startup
+- **Fallback**: Google STUN servers used as fallback if server is unreachable
+
+### E2EE Message Encryption
+
+- **useChatMessages E2EE**: messages in secret chats encrypted with AES-GCM before send, decrypted on receive/load
+- **isSecret prop**: ChatScreen accepts `isSecret` to enable encryption pipeline
+
+### Call Button
+
+- **Desktop header**: 📞 call button added to ChatScreen header (dispatches `start-call` custom event)
+- **Mobile header**: 📞 call button added to ChatScreen mobile header
+
+## v1.4.0 (2026-06-22)
+
+E2EE Secret Chats, WebRTC Calls, Desktop Sidebar Navigation, Native Notifications.
+
+### ChatV2 Migration
+
+- **useGrpcStream v2**: switched from v1 `openReceiveStream` to v2 `openChatV2Stream`
+- **useGrpcStream history**: switched from v1 `getHistory` to v2 `getHistoryV2` for missed messages
+
+### Desktop Sidebar Navigation
+
+- **Sidebar nav bar**: added AI Chats, Search, Archive, Notifications, Settings buttons below header
+- **Right panel screens**: AI Chats, Settings, Archive, Notifications, Search now open in right panel
+- **Lazy loading**: all sidebar screens use lazy imports for better bundle splitting
+
+### E2EE Secret Chats
+
+- **Crypto module** (`src/shared/crypto.ts`): RSA-OAEP 2048 + AES-GCM 256 encryption
+- **SecretChatScreen**: key exchange UI with loading/error/ready states
+- **New Chat modal**: 🔐 button next to each user to start secret chat
+- **Key storage**: private keys and shared AES keys stored in localStorage
+
+### WebRTC Calls
+
+- **useWebRTC hook**: WebRTC peer connection management with STUN servers
+- **CallScreen**: full-screen call UI with video/audio controls
+- **Signaling**: uses existing `callSession` BiDi stream for WebRTC signaling
+- **Call states**: idle → calling → ringing → connected → ended
+
+### Native Notifications
+
+- **Browser notifications**: native Notification API integration in useNotifications
+- **Permission request**: button in NotificationsScreen to enable native notifications
+- **Auto-show**: native notifications shown when new server notifications arrive
+- **Preference**: native notification setting persisted in localStorage
+
+### Lazy Avatar
+
+- **LazyAvatar component**: IntersectionObserver-based lazy loading for chat avatars
+- **Chat list avatars**: avatars now load lazily as they scroll into view
+- **Fallback**: shows first letter while avatar loads
+
 ## v1.3.10 (2026-06-22)
 
 Auth interceptor fix, v1/v2 merge, desktop UI, reactions.

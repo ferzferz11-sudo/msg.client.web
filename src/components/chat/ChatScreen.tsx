@@ -8,6 +8,7 @@ import { isMobile } from '@/shared/utils'
 export interface ChatScreenProps {
   chatId: string
   onBack: () => void
+  isSecret?: boolean
   onPinnedClick?: () => void
   onServerShutdown?: () => void
   onReconnecting?: (isReconnecting: boolean) => void

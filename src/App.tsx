@@ -8,13 +8,15 @@ import { ChatScreen } from '@/components/chat/ChatScreen'
 import { AuthScreen } from '@/components/auth/AuthScreen'
 import { ProfileScreen } from '@/components/profile/ProfileScreen'
 import { FavoritesScreen } from '@/components/favorites/FavoritesScreen'
+import { CallScreen } from '@/components/calls/CallScreen'
+import { useWebRTC } from '@/hooks/useWebRTC'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
 import { useAuthStore } from '@/store/authStore'
 import { isMobile } from '@/shared/utils'
 import '@/styles/global.css'
 
-type Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites' | 'contacts'
+type Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites' | 'contacts' | 'aiChats' | 'settings' | 'archive' | 'search'
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth')
@@ -31,6 +33,25 @@ export default function App() {
   const setTokens = useAuthStore((s) => s.setTokens)
 
   useIOSKeyboard()
+
+  const [callTarget, setCallTarget] = useState<{ id: string; username: string; roomId: string } | null>(null)
+  const {
+    callState, remoteStream, localStream,
+    isMuted, isVideoEnabled,
+    startCall, endCall, toggleMute, toggleVideo,
+  } = useWebRTC()
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (detail?.targetId && detail?.targetUsername) {
+        setCallTarget({ id: detail.targetId, username: detail.targetUsername, roomId: detail.roomId || '' })
+        startCall(detail.targetId, detail.targetUsername, false)
+      }
+    }
+    window.addEventListener('start-call', handler)
+    return () => window.removeEventListener('start-call', handler)
+  }, [startCall])
 
   useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -181,6 +202,22 @@ export default function App() {
     setCurrentScreen('contacts')
   }, [])
 
+  const handleAIChats = useCallback(() => {
+    setCurrentScreen('aiChats')
+  }, [])
+
+  const handleSettings = useCallback(() => {
+    setCurrentScreen('settings')
+  }, [])
+
+  const handleArchive = useCallback(() => {
+    setCurrentScreen('archive')
+  }, [])
+
+  const handleSearch = useCallback(() => {
+    setCurrentScreen('search')
+  }, [])
+
   // --- Update Check ---
   useEffect(() => {
     const checkForUpdate = async () => {
@@ -254,9 +291,35 @@ export default function App() {
           onProfile={handleProfile}
           onContacts={handleContacts}
           onFavorites={handleFavorites}
-          rightPanel={currentScreen === 'profile' ? 'profile' : currentScreen === 'contacts' ? 'contacts' : currentScreen === 'favorites' ? 'favorites' : null}
+          onAIChats={handleAIChats}
+          onSettings={handleSettings}
+          onArchive={handleArchive}
+          onSearch={handleSearch}
+          rightPanel={
+            currentScreen === 'profile' ? 'profile' :
+            currentScreen === 'contacts' ? 'contacts' :
+            currentScreen === 'favorites' ? 'favorites' :
+            currentScreen === 'aiChats' ? 'aiChats' :
+            currentScreen === 'settings' ? 'settings' :
+            currentScreen === 'archive' ? 'archive' :
+            currentScreen === 'search' ? 'search' :
+            null
+          }
           onCloseRightPanel={handleBack}
         />
+        {callState !== 'idle' && callTarget && (
+          <CallScreen
+            callState={callState}
+            remoteStream={remoteStream}
+            localStream={localStream}
+            isMuted={isMuted}
+            isVideoEnabled={isVideoEnabled}
+            targetUsername={callTarget.username}
+            onEndCall={() => { endCall(); setCallTarget(null) }}
+            onToggleMute={toggleMute}
+            onToggleVideo={toggleVideo}
+          />
+        )}
       </div>
     )
   }
@@ -307,6 +370,20 @@ export default function App() {
         <div key="favorites" className="screen-enter" style={{ width: '100%', height: '100%' }}>
           <FavoritesScreen onBack={handleBack} />
         </div>
+      )}
+
+      {callState !== 'idle' && callTarget && (
+        <CallScreen
+          callState={callState}
+          remoteStream={remoteStream}
+          localStream={localStream}
+          isMuted={isMuted}
+          isVideoEnabled={isVideoEnabled}
+          targetUsername={callTarget.username}
+          onEndCall={() => { endCall(); setCallTarget(null) }}
+          onToggleMute={toggleMute}
+          onToggleVideo={toggleVideo}
+        />
       )}
     </div>
   )

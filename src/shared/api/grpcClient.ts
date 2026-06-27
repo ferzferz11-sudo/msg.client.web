@@ -13,6 +13,7 @@
 
 import { createClient, type Transport } from '@connectrpc/connect'
 import { createGrpcWebTransport } from '@connectrpc/connect-web'
+import { SendMessageV2Request } from './gen/proto/messenger_pb'
 import type {
   Chat,
   Message,
@@ -268,9 +269,10 @@ function protoToMessageV2(msg: any, outgoing = false, userMap?: Record<string, s
   let replyToId = ''
   let replyToPreview = ''
 
-  if (msg.content?.$case === 'text') {
+  const contentCase = msg.content?.$case || msg.content?.case
+  if (contentCase === 'text') {
     text = msg.content.value || ''
-  } else if (msg.content?.$case === 'media') {
+  } else if (contentCase === 'media') {
     const media = msg.content.value
     if (media.type === 'image') {
       imageUrl = media.url || ''
@@ -282,7 +284,7 @@ function protoToMessageV2(msg: any, outgoing = false, userMap?: Record<string, s
       fileUrl = media.url || ''
       text = media.url?.split('/').pop() || 'Файл'
     }
-  } else if (msg.content?.$case === 'reply') {
+  } else if (contentCase === 'reply') {
     replyToId = msg.content.value.messageId || ''
     replyToPreview = msg.content.value.preview || ''
   }
@@ -337,8 +339,10 @@ function handleChatV2Message(v2Msg: any, callback: StreamCallback): void {
   const payload = v2Msg.payload
   if (!payload) return
 
-  if (payload.$case === 'system') {
-    const sys = payload.value
+  const payloadCase = payload.$case || payload.case
+
+  if (payloadCase === 'system' || payload.system) {
+    const sys = payload.value || payload.system
     if (sys.type === 'SERVER_SHUTTINGDOWN') {
       callback({ type: 'error', error: 'SERVER_SHUTTINGDOWN' })
       return
@@ -350,13 +354,15 @@ function handleChatV2Message(v2Msg: any, callback: StreamCallback): void {
     return
   }
 
-  if (payload.$case === 'typing') {
-    callback({ type: 'typing', chatId: v2Msg.roomId || '', userId: v2Msg.senderId || '', isTyping: payload.value.isTyping })
+  if (payloadCase === 'typing' || payload.typing) {
+    const typing = payload.value || payload.typing
+    callback({ type: 'typing', chatId: v2Msg.roomId || '', userId: v2Msg.senderId || '', isTyping: typing.isTyping })
     return
   }
 
-  if (payload.$case === 'message') {
-    callback({ type: 'message', message: protoToMessageV2(payload.value) })
+  if (payloadCase === 'message' || payload.message) {
+    const msg = payload.value || payload.message
+    callback({ type: 'message', message: protoToMessageV2(msg) })
   }
 }
 
@@ -718,11 +724,31 @@ class GrpcClient {
     )
   }
 
-  // --- ProfileService V2 Methods (JWT auth) ---
+  // --- Profile Methods (ProfileService v2 with ChatService fallback) ---
 
   async getProfile(): Promise<User & { bio: string; status: string; locale: string; isSuperAdmin: boolean; fullAvatarUrl: string }> {
-    if (!this.profileClient) throw new Error('Not connected')
-    const result = await this.profileClient.getProfile({})
+    if (!this.chatClient) throw new Error('Not connected')
+    try {
+      if (this.profileClient) {
+        const result = await this.profileClient.getProfile({})
+        return {
+          id: result.userId || '',
+          username: result.username || '',
+          email: result.email || '',
+          avatarUrl: result.avatarUrl || '',
+          fullAvatarUrl: result.fullAvatarUrl || '',
+          bio: result.bio || '',
+          status: result.status || '',
+          locale: result.locale || 'ru',
+          isSuperAdmin: result.isSuperAdmin || false,
+          createdAt: result.createdAt || '',
+          lastSeenAt: result.lastSeenAt || '',
+        }
+      }
+    } catch (e: any) {
+      if (e?.code !== 12 && e?.code !== 14) console.warn('ProfileService.getProfile failed, trying ChatService:', e?.message)
+    }
+    const result = await this.chatClient.getUserProfile({})
     return {
       id: result.userId || '',
       username: result.username || '',
@@ -731,7 +757,7 @@ class GrpcClient {
       fullAvatarUrl: result.fullAvatarUrl || '',
       bio: result.bio || '',
       status: result.status || '',
-      locale: result.locale || 'ru',
+      locale: 'ru',
       isSuperAdmin: result.isSuperAdmin || false,
       createdAt: result.createdAt || '',
       lastSeenAt: result.lastSeenAt || '',
@@ -739,40 +765,75 @@ class GrpcClient {
   }
 
   async updateProfile(updates: { username?: string; bio?: string; status?: string; locale?: string }): Promise<boolean> {
-    if (!this.profileClient) throw new Error('Not connected')
-    const result = await this.profileClient.updateProfile({
+    if (!this.chatClient) throw new Error('Not connected')
+    try {
+      if (this.profileClient) {
+        const result = await this.profileClient.updateProfile({
+          username: updates.username || '',
+          bio: updates.bio || '',
+          status: updates.status || '',
+          locale: updates.locale || '',
+        })
+        return result.success ?? false
+      }
+    } catch (e: any) {
+      if (e?.code !== 12 && e?.code !== 14) console.warn('ProfileService.updateProfile failed, trying ChatService:', e?.message)
+    }
+    const result = await this.chatClient.updateProfile({
       username: updates.username || '',
       bio: updates.bio || '',
       status: updates.status || '',
-      locale: updates.locale || '',
+      email: '',
     })
     return result.success ?? false
   }
 
   async updateAvatar(avatarUrl: string, fullAvatarUrl?: string): Promise<boolean> {
-    if (!this.profileClient) throw new Error('Not connected')
-    const result = await this.profileClient.updateAvatar({ avatarUrl, fullAvatarUrl: fullAvatarUrl || '' })
+    if (!this.chatClient) throw new Error('Not connected')
+    try {
+      if (this.profileClient) {
+        const result = await this.profileClient.updateAvatar({ avatarUrl, fullAvatarUrl: fullAvatarUrl || '' })
+        return result.success ?? false
+      }
+    } catch (e: any) {
+      if (e?.code !== 12 && e?.code !== 14) console.warn('ProfileService.updateAvatar failed, trying ChatService:', e?.message)
+    }
+    const result = await this.chatClient.updateAvatar({ avatarUrl, avatarFull: fullAvatarUrl || '' })
     return result.success ?? false
   }
 
   async getUserSettings(): Promise<{ locale: string; themeId: string; pushEnabled: boolean }> {
-    if (!this.profileClient) throw new Error('Not connected')
-    const result = await this.profileClient.getUserSettings({})
-    return {
-      locale: result.locale || 'ru',
-      themeId: result.themeId || '',
-      pushEnabled: result.pushEnabled ?? true,
+    if (!this.chatClient) throw new Error('Not connected')
+    try {
+      if (this.profileClient) {
+        const result = await this.profileClient.getUserSettings({})
+        return {
+          locale: result.locale || 'ru',
+          themeId: result.themeId || '',
+          pushEnabled: result.pushEnabled ?? true,
+        }
+      }
+    } catch (e: any) {
+      console.warn('ProfileService.getUserSettings failed:', e?.message)
     }
+    return { locale: 'ru', themeId: '', pushEnabled: true }
   }
 
   async updateUserSettings(settings: { locale?: string; themeId?: string; pushEnabled?: boolean }): Promise<boolean> {
-    if (!this.profileClient) throw new Error('Not connected')
-    const result = await this.profileClient.updateUserSettings({
-      locale: settings.locale || '',
-      themeId: settings.themeId || '',
-      pushEnabled: settings.pushEnabled ?? true,
-    })
-    return result.success ?? false
+    if (!this.chatClient) throw new Error('Not connected')
+    try {
+      if (this.profileClient) {
+        const result = await this.profileClient.updateUserSettings({
+          locale: settings.locale || '',
+          themeId: settings.themeId || '',
+          pushEnabled: settings.pushEnabled ?? true,
+        })
+        return result.success ?? false
+      }
+    } catch (e: any) {
+      console.warn('ProfileService.updateUserSettings failed:', e?.message)
+    }
+    return false
   }
 
   // --- Chat Methods ---
@@ -1097,7 +1158,13 @@ class GrpcClient {
     if (!this.chatClient) throw new Error('Not connected')
     return withRetry(
       async () => {
-        const request: any = { roomId, text: content }
+        if (!content || !content.trim()) {
+          throw new Error('Cannot send empty message')
+        }
+        const request = new SendMessageV2Request({
+          roomId,
+          content: { case: 'text', value: content },
+        })
         if (replyToId) request.replyToId = replyToId
         const response = await this.chatClient.sendMessageV2(request)
         if (!response.success) throw new Error(response.error || 'Failed to send')
@@ -1115,10 +1182,13 @@ class GrpcClient {
     if (!this.chatClient) throw new Error('Not connected')
     return withRetry(
       async () => {
-        const request: any = {
+        const request = new SendMessageV2Request({
           roomId,
-          media: { type: media.type, url: media.url, duration: media.duration || 0 },
-        }
+          content: {
+            case: 'media',
+            value: { type: media.type, url: media.url, duration: media.duration || 0 },
+          },
+        })
         if (replyToId) request.replyToId = replyToId
         const response = await this.chatClient.sendMessageV2(request)
         if (!response.success) throw new Error(response.error || 'Failed to send')
@@ -1148,7 +1218,7 @@ class GrpcClient {
 
   // --- ChatV2 Stream (bidirectional) ---
 
-  openChatV2Stream(roomId: string, callback: StreamCallback): () => void {
+  openChatV2Stream(roomId: string, callback: StreamCallback): { cleanup: () => void; send: (msg: any) => void } {
     const streamId = `chatv2-${roomId}`
     const controller = new AbortController()
     const signal = controller.signal
@@ -1214,9 +1284,20 @@ class GrpcClient {
 
     processStream()
 
-    return () => {
-      controller.abort()
-      this.activeStreams.delete(streamId)
+    const send = (msg: any) => {
+      sendQueue.push(msg)
+      if (sendResolve) {
+        sendResolve({ value: sendQueue.shift()!, done: false })
+        sendResolve = null
+      }
+    }
+
+    return {
+      cleanup: () => {
+        controller.abort()
+        this.activeStreams.delete(streamId)
+      },
+      send,
     }
   }
 
@@ -1680,6 +1761,37 @@ class GrpcClient {
     }
   }
 
+  async listAIV2Chats(): Promise<Chat[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.listAIV2Chats({})
+    return (result.chats || []).map((c: any) => ({
+      id: c.id || '',
+      name: c.name || 'AI Chat',
+      type: 'ai',
+      creatorId: '',
+      participants: '[]',
+      lastMessageText: '',
+      lastMessageTime: c.updatedAt || c.updated_at || c.createdAt || c.created_at || new Date().toISOString(),
+      unreadCount: 0,
+      avatarUrl: '',
+      activeAgentId: c.agentId || c.agent_id || '',
+    }))
+  }
+
+  async getAIV2ChatHistory(sessionId: string, limit = 50): Promise<AIMessage[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getAIV2ChatHistory({ sessionId, limit })
+    return (result.messages || []).map((m: any) => ({
+      id: String(m.id || ''),
+      role: m.role || 'assistant',
+      content: m.content || '',
+      agentId: m.agentId || m.agent_id || '',
+      modelUsed: m.modelUsed || m.model_used || '',
+      tokenCount: m.tokenCount || m.token_count || 0,
+      timestamp: m.createdAt || m.created_at ? new Date(m.createdAt || m.created_at).getTime() : Date.now(),
+    }))
+  }
+
   // --- Bot Command Methods ---
 
   async processBotCommand(userId: string, command: string, args: string): Promise<string> {
@@ -1777,8 +1889,16 @@ class GrpcClient {
   // --- Delete Profile ---
 
   async deleteProfile(password?: string): Promise<boolean> {
-    if (!this.profileClient) throw new Error('Not connected')
-    const result = await this.profileClient.deleteProfile({ password: password || '' })
+    if (!this.chatClient) throw new Error('Not connected')
+    try {
+      if (this.profileClient) {
+        const result = await this.profileClient.deleteProfile({ password: password || '' })
+        return result.success ?? false
+      }
+    } catch (e: any) {
+      console.warn('ProfileService.deleteProfile failed, trying ChatService:', e?.message)
+    }
+    const result = await this.chatClient.deleteProfile({ password: password || '' })
     return result.success ?? false
   }
 

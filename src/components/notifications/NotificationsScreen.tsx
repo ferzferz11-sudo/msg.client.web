@@ -12,7 +12,7 @@ interface NotificationsScreenProps {
 }
 
 export function NotificationsScreen({ onBack, onChatClick }: NotificationsScreenProps) {
-  const { notifications, unreadCount, isLoading, loadHistory, markRead, markAllRead } = useNotifications()
+  const { notifications, unreadCount, isLoading, nativeEnabled, loadHistory, markRead, markAllRead, requestPermission } = useNotifications()
 
   useEffect(() => {
     loadHistory()
@@ -29,6 +29,19 @@ export function NotificationsScreen({ onBack, onChatClick }: NotificationsScreen
   return (
     <Screen header={<NotificationsHeader onBack={onBack} onMarkAllRead={markAllRead} unreadCount={unreadCount} />}>
       <div style={{ padding: 16, color: '#fff' }}>
+        {!nativeEnabled && (
+          <button
+            onClick={requestPermission}
+            style={{
+              width: '100%', padding: '12px 16px', marginBottom: 16, borderRadius: 12,
+              background: 'rgba(107,92,231,0.15)', border: '1px solid rgba(107,92,231,0.3)',
+              color: '#6b5ce7', fontSize: 14, fontWeight: 500, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+            }}
+          >
+            🔔 Включить нативные уведомления
+          </button>
+        )}
         {isLoading ? (
           <div style={{ textAlign: 'center', padding: 20, color: '#888' }}>Загрузка...</div>
         ) : notifications.length === 0 ? (

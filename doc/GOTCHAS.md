@@ -2,6 +2,31 @@
 
 ## Proto Gotchas
 
+### SendMessageV2 oneof content (CRITICAL — v1.4.2 fix)
+
+`SendMessageV2Request` использует `oneof content { text, media }`. При использовании `any`-типа flat-объект `{ roomId, text: content }` serialized protobuf отправляет `text` как неизвестное верхнеуровневое поле — сервер игнорирует его, `content` oneof остаётся nil → пустое сообщение в БД.
+
+**Правильно:**
+```typescript
+const request = new SendMessageV2Request({
+  roomId,
+  content: { case: 'text', value: text },
+})
+```
+
+**Неправильно:**
+```typescript
+const request: any = { roomId, text: content }  // oneof НЕ сериализуется!
+```
+
+То же для media:
+```typescript
+const request = new SendMessageV2Request({
+  roomId,
+  content: { case: 'media', value: { type, url, duration } },
+})
+```
+
 ### GetChats / GetChatsV2
 Proto содержит оба RPC → codegen схлопывает в `getChats` с name `GetChats`. Сервер реализует только V2 → вызывать `this.chatClient.getChatsV2()` вместо `this.chatClient.getChats()`.
 
@@ -28,6 +53,16 @@ Proto содержит оба RPC → codegen схлопывает в `getChats`
 
 ### ListAITools vs ListAIAgents
 Разные RPC, не путать.
+
+## Known Issues (Fixed)
+
+### v1 Typing BiDi Stream (v1.4.1 fixed)
+v1 `typing()` RPC — BiDi stream. `@connectrpc/connect-web` использует fetch, который НЕ поддерживает streaming request bodies. Результат: `ConnectError: The fetch API does not support streaming request bodies`.
+
+**Решение**: typing отправляется через ChatV2 stream (`openChatV2Stream` → `send({ typing: { isTyping } })`). Глобальный typing stream из chat list удалён.
+
+### openChatV2Stream return type (v1.4.1)
+`openChatV2Stream` теперь возвращает `{ cleanup, send }` вместо `cleanup`. Все вызывающие коды обновлены.
 
 ### DeleteProfileV2Request
 Требует поле `password`.

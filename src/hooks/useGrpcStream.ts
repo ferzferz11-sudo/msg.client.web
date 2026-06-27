@@ -52,7 +52,7 @@ export function useGrpcStream({
       if (!grpcClient.isConnected()) return
       if (cleanupRef.current) return
 
-      const cleanup = grpcClient.openReceiveStream(chatId, (event) => {
+      const { cleanup } = grpcClient.openChatV2Stream(chatId, (event) => {
         if (event.type === 'error') {
           const errorMsg = event.error || ''
           if (errorMsg.includes('UNAVAILABLE') || errorMsg.includes('SERVER_SHUTTINGDOWN')) {
@@ -116,7 +116,7 @@ export function useGrpcStream({
     if (!grpcClient.isConnected()) return
 
     try {
-      const response = await grpcClient.getHistory(chatId, 50)
+      const response = await grpcClient.getHistoryV2(chatId, 50)
       if (response.messages.length > 0 && onMissedMessagesRef.current) {
         onMissedMessagesRef.current(response.messages)
       }

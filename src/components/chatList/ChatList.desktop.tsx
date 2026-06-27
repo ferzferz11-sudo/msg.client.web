@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { Chat } from '@/shared/types'
 import { t } from '@/shared/types'
+import { LazyAvatar } from '@/components/common/LazyAvatar'
 import type { ChatListProps } from '@/components/chatList/ChatList'
 
 interface DesktopChatListProps extends ChatListProps {}
@@ -138,21 +139,14 @@ export function ChatList({
               if (!isActive) e.currentTarget.style.background = 'transparent'
             }}
           >
-            <div
-              style={{
-                width: 42,
-                height: 42,
-                borderRadius: 10,
-                background: color,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 18,
-                flexShrink: 0,
-                position: 'relative',
-              }}
-            >
-              {icon || chat.name.charAt(0).toUpperCase()}
+            <div style={{ position: 'relative', flexShrink: 0 }}>
+              <LazyAvatar
+                src={chat.avatarUrl}
+                size={42}
+                borderRadius={10}
+                backgroundColor={color}
+                fallback={icon || chat.name.charAt(0).toUpperCase()}
+              />
               {chat.isOnline && (
                 <div
                   style={{

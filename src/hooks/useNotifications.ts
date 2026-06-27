@@ -16,12 +16,39 @@ export interface Notification {
   createdAt: string
 }
 
+const NATIVE_ENABLED_KEY = 'native_notifications_enabled'
+
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
+  const [nativeEnabled, setNativeEnabled] = useState(() => {
+    return localStorage.getItem(NATIVE_ENABLED_KEY) === 'true' && Notification.permission === 'granted'
+  })
   const addError = useErrorStore((s) => s.addError)
   const unsubscribeRef = useRef<(() => void) | null>(null)
+
+  const requestPermission = useCallback(async () => {
+    if (!('Notification' in window)) return false
+    const result = await Notification.requestPermission()
+    const granted = result === 'granted'
+    setNativeEnabled(granted)
+    localStorage.setItem(NATIVE_ENABLED_KEY, String(granted))
+    return granted
+  }, [])
+
+  const showNativeNotification = useCallback((title: string, body: string, chatId?: string) => {
+    if (!nativeEnabled || Notification.permission !== 'granted') return
+    try {
+      const n = new Notification(title, { body, icon: '/logo.png', tag: chatId || 'notification' })
+      if (chatId) {
+        n.onclick = () => {
+          window.focus()
+          n.close()
+        }
+      }
+    } catch {}
+  }, [nativeEnabled])
 
   const loadHistory = useCallback(async (limit = 50) => {
     setIsLoading(true)
@@ -83,12 +110,13 @@ export function useNotifications() {
         }
         setNotifications((prev) => [n, ...prev])
         setUnreadCount((c) => c + 1)
+        showNativeNotification(n.title, n.body, n.chatId)
       })
       unsubscribeRef.current = unsub
     } catch (err) {
       console.error('Failed to subscribe to notifications:', err)
     }
-  }, [])
+  }, [showNativeNotification])
 
   const unsubscribe = useCallback(() => {
     unsubscribeRef.current?.()
@@ -107,11 +135,13 @@ export function useNotifications() {
     notifications,
     unreadCount,
     isLoading,
+    nativeEnabled,
     loadHistory,
     markRead,
     markAllRead,
     refreshUnreadCount,
     subscribe,
     unsubscribe,
+    requestPermission,
   }
 }

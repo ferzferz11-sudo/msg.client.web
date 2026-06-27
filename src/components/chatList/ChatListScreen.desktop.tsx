@@ -1,9 +1,16 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { ChatList } from '@/components/chatList/ChatList'
 import { ChatScreen } from '@/components/chat/ChatScreen'
 import { ProfileScreen } from '@/components/profile/ProfileScreen'
 import { ContactsScreen } from '@/components/contacts/ContactsScreen'
 import { FavoritesScreen } from '@/components/favorites/FavoritesScreen'
+import AIChatsScreenDesktop from '@/components/aiChats/AIChatsScreen.desktop'
+import { SettingsScreen } from '@/components/settings/SettingsScreen'
+import { ArchiveScreen } from '@/components/archive/ArchiveScreen'
+
+import { SearchScreen } from '@/components/search/SearchScreen'
+import { SecretChatScreen } from '@/components/secretChats/SecretChatScreen'
+import { generateRSAKeyPair, storePrivateKey } from '@/shared/crypto'
 import { useChats } from '@/hooks/useChats'
 import { useChatListV2 } from '@/hooks/useChatListV2'
 import { useChatStore } from '@/store/chatStore'
@@ -18,61 +25,27 @@ interface ChatListScreenProps {
   onProfile?: () => void
   onContacts?: () => void
   onFavorites?: () => void
-  rightPanel?: 'profile' | 'contacts' | 'favorites' | null
+  onAIChats?: () => void
+  onSettings?: () => void
+  onArchive?: () => void
+  onSearch?: () => void
+  rightPanel?: 'profile' | 'contacts' | 'favorites' | 'aiChats' | 'settings' | 'archive' | 'search' | null
   onCloseRightPanel?: () => void
 }
 
-export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, onFavorites, rightPanel, onCloseRightPanel }: ChatListScreenProps) {
+export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, onFavorites, onAIChats, onSettings, onArchive, onSearch, rightPanel, onCloseRightPanel }: ChatListScreenProps) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const { chats, isLoadingChats, openChat } = useChats()
   const { pinChat, unpinChat, archiveChat, setMutedChat, deleteChat } = useChatListV2()
   const setActiveChatIdInStore = useChatStore((s) => s.setActiveChatId)
   const updateChat = useChatStore((s) => s.updateChat)
   const user = useAuthStore((s) => s.user)
-  const [typingChats, setTypingChats] = useState<Record<string, boolean>>({})
-  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+  const [typingChats] = useState<Record<string, boolean>>({})
 
   const [showNewChat, setShowNewChat] = useState(false)
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [userSearch, setUserSearch] = useState('')
   const [loadingUsers, setLoadingUsers] = useState(false)
-
-  const handleTypingEvent = useCallback((event: { roomId: string; username: string; isTyping: boolean }) => {
-    if (!event.roomId) return
-    if (event.username === user?.username) return
-    const chatId = event.roomId
-    const timerMap = typingTimersRef.current
-
-    if (timerMap.has(chatId)) {
-      clearTimeout(timerMap.get(chatId)!)
-      timerMap.delete(chatId)
-    }
-
-    setTypingChats((prev) => ({ ...prev, [chatId]: event.isTyping || false }))
-
-    if (event.isTyping) {
-      const timer = setTimeout(() => {
-        setTypingChats((prev) => ({ ...prev, [chatId]: false }))
-        timerMap.delete(chatId)
-      }, 3000)
-      timerMap.set(chatId, timer)
-    }
-  }, [user?.username])
-
-  useEffect(() => {
-    try {
-      const cleanup = grpcClient.openTypingStream(handleTypingEvent)
-      return () => {
-        cleanup()
-        typingTimersRef.current.forEach((t) => clearTimeout(t))
-      }
-    } catch (err) {
-      console.warn('[Typing] Stream init failed (BiDi not supported):', err)
-      return () => {
-        typingTimersRef.current.forEach((t) => clearTimeout(t))
-      }
-    }
-  }, [handleTypingEvent])
 
   const handleChatClick = useCallback((chatId: string) => {
     openChat(chatId)
@@ -114,6 +87,18 @@ export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, 
       console.error('Failed to create chat:', err)
     }
   }, [user, handleChatClick])
+
+  const handleStartSecretChat = useCallback(async (targetUser: User) => {
+    setShowNewChat(false)
+    try {
+      const { publicKeyB64, privateKey } = await generateRSAKeyPair()
+      const chatId = await grpcClient.createSecretChat(targetUser.username, targetUser.id, publicKeyB64)
+      await storePrivateKey(chatId, privateKey)
+      onChatSelect(`secret:${chatId}`)
+    } catch (err) {
+      console.error('Failed to create secret chat:', err)
+    }
+  }, [user, onChatSelect])
 
   return (
     <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
@@ -233,6 +218,26 @@ export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, 
           </div>
         </div>
 
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 2,
+          padding: '6px 12px',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          flexShrink: 0,
+        }}>
+          {onAIChats && (
+            <SidebarNavBtn icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1.27a7 7 0 01-6.46 4.28A7 7 0 018 18H7a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2z"/><circle cx="12" cy="14" r="3"/></svg>} label="AI" onClick={onAIChats} />
+          )}
+          {onSearch && (
+            <SidebarNavBtn icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>} label="Поиск" onClick={onSearch} />
+          )}
+          {onArchive && (
+            <SidebarNavBtn icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>} label="Архив" onClick={onArchive} />
+          )}
+          {onSettings && (
+            <SidebarNavBtn icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>} label="Настройки" onClick={onSettings} />
+          )}
+        </div>
+
         <div style={{ flex: 1, overflow: 'hidden' }}>
           <ChatList
             chats={chats}
@@ -260,8 +265,20 @@ export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, 
           <ContactsScreen onBack={onCloseRightPanel || (() => {})} />
         ) : rightPanel === 'favorites' ? (
           <FavoritesScreen onBack={onCloseRightPanel || (() => {})} />
+        ) : rightPanel === 'aiChats' ? (
+          <AIChatsScreenDesktop onBack={onCloseRightPanel || (() => {})} />
+        ) : rightPanel === 'settings' ? (
+          <SettingsScreen onBack={onCloseRightPanel || (() => {})} />
+        ) : rightPanel === 'archive' ? (
+          <ArchiveScreen onBack={onCloseRightPanel || (() => {})} onChatSelect={(chatId) => { onCloseRightPanel?.(); handleChatClick(chatId); }} />
+        ) : rightPanel === 'search' ? (
+          <SearchScreen onBack={onCloseRightPanel || (() => {})} onChatSelect={(chatId) => { onCloseRightPanel?.(); handleChatClick(chatId); }} />
         ) : activeChatId ? (
-          <ChatScreen chatId={activeChatId} onBack={handleBack} />
+          activeChatId.startsWith('secret:') ? (
+            <SecretChatScreen chatId={activeChatId.slice(7)} onBack={handleBack} />
+          ) : (
+            <ChatScreen chatId={activeChatId} onBack={handleBack} />
+          )
         ) : (
           <div
             style={{
@@ -347,23 +364,41 @@ export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, 
                   .map((u) => (
                     <div
                       key={u.id}
-                      onClick={() => handleStartChat(u)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12,
-                        padding: '10px 8px', borderRadius: 10, cursor: 'pointer',
+                        padding: '10px 8px', borderRadius: 10,
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <div style={{
-                        width: 36, height: 36, borderRadius: 18,
-                        background: '#6b5ce7',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 14, color: '#fff', fontWeight: 600, flexShrink: 0,
-                      }}>
-                        {u.username[0]?.toUpperCase()}
+                      <div
+                        onClick={() => handleStartChat(u)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, cursor: 'pointer' }}
+                      >
+                        <div style={{
+                          width: 36, height: 36, borderRadius: 18,
+                          background: '#6b5ce7',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 14, color: '#fff', fontWeight: 600, flexShrink: 0,
+                        }}>
+                          {u.username[0]?.toUpperCase()}
+                        </div>
+                        <span style={{ fontSize: 14, color: '#fff' }}>{u.username}</span>
                       </div>
-                      <span style={{ fontSize: 14, color: '#fff' }}>{u.username}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleStartSecretChat(u) }}
+                        title="Секретный чат"
+                        style={{
+                          background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)',
+                          cursor: 'pointer', padding: 4, borderRadius: 6,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 16, flexShrink: 0,
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = '#4FAE4E')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.3)')}
+                      >
+                        🔐
+                      </button>
                     </div>
                   ))
               )}
@@ -372,5 +407,25 @@ export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, 
         </div>
       )}
     </div>
+  )
+}
+
+function SidebarNavBtn({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      style={{
+        background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
+        cursor: 'pointer', padding: '4px 8px', borderRadius: 6,
+        display: 'flex', alignItems: 'center', gap: 4,
+        fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap',
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.color = '#6b5ce7')}
+      onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+    >
+      {icon}
+      {label}
+    </button>
   )
 }

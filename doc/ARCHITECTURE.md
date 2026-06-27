@@ -9,6 +9,8 @@
 - **Build**: Vite 5 с code splitting (mobile/desktop chunks)
 - **Реалтайм**: BiDi gRPC стримы (чат), Server Streaming (AI, уведомления)
 - **PWA**: Service Worker, push уведомления
+- **E2EE**: RSA-OAEP 2048 + AES-GCM 256 (Web Crypto API)
+- **WebRTC**: Peer connection, STUN/TURN servers, callSession signaling
 
 ## Паттерны
 
@@ -27,16 +29,37 @@ Component → Hook → grpcClient (singleton) → gRPC-web transport → Envoy �
 ```
 1. signInV2(username, password) → access_token (15 мин) + refresh_token (30 дней)
 2. Каждый gRPC запрос: Authorization: Bearer <access_token>
-3. access истёк → RefreshToken(refresh_token) → новые токены
+3. access истёк → RefreshToken(refresh_token) → новые токены (rotation)
 4. Токены в localStorage → автоматическое восстановление сессии
+5. При permanent fail → logout + reload
 ```
 
 ### gRPC Interceptor
 - `isRefreshing` флаг блокирует рекурсию (refreshToken сам проходит через interceptor)
 - `refreshFailedAt` — 30s cooldown после неудачного refresh
+- `permanentFail` — блокирует все запросы после永久失败
 - Stale token fallback — токен всегда attached к запросу
 - Экспоненциальный retry (3 попытки) для network/server ошибок
 - Классификация ошибок: network | auth | rate_limit | server | unknown
+
+### Message V2 (oneof content)
+```typescript
+// Правильное создание запроса:
+const request = new SendMessageV2Request({
+  roomId,
+  content: { case: 'text', value: text },
+})
+// НЕ используйте any-тип — oneof не сериализуется корректно
+```
+
+### E2EE Flow
+```
+1. Key exchange: RSA-OAEP 2048 (public key → server)
+2. Shared key: AES-GCM 256 (обмен через exchangeSecretKey)
+3. Message encryption: AES-GCM(plaintext, sharedKey) → base64
+4. Send: { isE2ee: true, e2eePayload: base64 ciphertext }
+5. Receive: base64 → AES-GCM decrypt → plaintext
+```
 
 ## Серверная инфраструктура (13.140.25.249)
 
@@ -45,7 +68,7 @@ Component → Hook → grpcClient (singleton) → gRPC-web transport → Envoy �
 | Nginx | 80 | /web → dist, /messenger → envoy:9090, /info /health → 8082 |
 | Envoy | 9090 | gRPC-web proxy → gRPC backend 50051 |
 | Lavender Server | 50051 (prod), 50052 (dev) | systemd `lavender-server` |
-| HTTP API | 8082 (prod), 8083 (dev) | uploads, /info, /health, /files |
+| HTTP API | 8082 (prod), 8083 (dev) | uploads, /info, /health, /files, /turn-credentials |
 
 - **SSH**: `lava` (root@13.140.25.249, key `~/.ssh/lava`)
 - **Envoy quirk**: `--network host`, `chmod 644`, всегда `docker rm -f` перед запуском
@@ -56,18 +79,20 @@ Component → Hook → grpcClient (singleton) → gRPC-web transport → Envoy �
 
 | Экран | Mobile | Desktop | Описание |
 |-------|--------|---------|----------|
-| AuthScreen | ✅ | ✅ | Вход/регистрация |
+| AuthScreen | ✅ | ✅ | Вход/регистрация + password reset |
 | ChatListScreen | ✅ | ✅ | Список чатов + сайдбар |
-| ChatScreen | ✅ | ✅ | Чат с сообщениями |
-| AIChatsScreen | ✅ | ✅ | AI чаты v2 + агенты |
+| ChatScreen | ✅ | ✅ | Чат с сообщениями + reactions + media |
+| AIChatsScreen | ✅ | ✅ | AI чаты v2 + агенты + marketplace |
 | ContactsScreen | ✅ | — | Контакты + каталог |
 | ProfileScreen | ✅ | ✅ | Профиль (модал) |
 | SettingsScreen | ✅ | — | Настройки |
 | SearchScreen | ✅ | — | Поиск чатов |
-| NotificationsScreen | ✅ | — | Уведомления |
+| NotificationsScreen | ✅ | ✅ | Уведомления + native notifications |
 | PinnedMessagesScreen | ✅ | — | Закреплённые |
 | ArchiveScreen | ✅ | — | Архив |
 | FavoritesScreen | ✅ | ✅ | Избранное (self-chat) |
+| SecretChatScreen | ✅ | ✅ | E2EE ключевой обмен |
+| CallScreen | ✅ | ✅ | WebRTC звонок |
 
 ## Resilience
 
@@ -75,3 +100,5 @@ Component → Hook → grpcClient (singleton) → gRPC-web transport → Envoy �
 - **Auto-reconnect**: exponential backoff (макс 30с)
 - **Offline mode**: индикаторы + показ кэшированных данных
 - **Health polling**: GET `/health` при ошибках подключения
+- **Auth recovery**: permanent fail → logout + reload
+- **Auto update**: version.json polling → UpdateBanner → cache clear → reload

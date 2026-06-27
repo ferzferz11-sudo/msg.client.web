@@ -1,12 +1,14 @@
 // ============================================
 // useChatMessages — Chat Messages Hook
 // Uses V2 methods with V1 fallback for history.
+// Supports E2EE encryption for secret chats.
 // ============================================
 
 import { useEffect, useCallback, useRef, useState } from 'react'
 import { useChatStore } from '@/store/chatStore'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useAuthStore } from '@/store/authStore'
+import { loadSharedKey, aesEncrypt, aesDecrypt } from '@/shared/crypto'
 import type { Message } from '@/shared/types'
 
 const DRAFT_DEBOUNCE_MS = 800
@@ -14,12 +16,13 @@ const TYPING_TIMEOUT_MS = 3000
 
 interface UseChatMessagesOptions {
   chatId: string | null
+  isSecret?: boolean
   onServerShutdown?: () => void
   onReconnecting?: (isReconnecting: boolean) => void
   onStreamError?: (error: string) => void
 }
 
-export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onStreamError }: UseChatMessagesOptions) {
+export function useChatMessages({ chatId, isSecret = false, onServerShutdown, onReconnecting, onStreamError }: UseChatMessagesOptions) {
   const messages = useChatStore((s) => (chatId ? s.getChatMessages(chatId) : []))
   const isLoadingMessages = useChatStore((s) => s.isLoadingMessages)
   const isSendingMessage = useChatStore((s) => s.isSendingMessage)
@@ -63,6 +66,17 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
   const userIdRef = useRef(user?.id || '')
   userIdRef.current = user?.id || ''
 
+  const encryptKeyRef = useRef<CryptoKey | null>(null)
+  const isSecretRef = useRef(isSecret)
+  isSecretRef.current = isSecret
+
+  const chatV2SendRef = useRef<((msg: any) => void) | null>(null)
+
+  useEffect(() => {
+    if (!chatId || !isSecret) { encryptKeyRef.current = null; return }
+    loadSharedKey(chatId).then((key) => { encryptKeyRef.current = key }).catch(() => {})
+  }, [chatId, isSecret])
+
   useEffect(() => {
     if (!chatId || !user?.id) return
     grpcClient.getDraft(user.id, chatId).then((d) => {
@@ -78,7 +92,9 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
       if (isTypingRef.current && chatIdRef.current && user) {
         isTypingRef.current = false
-        grpcClient.sendTyping(chatIdRef.current, user.username, user.id, false).next().catch(() => {})
+        if (chatV2SendRef.current) {
+          chatV2SendRef.current({ typing: { isTyping: false } })
+        }
       }
     }
   }, [chatId, user?.id])
@@ -106,20 +122,21 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
 
   const sendTypingIndicator = useCallback((isTyping: boolean) => {
     if (!chatIdRef.current || !user) return
-    const roomId = chatIdRef.current
-    const username = user.username
-    const userId = user.id
 
     if (isTyping && isTypingRef.current) return
     isTypingRef.current = isTyping
 
-    grpcClient.sendTyping(roomId, username, userId, isTyping).next().catch(() => {})
+    if (chatV2SendRef.current) {
+      chatV2SendRef.current({ typing: { isTyping } })
+    }
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
     if (isTyping) {
       typingTimeoutRef.current = setTimeout(() => {
         isTypingRef.current = false
-        grpcClient.sendTyping(roomId, username, userId, false).next().catch(() => {})
+        if (chatV2SendRef.current) {
+          chatV2SendRef.current({ typing: { isTyping: false } })
+        }
       }, TYPING_TIMEOUT_MS)
     }
   }, [user])
@@ -146,18 +163,33 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
 
     grpcClient
       .getHistoryV2(chatId, 50)
-      .then(({ messages: msgs, nextCursor, hasMore: more }) => {
+      .then(async ({ messages: msgs, nextCursor, hasMore: more }) => {
         if (cancelled || chatIdRef.current !== chatId) return
-        const resolved = msgs.map((m) => {
-          if (!m.user && m.userId && userMapRef.current[m.userId]) {
-            return { ...m, user: userMapRef.current[m.userId] }
+        let resolved = msgs.map((m) => {
+          const uid = m.userId || ''
+          const user = userMapRef.current[uid]
+          return {
+            ...m,
+            user: m.user || user || '',
+            isOutgoing: uid === userIdRef.current,
           }
-          return m
         })
+        if (isSecretRef.current && encryptKeyRef.current) {
+          resolved = await Promise.all(resolved.map(async (m) => {
+            if (m.text) {
+              try { return { ...m, text: await aesDecrypt(encryptKeyRef.current!, m.text) } } catch { return m }
+            }
+            return m
+          }))
+        }
         setMessages(chatId, resolved)
         setHasMore(more)
         nextCursorRef.current = nextCursor
         usingV2Ref.current = nextCursor !== '' || resolved.length > 0
+
+        if (resolved.length > 0 && user?.username && user?.id) {
+          grpcClient.markRead(chatId, user.username, user.id).catch(() => {})
+        }
       })
       .catch((err) => {
         if (cancelled) return
@@ -184,7 +216,7 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
   onStreamErrorRef.current = onStreamError
 
   const handleStreamEvent = useCallback(
-    (event: { type: string; message?: Message; chatId?: string; userId?: string; isTyping?: boolean; error?: string }) => {
+    async (event: { type: string; message?: Message; chatId?: string; userId?: string; isTyping?: boolean; error?: string }) => {
       if (event.type === 'error') {
         const errorMsg = event.error || ''
         if (errorMsg.includes('SERVER_SHUTTINGDOWN')) {
@@ -199,9 +231,18 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
       if (event.type === 'message' && event.message) {
         if (event.message.roomId === chatIdRef.current) {
           let msg = event.message
-          if (!msg.user && msg.userId && userMapRef.current[msg.userId]) {
-            msg = { ...msg, user: userMapRef.current[msg.userId] }
+          const uid = msg.userId || ''
+          msg = {
+            ...msg,
+            user: msg.user || userMapRef.current[uid] || '',
+            isOutgoing: uid === userIdRef.current,
           }
+          if (isSecretRef.current && encryptKeyRef.current && msg.text) {
+            try {
+              msg = { ...msg, text: await aesDecrypt(encryptKeyRef.current, msg.text) }
+            } catch {}
+          }
+          if (!msg.text && !msg.imageUrl && !msg.voiceUrl && !msg.fileUrl) return
           addMessage(msg)
         }
       }
@@ -233,8 +274,9 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
 
   useEffect(() => {
     if (!chatId) return
-    const cleanup = grpcClient.openChatV2Stream(chatId, handleStreamEvent)
-    return () => { cleanup() }
+    const { cleanup, send } = grpcClient.openChatV2Stream(chatId, handleStreamEvent)
+    chatV2SendRef.current = send
+    return () => { cleanup(); chatV2SendRef.current = null }
   }, [chatId, handleStreamEvent])
 
   const loadMore = useCallback(async () => {
@@ -250,12 +292,23 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
       )
 
       if (olderMsgs.length > 0) {
-        const resolved = olderMsgs.map((m) => {
-          if (!m.user && m.userId && userMapRef.current[m.userId]) {
-            return { ...m, user: userMapRef.current[m.userId] }
+        let resolved = olderMsgs.map((m) => {
+          const uid = m.userId || ''
+          const user = userMapRef.current[uid]
+          return {
+            ...m,
+            user: m.user || user || '',
+            isOutgoing: uid === userIdRef.current,
           }
-          return m
         })
+        if (isSecretRef.current && encryptKeyRef.current) {
+          resolved = await Promise.all(resolved.map(async (m) => {
+            if (m.text) {
+              try { return { ...m, text: await aesDecrypt(encryptKeyRef.current!, m.text) } } catch { return m }
+            }
+            return m
+          }))
+        }
         prependMessages(chatId, resolved)
       }
 
@@ -276,11 +329,24 @@ export function useChatMessages({ chatId, onServerShutdown, onReconnecting, onSt
       clearDraft()
       try {
         const replyToId = replyToMessage?.id
+        let textToSend = content.trim()
+
+        if (isSecretRef.current && encryptKeyRef.current) {
+          textToSend = await aesEncrypt(encryptKeyRef.current, textToSend)
+        }
+
         const message = await grpcClient.sendMessageV2(
           chatId,
-          content.trim(),
+          textToSend,
           replyToId,
         )
+
+        if (isSecretRef.current && encryptKeyRef.current) {
+          try {
+            message.text = await aesDecrypt(encryptKeyRef.current, message.text)
+          } catch {}
+        }
+
         addMessage(message)
         setReplyToMessage(null)
       } catch (err) {

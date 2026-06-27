@@ -1,11 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState } from 'react'
 import { Screen } from '@/components/common'
 import { ChatList } from '@/components/chatList/ChatList'
 import { useChats } from '@/hooks/useChats'
 import { useChatListV2 } from '@/hooks/useChatListV2'
 import { useChatStore } from '@/store/chatStore'
-import { useAuthStore } from '@/store/authStore'
-import { grpcClient } from '@/shared/api/grpcClient'
 
 interface ChatListScreenProps {
   onChatSelect: (chatId: string) => void
@@ -19,39 +17,7 @@ export function ChatListScreen({ onChatSelect, onSearch, onProfile, onArchive }:
   const { chats, isLoadingChats, openChat } = useChats()
   const setActiveChatId = useChatStore((s) => s.setActiveChatId)
   const { pinChat, unpinChat, archiveChat, setMutedChat, deleteChat } = useChatListV2()
-  const user = useAuthStore((s) => s.user)
-  const [typingChats, setTypingChats] = useState<Record<string, boolean>>({})
-  const typingTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-
-  const handleTypingEvent = useCallback((event: { roomId: string; username: string; isTyping: boolean }) => {
-    if (!event.roomId) return
-    if (event.username === user?.username) return
-    const chatId = event.roomId
-    const timerMap = typingTimersRef.current
-
-    if (timerMap.has(chatId)) {
-      clearTimeout(timerMap.get(chatId)!)
-      timerMap.delete(chatId)
-    }
-
-    setTypingChats((prev) => ({ ...prev, [chatId]: event.isTyping || false }))
-
-    if (event.isTyping) {
-      const timer = setTimeout(() => {
-        setTypingChats((prev) => ({ ...prev, [chatId]: false }))
-        timerMap.delete(chatId)
-      }, 3000)
-      timerMap.set(chatId, timer)
-    }
-  }, [user?.username])
-
-  useEffect(() => {
-    const cleanup = grpcClient.openTypingStream(handleTypingEvent)
-    return () => {
-      cleanup()
-      typingTimersRef.current.forEach((t) => clearTimeout(t))
-    }
-  }, [handleTypingEvent])
+  const [typingChats] = useState<Record<string, boolean>>({})
 
   const handleChatClick = (chatId: string) => {
     openChat(chatId)

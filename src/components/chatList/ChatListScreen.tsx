@@ -13,7 +13,10 @@ export interface ChatListScreenProps {
   onContacts?: () => void
   onFavorites?: () => void
   onArchive?: () => void
-  rightPanel?: 'profile' | 'contacts' | 'favorites' | null
+  onAIChats?: () => void
+  onSettings?: () => void
+  onNotifications?: () => void
+  rightPanel?: 'profile' | 'contacts' | 'favorites' | 'aiChats' | 'settings' | 'archive' | 'notifications' | 'search' | null
   onCloseRightPanel?: () => void
 }
 

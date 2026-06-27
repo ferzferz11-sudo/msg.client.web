@@ -5374,839 +5374,6 @@ proto3.util.setEnumType(CallMessage_Type, "messenger.CallMessage.Type", [
 ]);
 
 /**
- * @generated from message messenger.ChatV2Message
- */
-export class ChatV2Message extends Message$1<ChatV2Message> {
-  /**
-   * Auth (first message only)
-   *
-   * @generated from field: string jwt_token = 1;
-   */
-  jwtToken = "";
-
-  /**
-   * @generated from field: string room_id = 2;
-   */
-  roomId = "";
-
-  /**
-   * @generated from oneof messenger.ChatV2Message.payload
-   */
-  payload: {
-    /**
-     * @generated from field: messenger.MessageV2 message = 10;
-     */
-    value: MessageV2;
-    case: "message";
-  } | {
-    /**
-     * @generated from field: messenger.ChatV2Typing typing = 11;
-     */
-    value: ChatV2Typing;
-    case: "typing";
-  } | {
-    /**
-     * @generated from field: messenger.ChatV2System system = 12;
-     */
-    value: ChatV2System;
-    case: "system";
-  } | { case: undefined; value?: undefined } = { case: undefined };
-
-  constructor(data?: PartialMessage<ChatV2Message>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.ChatV2Message";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "jwt_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 10, name: "message", kind: "message", T: MessageV2, oneof: "payload" },
-    { no: 11, name: "typing", kind: "message", T: ChatV2Typing, oneof: "payload" },
-    { no: 12, name: "system", kind: "message", T: ChatV2System, oneof: "payload" },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ChatV2Message {
-    return new ChatV2Message().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ChatV2Message {
-    return new ChatV2Message().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ChatV2Message {
-    return new ChatV2Message().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: ChatV2Message | PlainMessage<ChatV2Message> | undefined, b: ChatV2Message | PlainMessage<ChatV2Message> | undefined): boolean {
-    return proto3.util.equals(ChatV2Message, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.ChatV2Typing
- */
-export class ChatV2Typing extends Message$1<ChatV2Typing> {
-  /**
-   * @generated from field: bool is_typing = 1;
-   */
-  isTyping = false;
-
-  constructor(data?: PartialMessage<ChatV2Typing>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.ChatV2Typing";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "is_typing", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ChatV2Typing {
-    return new ChatV2Typing().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ChatV2Typing {
-    return new ChatV2Typing().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ChatV2Typing {
-    return new ChatV2Typing().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: ChatV2Typing | PlainMessage<ChatV2Typing> | undefined, b: ChatV2Typing | PlainMessage<ChatV2Typing> | undefined): boolean {
-    return proto3.util.equals(ChatV2Typing, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.ChatV2System
- */
-export class ChatV2System extends Message$1<ChatV2System> {
-  /**
-   * @generated from field: string type = 1;
-   */
-  type = "";
-
-  /**
-   * @generated from field: string message = 2;
-   */
-  message = "";
-
-  constructor(data?: PartialMessage<ChatV2System>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.ChatV2System";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ChatV2System {
-    return new ChatV2System().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ChatV2System {
-    return new ChatV2System().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ChatV2System {
-    return new ChatV2System().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: ChatV2System | PlainMessage<ChatV2System> | undefined, b: ChatV2System | PlainMessage<ChatV2System> | undefined): boolean {
-    return proto3.util.equals(ChatV2System, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.MessageV2
- */
-export class MessageV2 extends Message$1<MessageV2> {
-  /**
-   * @generated from field: string id = 1;
-   */
-  id = "";
-
-  /**
-   * @generated from field: string room_id = 2;
-   */
-  roomId = "";
-
-  /**
-   * @generated from field: string sender_id = 3;
-   */
-  senderId = "";
-
-  /**
-   * @generated from oneof messenger.MessageV2.content
-   */
-  content: {
-    /**
-     * @generated from field: string text = 10;
-     */
-    value: string;
-    case: "text";
-  } | {
-    /**
-     * @generated from field: messenger.MessageMedia media = 11;
-     */
-    value: MessageMedia;
-    case: "media";
-  } | {
-    /**
-     * @generated from field: messenger.MessageReply reply = 12;
-     */
-    value: MessageReply;
-    case: "reply";
-  } | { case: undefined; value?: undefined } = { case: undefined };
-
-  /**
-   * @generated from field: bool edited = 20;
-   */
-  edited = false;
-
-  /**
-   * @generated from field: bool is_read = 21;
-   */
-  isRead = false;
-
-  /**
-   * @generated from field: google.protobuf.Timestamp created_at = 22;
-   */
-  createdAt?: Timestamp;
-
-  /**
-   * @generated from field: bytes reactions = 23;
-   */
-  reactions = new Uint8Array(0);
-
-  /**
-   * @generated from field: bool is_e2ee = 30;
-   */
-  isE2ee = false;
-
-  /**
-   * @generated from field: string e2ee_payload = 31;
-   */
-  e2eePayload = "";
-
-  constructor(data?: PartialMessage<MessageV2>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.MessageV2";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "sender_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 10, name: "text", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "content" },
-    { no: 11, name: "media", kind: "message", T: MessageMedia, oneof: "content" },
-    { no: 12, name: "reply", kind: "message", T: MessageReply, oneof: "content" },
-    { no: 20, name: "edited", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 21, name: "is_read", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 22, name: "created_at", kind: "message", T: Timestamp },
-    { no: 23, name: "reactions", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
-    { no: 30, name: "is_e2ee", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 31, name: "e2ee_payload", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MessageV2 {
-    return new MessageV2().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MessageV2 {
-    return new MessageV2().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MessageV2 {
-    return new MessageV2().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: MessageV2 | PlainMessage<MessageV2> | undefined, b: MessageV2 | PlainMessage<MessageV2> | undefined): boolean {
-    return proto3.util.equals(MessageV2, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.MessageMedia
- */
-export class MessageMedia extends Message$1<MessageMedia> {
-  /**
-   * @generated from field: string type = 1;
-   */
-  type = "";
-
-  /**
-   * @generated from field: string url = 2;
-   */
-  url = "";
-
-  /**
-   * @generated from field: repeated string urls = 3;
-   */
-  urls: string[] = [];
-
-  /**
-   * @generated from field: int32 duration = 4;
-   */
-  duration = 0;
-
-  constructor(data?: PartialMessage<MessageMedia>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.MessageMedia";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "urls", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 4, name: "duration", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MessageMedia {
-    return new MessageMedia().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MessageMedia {
-    return new MessageMedia().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MessageMedia {
-    return new MessageMedia().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: MessageMedia | PlainMessage<MessageMedia> | undefined, b: MessageMedia | PlainMessage<MessageMedia> | undefined): boolean {
-    return proto3.util.equals(MessageMedia, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.MessageReply
- */
-export class MessageReply extends Message$1<MessageReply> {
-  /**
-   * @generated from field: string message_id = 1;
-   */
-  messageId = "";
-
-  /**
-   * @generated from field: string preview = 2;
-   */
-  preview = "";
-
-  constructor(data?: PartialMessage<MessageReply>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.MessageReply";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "message_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "preview", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MessageReply {
-    return new MessageReply().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MessageReply {
-    return new MessageReply().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MessageReply {
-    return new MessageReply().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: MessageReply | PlainMessage<MessageReply> | undefined, b: MessageReply | PlainMessage<MessageReply> | undefined): boolean {
-    return proto3.util.equals(MessageReply, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.GetHistoryV2Request
- */
-export class GetHistoryV2Request extends Message$1<GetHistoryV2Request> {
-  /**
-   * @generated from field: string room_id = 1;
-   */
-  roomId = "";
-
-  /**
-   * @generated from field: int32 limit = 2;
-   */
-  limit = 0;
-
-  /**
-   * @generated from field: string cursor = 3;
-   */
-  cursor = "";
-
-  constructor(data?: PartialMessage<GetHistoryV2Request>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.GetHistoryV2Request";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
-    { no: 3, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetHistoryV2Request {
-    return new GetHistoryV2Request().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetHistoryV2Request {
-    return new GetHistoryV2Request().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetHistoryV2Request {
-    return new GetHistoryV2Request().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: GetHistoryV2Request | PlainMessage<GetHistoryV2Request> | undefined, b: GetHistoryV2Request | PlainMessage<GetHistoryV2Request> | undefined): boolean {
-    return proto3.util.equals(GetHistoryV2Request, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.GetHistoryV2Response
- */
-export class GetHistoryV2Response extends Message$1<GetHistoryV2Response> {
-  /**
-   * @generated from field: repeated messenger.MessageV2 messages = 1;
-   */
-  messages: MessageV2[] = [];
-
-  /**
-   * @generated from field: string next_cursor = 2;
-   */
-  nextCursor = "";
-
-  /**
-   * @generated from field: bool has_more = 3;
-   */
-  hasMore = false;
-
-  constructor(data?: PartialMessage<GetHistoryV2Response>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.GetHistoryV2Response";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "messages", kind: "message", T: MessageV2, repeated: true },
-    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "has_more", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetHistoryV2Response {
-    return new GetHistoryV2Response().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetHistoryV2Response {
-    return new GetHistoryV2Response().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetHistoryV2Response {
-    return new GetHistoryV2Response().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: GetHistoryV2Response | PlainMessage<GetHistoryV2Response> | undefined, b: GetHistoryV2Response | PlainMessage<GetHistoryV2Response> | undefined): boolean {
-    return proto3.util.equals(GetHistoryV2Response, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.SendMessageV2Request
- */
-export class SendMessageV2Request extends Message$1<SendMessageV2Request> {
-  /**
-   * @generated from field: string room_id = 1;
-   */
-  roomId = "";
-
-  /**
-   * @generated from oneof messenger.SendMessageV2Request.content
-   */
-  content: {
-    /**
-     * @generated from field: string text = 2;
-     */
-    value: string;
-    case: "text";
-  } | {
-    /**
-     * @generated from field: messenger.MessageMedia media = 3;
-     */
-    value: MessageMedia;
-    case: "media";
-  } | { case: undefined; value?: undefined } = { case: undefined };
-
-  /**
-   * @generated from field: string reply_to_id = 4;
-   */
-  replyToId = "";
-
-  /**
-   * @generated from field: bool is_e2ee = 5;
-   */
-  isE2ee = false;
-
-  /**
-   * @generated from field: string e2ee_payload = 6;
-   */
-  e2eePayload = "";
-
-  constructor(data?: PartialMessage<SendMessageV2Request>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.SendMessageV2Request";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "text", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "content" },
-    { no: 3, name: "media", kind: "message", T: MessageMedia, oneof: "content" },
-    { no: 4, name: "reply_to_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 5, name: "is_e2ee", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 6, name: "e2ee_payload", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SendMessageV2Request {
-    return new SendMessageV2Request().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SendMessageV2Request {
-    return new SendMessageV2Request().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SendMessageV2Request {
-    return new SendMessageV2Request().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: SendMessageV2Request | PlainMessage<SendMessageV2Request> | undefined, b: SendMessageV2Request | PlainMessage<SendMessageV2Request> | undefined): boolean {
-    return proto3.util.equals(SendMessageV2Request, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.SendMessageV2Response
- */
-export class SendMessageV2Response extends Message$1<SendMessageV2Response> {
-  /**
-   * @generated from field: messenger.MessageV2 message = 1;
-   */
-  message?: MessageV2;
-
-  /**
-   * @generated from field: bool success = 2;
-   */
-  success = false;
-
-  /**
-   * @generated from field: string error = 3;
-   */
-  error = "";
-
-  constructor(data?: PartialMessage<SendMessageV2Response>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.SendMessageV2Response";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "message", kind: "message", T: MessageV2 },
-    { no: 2, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 3, name: "error", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SendMessageV2Response {
-    return new SendMessageV2Response().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SendMessageV2Response {
-    return new SendMessageV2Response().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SendMessageV2Response {
-    return new SendMessageV2Response().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: SendMessageV2Response | PlainMessage<SendMessageV2Response> | undefined, b: SendMessageV2Response | PlainMessage<SendMessageV2Response> | undefined): boolean {
-    return proto3.util.equals(SendMessageV2Response, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.EditMessageV2Request
- */
-export class EditMessageV2Request extends Message$1<EditMessageV2Request> {
-  /**
-   * @generated from field: string message_id = 1;
-   */
-  messageId = "";
-
-  /**
-   * @generated from field: string text = 2;
-   */
-  text = "";
-
-  constructor(data?: PartialMessage<EditMessageV2Request>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.EditMessageV2Request";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "message_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EditMessageV2Request {
-    return new EditMessageV2Request().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EditMessageV2Request {
-    return new EditMessageV2Request().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EditMessageV2Request {
-    return new EditMessageV2Request().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: EditMessageV2Request | PlainMessage<EditMessageV2Request> | undefined, b: EditMessageV2Request | PlainMessage<EditMessageV2Request> | undefined): boolean {
-    return proto3.util.equals(EditMessageV2Request, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.EditMessageV2Response
- */
-export class EditMessageV2Response extends Message$1<EditMessageV2Response> {
-  /**
-   * @generated from field: bool success = 1;
-   */
-  success = false;
-
-  /**
-   * @generated from field: string message = 2;
-   */
-  message = "";
-
-  constructor(data?: PartialMessage<EditMessageV2Response>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.EditMessageV2Response";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EditMessageV2Response {
-    return new EditMessageV2Response().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EditMessageV2Response {
-    return new EditMessageV2Response().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EditMessageV2Response {
-    return new EditMessageV2Response().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: EditMessageV2Response | PlainMessage<EditMessageV2Response> | undefined, b: EditMessageV2Response | PlainMessage<EditMessageV2Response> | undefined): boolean {
-    return proto3.util.equals(EditMessageV2Response, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.DeleteMessageV2Request
- */
-export class DeleteMessageV2Request extends Message$1<DeleteMessageV2Request> {
-  /**
-   * @generated from field: repeated string message_ids = 1;
-   */
-  messageIds: string[] = [];
-
-  /**
-   * @generated from field: string requester_user_id = 2;
-   */
-  requesterUserId = "";
-
-  constructor(data?: PartialMessage<DeleteMessageV2Request>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.DeleteMessageV2Request";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "message_ids", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
-    { no: 2, name: "requester_user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteMessageV2Request {
-    return new DeleteMessageV2Request().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteMessageV2Request {
-    return new DeleteMessageV2Request().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteMessageV2Request {
-    return new DeleteMessageV2Request().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: DeleteMessageV2Request | PlainMessage<DeleteMessageV2Request> | undefined, b: DeleteMessageV2Request | PlainMessage<DeleteMessageV2Request> | undefined): boolean {
-    return proto3.util.equals(DeleteMessageV2Request, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.DeleteMessageV2Response
- */
-export class DeleteMessageV2Response extends Message$1<DeleteMessageV2Response> {
-  /**
-   * @generated from field: bool success = 1;
-   */
-  success = false;
-
-  constructor(data?: PartialMessage<DeleteMessageV2Response>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.DeleteMessageV2Response";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteMessageV2Response {
-    return new DeleteMessageV2Response().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteMessageV2Response {
-    return new DeleteMessageV2Response().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteMessageV2Response {
-    return new DeleteMessageV2Response().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: DeleteMessageV2Response | PlainMessage<DeleteMessageV2Response> | undefined, b: DeleteMessageV2Response | PlainMessage<DeleteMessageV2Response> | undefined): boolean {
-    return proto3.util.equals(DeleteMessageV2Response, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.SetReactionV2Request
- */
-export class SetReactionV2Request extends Message$1<SetReactionV2Request> {
-  /**
-   * @generated from field: string message_id = 1;
-   */
-  messageId = "";
-
-  /**
-   * @generated from field: string emoji = 2;
-   */
-  emoji = "";
-
-  constructor(data?: PartialMessage<SetReactionV2Request>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.SetReactionV2Request";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "message_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "emoji", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetReactionV2Request {
-    return new SetReactionV2Request().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetReactionV2Request {
-    return new SetReactionV2Request().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetReactionV2Request {
-    return new SetReactionV2Request().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: SetReactionV2Request | PlainMessage<SetReactionV2Request> | undefined, b: SetReactionV2Request | PlainMessage<SetReactionV2Request> | undefined): boolean {
-    return proto3.util.equals(SetReactionV2Request, a, b);
-  }
-}
-
-/**
- * @generated from message messenger.SetReactionV2Response
- */
-export class SetReactionV2Response extends Message$1<SetReactionV2Response> {
-  /**
-   * @generated from field: bool success = 1;
-   */
-  success = false;
-
-  /**
-   * @generated from field: bytes reactions = 2;
-   */
-  reactions = new Uint8Array(0);
-
-  constructor(data?: PartialMessage<SetReactionV2Response>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "messenger.SetReactionV2Response";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 2, name: "reactions", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetReactionV2Response {
-    return new SetReactionV2Response().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetReactionV2Response {
-    return new SetReactionV2Response().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetReactionV2Response {
-    return new SetReactionV2Response().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: SetReactionV2Response | PlainMessage<SetReactionV2Response> | undefined, b: SetReactionV2Response | PlainMessage<SetReactionV2Response> | undefined): boolean {
-    return proto3.util.equals(SetReactionV2Response, a, b);
-  }
-}
-
-/**
  * @generated from message messenger.PipelineRequest
  */
 export class PipelineRequest extends Message$1<PipelineRequest> {
@@ -12670,6 +11837,847 @@ export class UpdateUserSettingsResponse extends Message$1<UpdateUserSettingsResp
 }
 
 /**
+ * @generated from message messenger.ChatV2Message
+ */
+export class ChatV2Message extends Message$1<ChatV2Message> {
+  /**
+   * Auth (first message only)
+   *
+   * @generated from field: string jwt_token = 1;
+   */
+  jwtToken = "";
+
+  /**
+   * @generated from field: string room_id = 2;
+   */
+  roomId = "";
+
+  /**
+   * Client application version (for last_client_version tracking)
+   *
+   * @generated from field: string client_version = 3;
+   */
+  clientVersion = "";
+
+  /**
+   * @generated from oneof messenger.ChatV2Message.payload
+   */
+  payload: {
+    /**
+     * @generated from field: messenger.MessageV2 message = 10;
+     */
+    value: MessageV2;
+    case: "message";
+  } | {
+    /**
+     * @generated from field: messenger.ChatV2Typing typing = 11;
+     */
+    value: ChatV2Typing;
+    case: "typing";
+  } | {
+    /**
+     * @generated from field: messenger.ChatV2System system = 12;
+     */
+    value: ChatV2System;
+    case: "system";
+  } | { case: undefined; value?: undefined } = { case: undefined };
+
+  constructor(data?: PartialMessage<ChatV2Message>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ChatV2Message";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "jwt_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "client_version", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "message", kind: "message", T: MessageV2, oneof: "payload" },
+    { no: 11, name: "typing", kind: "message", T: ChatV2Typing, oneof: "payload" },
+    { no: 12, name: "system", kind: "message", T: ChatV2System, oneof: "payload" },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ChatV2Message {
+    return new ChatV2Message().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ChatV2Message {
+    return new ChatV2Message().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ChatV2Message {
+    return new ChatV2Message().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ChatV2Message | PlainMessage<ChatV2Message> | undefined, b: ChatV2Message | PlainMessage<ChatV2Message> | undefined): boolean {
+    return proto3.util.equals(ChatV2Message, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ChatV2Typing
+ */
+export class ChatV2Typing extends Message$1<ChatV2Typing> {
+  /**
+   * @generated from field: bool is_typing = 1;
+   */
+  isTyping = false;
+
+  constructor(data?: PartialMessage<ChatV2Typing>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ChatV2Typing";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "is_typing", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ChatV2Typing {
+    return new ChatV2Typing().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ChatV2Typing {
+    return new ChatV2Typing().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ChatV2Typing {
+    return new ChatV2Typing().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ChatV2Typing | PlainMessage<ChatV2Typing> | undefined, b: ChatV2Typing | PlainMessage<ChatV2Typing> | undefined): boolean {
+    return proto3.util.equals(ChatV2Typing, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ChatV2System
+ */
+export class ChatV2System extends Message$1<ChatV2System> {
+  /**
+   * @generated from field: string type = 1;
+   */
+  type = "";
+
+  /**
+   * @generated from field: string message = 2;
+   */
+  message = "";
+
+  constructor(data?: PartialMessage<ChatV2System>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ChatV2System";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ChatV2System {
+    return new ChatV2System().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ChatV2System {
+    return new ChatV2System().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ChatV2System {
+    return new ChatV2System().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ChatV2System | PlainMessage<ChatV2System> | undefined, b: ChatV2System | PlainMessage<ChatV2System> | undefined): boolean {
+    return proto3.util.equals(ChatV2System, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.MessageV2
+ */
+export class MessageV2 extends Message$1<MessageV2> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string room_id = 2;
+   */
+  roomId = "";
+
+  /**
+   * @generated from field: string sender_id = 3;
+   */
+  senderId = "";
+
+  /**
+   * @generated from oneof messenger.MessageV2.content
+   */
+  content: {
+    /**
+     * @generated from field: string text = 10;
+     */
+    value: string;
+    case: "text";
+  } | {
+    /**
+     * @generated from field: messenger.MessageMedia media = 11;
+     */
+    value: MessageMedia;
+    case: "media";
+  } | {
+    /**
+     * @generated from field: messenger.MessageReply reply = 12;
+     */
+    value: MessageReply;
+    case: "reply";
+  } | { case: undefined; value?: undefined } = { case: undefined };
+
+  /**
+   * @generated from field: bool edited = 20;
+   */
+  edited = false;
+
+  /**
+   * @generated from field: bool is_read = 21;
+   */
+  isRead = false;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 22;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: bytes reactions = 23;
+   */
+  reactions = new Uint8Array(0);
+
+  /**
+   * @generated from field: bool is_e2ee = 30;
+   */
+  isE2ee = false;
+
+  /**
+   * @generated from field: string e2ee_payload = 31;
+   */
+  e2eePayload = "";
+
+  constructor(data?: PartialMessage<MessageV2>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.MessageV2";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "sender_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "text", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "content" },
+    { no: 11, name: "media", kind: "message", T: MessageMedia, oneof: "content" },
+    { no: 12, name: "reply", kind: "message", T: MessageReply, oneof: "content" },
+    { no: 20, name: "edited", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 21, name: "is_read", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 22, name: "created_at", kind: "message", T: Timestamp },
+    { no: 23, name: "reactions", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+    { no: 30, name: "is_e2ee", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 31, name: "e2ee_payload", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MessageV2 {
+    return new MessageV2().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MessageV2 {
+    return new MessageV2().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MessageV2 {
+    return new MessageV2().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MessageV2 | PlainMessage<MessageV2> | undefined, b: MessageV2 | PlainMessage<MessageV2> | undefined): boolean {
+    return proto3.util.equals(MessageV2, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.MessageMedia
+ */
+export class MessageMedia extends Message$1<MessageMedia> {
+  /**
+   * @generated from field: string type = 1;
+   */
+  type = "";
+
+  /**
+   * @generated from field: string url = 2;
+   */
+  url = "";
+
+  /**
+   * @generated from field: repeated string urls = 3;
+   */
+  urls: string[] = [];
+
+  /**
+   * @generated from field: int32 duration = 4;
+   */
+  duration = 0;
+
+  constructor(data?: PartialMessage<MessageMedia>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.MessageMedia";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "urls", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 4, name: "duration", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MessageMedia {
+    return new MessageMedia().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MessageMedia {
+    return new MessageMedia().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MessageMedia {
+    return new MessageMedia().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MessageMedia | PlainMessage<MessageMedia> | undefined, b: MessageMedia | PlainMessage<MessageMedia> | undefined): boolean {
+    return proto3.util.equals(MessageMedia, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.MessageReply
+ */
+export class MessageReply extends Message$1<MessageReply> {
+  /**
+   * @generated from field: string message_id = 1;
+   */
+  messageId = "";
+
+  /**
+   * @generated from field: string preview = 2;
+   */
+  preview = "";
+
+  constructor(data?: PartialMessage<MessageReply>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.MessageReply";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "message_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "preview", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MessageReply {
+    return new MessageReply().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MessageReply {
+    return new MessageReply().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MessageReply {
+    return new MessageReply().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MessageReply | PlainMessage<MessageReply> | undefined, b: MessageReply | PlainMessage<MessageReply> | undefined): boolean {
+    return proto3.util.equals(MessageReply, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetHistoryV2Request
+ */
+export class GetHistoryV2Request extends Message$1<GetHistoryV2Request> {
+  /**
+   * @generated from field: string room_id = 1;
+   */
+  roomId = "";
+
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  /**
+   * @generated from field: string cursor = 3;
+   */
+  cursor = "";
+
+  constructor(data?: PartialMessage<GetHistoryV2Request>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetHistoryV2Request";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetHistoryV2Request {
+    return new GetHistoryV2Request().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetHistoryV2Request {
+    return new GetHistoryV2Request().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetHistoryV2Request {
+    return new GetHistoryV2Request().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetHistoryV2Request | PlainMessage<GetHistoryV2Request> | undefined, b: GetHistoryV2Request | PlainMessage<GetHistoryV2Request> | undefined): boolean {
+    return proto3.util.equals(GetHistoryV2Request, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetHistoryV2Response
+ */
+export class GetHistoryV2Response extends Message$1<GetHistoryV2Response> {
+  /**
+   * @generated from field: repeated messenger.MessageV2 messages = 1;
+   */
+  messages: MessageV2[] = [];
+
+  /**
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor = "";
+
+  /**
+   * @generated from field: bool has_more = 3;
+   */
+  hasMore = false;
+
+  constructor(data?: PartialMessage<GetHistoryV2Response>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetHistoryV2Response";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "messages", kind: "message", T: MessageV2, repeated: true },
+    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "has_more", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetHistoryV2Response {
+    return new GetHistoryV2Response().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetHistoryV2Response {
+    return new GetHistoryV2Response().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetHistoryV2Response {
+    return new GetHistoryV2Response().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetHistoryV2Response | PlainMessage<GetHistoryV2Response> | undefined, b: GetHistoryV2Response | PlainMessage<GetHistoryV2Response> | undefined): boolean {
+    return proto3.util.equals(GetHistoryV2Response, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.SendMessageV2Request
+ */
+export class SendMessageV2Request extends Message$1<SendMessageV2Request> {
+  /**
+   * @generated from field: string room_id = 1;
+   */
+  roomId = "";
+
+  /**
+   * @generated from oneof messenger.SendMessageV2Request.content
+   */
+  content: {
+    /**
+     * @generated from field: string text = 2;
+     */
+    value: string;
+    case: "text";
+  } | {
+    /**
+     * @generated from field: messenger.MessageMedia media = 3;
+     */
+    value: MessageMedia;
+    case: "media";
+  } | { case: undefined; value?: undefined } = { case: undefined };
+
+  /**
+   * @generated from field: string reply_to_id = 4;
+   */
+  replyToId = "";
+
+  /**
+   * @generated from field: bool is_e2ee = 5;
+   */
+  isE2ee = false;
+
+  /**
+   * @generated from field: string e2ee_payload = 6;
+   */
+  e2eePayload = "";
+
+  constructor(data?: PartialMessage<SendMessageV2Request>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.SendMessageV2Request";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "text", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "content" },
+    { no: 3, name: "media", kind: "message", T: MessageMedia, oneof: "content" },
+    { no: 4, name: "reply_to_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "is_e2ee", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 6, name: "e2ee_payload", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SendMessageV2Request {
+    return new SendMessageV2Request().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SendMessageV2Request {
+    return new SendMessageV2Request().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SendMessageV2Request {
+    return new SendMessageV2Request().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SendMessageV2Request | PlainMessage<SendMessageV2Request> | undefined, b: SendMessageV2Request | PlainMessage<SendMessageV2Request> | undefined): boolean {
+    return proto3.util.equals(SendMessageV2Request, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.SendMessageV2Response
+ */
+export class SendMessageV2Response extends Message$1<SendMessageV2Response> {
+  /**
+   * @generated from field: messenger.MessageV2 message = 1;
+   */
+  message?: MessageV2;
+
+  /**
+   * @generated from field: bool success = 2;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string error = 3;
+   */
+  error = "";
+
+  constructor(data?: PartialMessage<SendMessageV2Response>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.SendMessageV2Response";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "message", kind: "message", T: MessageV2 },
+    { no: 2, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "error", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SendMessageV2Response {
+    return new SendMessageV2Response().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SendMessageV2Response {
+    return new SendMessageV2Response().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SendMessageV2Response {
+    return new SendMessageV2Response().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SendMessageV2Response | PlainMessage<SendMessageV2Response> | undefined, b: SendMessageV2Response | PlainMessage<SendMessageV2Response> | undefined): boolean {
+    return proto3.util.equals(SendMessageV2Response, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.EditMessageV2Request
+ */
+export class EditMessageV2Request extends Message$1<EditMessageV2Request> {
+  /**
+   * @generated from field: string message_id = 1;
+   */
+  messageId = "";
+
+  /**
+   * @generated from field: string text = 2;
+   */
+  text = "";
+
+  constructor(data?: PartialMessage<EditMessageV2Request>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.EditMessageV2Request";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "message_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EditMessageV2Request {
+    return new EditMessageV2Request().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EditMessageV2Request {
+    return new EditMessageV2Request().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EditMessageV2Request {
+    return new EditMessageV2Request().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: EditMessageV2Request | PlainMessage<EditMessageV2Request> | undefined, b: EditMessageV2Request | PlainMessage<EditMessageV2Request> | undefined): boolean {
+    return proto3.util.equals(EditMessageV2Request, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.EditMessageV2Response
+ */
+export class EditMessageV2Response extends Message$1<EditMessageV2Response> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: string message = 2;
+   */
+  message = "";
+
+  constructor(data?: PartialMessage<EditMessageV2Response>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.EditMessageV2Response";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EditMessageV2Response {
+    return new EditMessageV2Response().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EditMessageV2Response {
+    return new EditMessageV2Response().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EditMessageV2Response {
+    return new EditMessageV2Response().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: EditMessageV2Response | PlainMessage<EditMessageV2Response> | undefined, b: EditMessageV2Response | PlainMessage<EditMessageV2Response> | undefined): boolean {
+    return proto3.util.equals(EditMessageV2Response, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.DeleteMessageV2Request
+ */
+export class DeleteMessageV2Request extends Message$1<DeleteMessageV2Request> {
+  /**
+   * @generated from field: repeated string message_ids = 1;
+   */
+  messageIds: string[] = [];
+
+  /**
+   * @generated from field: string requester_user_id = 2;
+   */
+  requesterUserId = "";
+
+  constructor(data?: PartialMessage<DeleteMessageV2Request>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.DeleteMessageV2Request";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "message_ids", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 2, name: "requester_user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteMessageV2Request {
+    return new DeleteMessageV2Request().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteMessageV2Request {
+    return new DeleteMessageV2Request().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteMessageV2Request {
+    return new DeleteMessageV2Request().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteMessageV2Request | PlainMessage<DeleteMessageV2Request> | undefined, b: DeleteMessageV2Request | PlainMessage<DeleteMessageV2Request> | undefined): boolean {
+    return proto3.util.equals(DeleteMessageV2Request, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.DeleteMessageV2Response
+ */
+export class DeleteMessageV2Response extends Message$1<DeleteMessageV2Response> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  constructor(data?: PartialMessage<DeleteMessageV2Response>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.DeleteMessageV2Response";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteMessageV2Response {
+    return new DeleteMessageV2Response().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteMessageV2Response {
+    return new DeleteMessageV2Response().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteMessageV2Response {
+    return new DeleteMessageV2Response().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteMessageV2Response | PlainMessage<DeleteMessageV2Response> | undefined, b: DeleteMessageV2Response | PlainMessage<DeleteMessageV2Response> | undefined): boolean {
+    return proto3.util.equals(DeleteMessageV2Response, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.SetReactionV2Request
+ */
+export class SetReactionV2Request extends Message$1<SetReactionV2Request> {
+  /**
+   * @generated from field: string message_id = 1;
+   */
+  messageId = "";
+
+  /**
+   * @generated from field: string emoji = 2;
+   */
+  emoji = "";
+
+  constructor(data?: PartialMessage<SetReactionV2Request>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.SetReactionV2Request";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "message_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "emoji", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetReactionV2Request {
+    return new SetReactionV2Request().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetReactionV2Request {
+    return new SetReactionV2Request().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetReactionV2Request {
+    return new SetReactionV2Request().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetReactionV2Request | PlainMessage<SetReactionV2Request> | undefined, b: SetReactionV2Request | PlainMessage<SetReactionV2Request> | undefined): boolean {
+    return proto3.util.equals(SetReactionV2Request, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.SetReactionV2Response
+ */
+export class SetReactionV2Response extends Message$1<SetReactionV2Response> {
+  /**
+   * @generated from field: bool success = 1;
+   */
+  success = false;
+
+  /**
+   * @generated from field: bytes reactions = 2;
+   */
+  reactions = new Uint8Array(0);
+
+  constructor(data?: PartialMessage<SetReactionV2Response>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.SetReactionV2Response";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "success", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "reactions", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetReactionV2Response {
+    return new SetReactionV2Response().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetReactionV2Response {
+    return new SetReactionV2Response().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetReactionV2Response {
+    return new SetReactionV2Response().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetReactionV2Response | PlainMessage<SetReactionV2Response> | undefined, b: SetReactionV2Response | PlainMessage<SetReactionV2Response> | undefined): boolean {
+    return proto3.util.equals(SetReactionV2Response, a, b);
+  }
+}
+
+/**
  * @generated from message messenger.ChatWithAIV2Request
  */
 export class ChatWithAIV2Request extends Message$1<ChatWithAIV2Request> {
@@ -14681,6 +14689,300 @@ export class GetAIUsageStatsResponse extends Message$1<GetAIUsageStatsResponse> 
 
   static equals(a: GetAIUsageStatsResponse | PlainMessage<GetAIUsageStatsResponse> | undefined, b: GetAIUsageStatsResponse | PlainMessage<GetAIUsageStatsResponse> | undefined): boolean {
     return proto3.util.equals(GetAIUsageStatsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAIV2ChatHistoryRequest
+ */
+export class GetAIV2ChatHistoryRequest extends Message$1<GetAIV2ChatHistoryRequest> {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId = "";
+
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<GetAIV2ChatHistoryRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAIV2ChatHistoryRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAIV2ChatHistoryRequest {
+    return new GetAIV2ChatHistoryRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAIV2ChatHistoryRequest {
+    return new GetAIV2ChatHistoryRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAIV2ChatHistoryRequest {
+    return new GetAIV2ChatHistoryRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAIV2ChatHistoryRequest | PlainMessage<GetAIV2ChatHistoryRequest> | undefined, b: GetAIV2ChatHistoryRequest | PlainMessage<GetAIV2ChatHistoryRequest> | undefined): boolean {
+    return proto3.util.equals(GetAIV2ChatHistoryRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.AIV2ChatMessage
+ */
+export class AIV2ChatMessage extends Message$1<AIV2ChatMessage> {
+  /**
+   * @generated from field: int64 id = 1;
+   */
+  id = protoInt64.zero;
+
+  /**
+   * @generated from field: string chat_id = 2;
+   */
+  chatId = "";
+
+  /**
+   * @generated from field: string role = 3;
+   */
+  role = "";
+
+  /**
+   * @generated from field: string content = 4;
+   */
+  content = "";
+
+  /**
+   * @generated from field: string agent_id = 5;
+   */
+  agentId = "";
+
+  /**
+   * @generated from field: int32 token_count = 6;
+   */
+  tokenCount = 0;
+
+  /**
+   * @generated from field: string model_used = 7;
+   */
+  modelUsed = "";
+
+  /**
+   * @generated from field: string created_at = 8;
+   */
+  createdAt = "";
+
+  constructor(data?: PartialMessage<AIV2ChatMessage>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.AIV2ChatMessage";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "chat_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "role", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "content", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "token_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "model_used", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AIV2ChatMessage {
+    return new AIV2ChatMessage().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AIV2ChatMessage {
+    return new AIV2ChatMessage().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AIV2ChatMessage {
+    return new AIV2ChatMessage().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AIV2ChatMessage | PlainMessage<AIV2ChatMessage> | undefined, b: AIV2ChatMessage | PlainMessage<AIV2ChatMessage> | undefined): boolean {
+    return proto3.util.equals(AIV2ChatMessage, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAIV2ChatHistoryResponse
+ */
+export class GetAIV2ChatHistoryResponse extends Message$1<GetAIV2ChatHistoryResponse> {
+  /**
+   * @generated from field: repeated messenger.AIV2ChatMessage messages = 1;
+   */
+  messages: AIV2ChatMessage[] = [];
+
+  constructor(data?: PartialMessage<GetAIV2ChatHistoryResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAIV2ChatHistoryResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "messages", kind: "message", T: AIV2ChatMessage, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAIV2ChatHistoryResponse {
+    return new GetAIV2ChatHistoryResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAIV2ChatHistoryResponse {
+    return new GetAIV2ChatHistoryResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAIV2ChatHistoryResponse {
+    return new GetAIV2ChatHistoryResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAIV2ChatHistoryResponse | PlainMessage<GetAIV2ChatHistoryResponse> | undefined, b: GetAIV2ChatHistoryResponse | PlainMessage<GetAIV2ChatHistoryResponse> | undefined): boolean {
+    return proto3.util.equals(GetAIV2ChatHistoryResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ListAIV2ChatsRequest
+ */
+export class ListAIV2ChatsRequest extends Message$1<ListAIV2ChatsRequest> {
+  constructor(data?: PartialMessage<ListAIV2ChatsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ListAIV2ChatsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListAIV2ChatsRequest {
+    return new ListAIV2ChatsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListAIV2ChatsRequest {
+    return new ListAIV2ChatsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListAIV2ChatsRequest {
+    return new ListAIV2ChatsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListAIV2ChatsRequest | PlainMessage<ListAIV2ChatsRequest> | undefined, b: ListAIV2ChatsRequest | PlainMessage<ListAIV2ChatsRequest> | undefined): boolean {
+    return proto3.util.equals(ListAIV2ChatsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.AIV2ChatInfo
+ */
+export class AIV2ChatInfo extends Message$1<AIV2ChatInfo> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name = "";
+
+  /**
+   * @generated from field: string chat_type = 3;
+   */
+  chatType = "";
+
+  /**
+   * @generated from field: string agent_id = 4;
+   */
+  agentId = "";
+
+  /**
+   * @generated from field: string created_at = 5;
+   */
+  createdAt = "";
+
+  /**
+   * @generated from field: string updated_at = 6;
+   */
+  updatedAt = "";
+
+  constructor(data?: PartialMessage<AIV2ChatInfo>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.AIV2ChatInfo";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "chat_type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "updated_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AIV2ChatInfo {
+    return new AIV2ChatInfo().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AIV2ChatInfo {
+    return new AIV2ChatInfo().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AIV2ChatInfo {
+    return new AIV2ChatInfo().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AIV2ChatInfo | PlainMessage<AIV2ChatInfo> | undefined, b: AIV2ChatInfo | PlainMessage<AIV2ChatInfo> | undefined): boolean {
+    return proto3.util.equals(AIV2ChatInfo, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.ListAIV2ChatsResponse
+ */
+export class ListAIV2ChatsResponse extends Message$1<ListAIV2ChatsResponse> {
+  /**
+   * @generated from field: repeated messenger.AIV2ChatInfo chats = 1;
+   */
+  chats: AIV2ChatInfo[] = [];
+
+  constructor(data?: PartialMessage<ListAIV2ChatsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.ListAIV2ChatsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "chats", kind: "message", T: AIV2ChatInfo, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListAIV2ChatsResponse {
+    return new ListAIV2ChatsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListAIV2ChatsResponse {
+    return new ListAIV2ChatsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListAIV2ChatsResponse {
+    return new ListAIV2ChatsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListAIV2ChatsResponse | PlainMessage<ListAIV2ChatsResponse> | undefined, b: ListAIV2ChatsResponse | PlainMessage<ListAIV2ChatsResponse> | undefined): boolean {
+    return proto3.util.equals(ListAIV2ChatsResponse, a, b);
   }
 }
 

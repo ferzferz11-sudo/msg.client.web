@@ -9,8 +9,8 @@
 ```
 
 Делает:
-1. `npm run build` — production build
-2. `rsync` dist/ на сервер (`lava@13.140.25.249:/root/msg.client.web/dist/`)
+1. `npm run build` — production build (tsc + vite build)
+2. `rsync` dist/ на сервер (`lava:/root/msg.client.web/dist/`)
 3. `nginx -t && systemctl reload nginx`
 4. Пересоздаёт envoy контейнер (rm + docker run)
 
@@ -44,10 +44,22 @@ ssh lava "sudo nginx -t && sudo systemctl reload nginx"
 ```
 
 Маршруты:
-- `/web/` → `/root/msg.client.web/dist/`
+- `/` → `/var/www/lavender/` (landing page)
+- `/web/` → `/root/msg.client.web/dist/` (web client)
 - `/messenger/` → envoy:9090 (gRPC-web)
 - `/info`, `/health` → 127.0.0.1:8082 (HTTP API)
 - `/files/` → 127.0.0.1:8082 (file server)
+- `/avatars/`, `/images/`, `/audio/` → 127.0.0.1:8082
+
+### Landing Page
+
+```bash
+# Редактирование
+ssh lava "vim /var/www/lavender/index.html"
+
+# Версии
+ssh lava "cat /var/www/lavender/version.txt"
+```
 
 ### Lavender Server
 
@@ -70,6 +82,9 @@ ssh lava "sudo -u postgres psql -d chat_db -c 'SELECT count(*) FROM users;'"
 
 # Dev: chat_db_dev (user lavender)
 ssh lava "sudo -u postgres psql -d chat_db_dev -c 'SELECT count(*) FROM users;'"
+
+# Пустые сообщения (проверка после fix)
+ssh lava "sudo -u postgres psql -d chat_db -c \"SELECT id, room_id, created_at FROM messages_v2 WHERE content_type='text' AND text='' ORDER BY created_at DESC LIMIT 10;\""
 ```
 
 ## Proto генерация
@@ -90,3 +105,4 @@ npx buf generate --path proto/messenger.proto
 2. **envoy не видит конфиг** — файл envoy.yaml имеет права 600. Решение: `chmod 644`.
 3. **415 на /info** — `/info` это HTTP, не gRPC. Нужен nginx прокси на 8082.
 4. **GetChats not implemented** — сервер реализует только GetChatsV2. Исправлять в messenger_connect.ts.
+5. **SendMessageV2 пустые сообщения** — oneof content не сериализуется при `any` типе. Использовать `new SendMessageV2Request({ content: { case: 'text', value } })`.

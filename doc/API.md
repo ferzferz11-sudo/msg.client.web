@@ -6,28 +6,32 @@
 
 | Метод | Описание |
 |-------|----------|
-| `signInV2(username, password)` | Вход (JWT) |
+| `signInV2(username, password)` | Вход (JWT) — access_token 15мин + refresh_token 30дней |
 | `signUpV2(username, password, email)` | Регистрация (JWT) |
-| `signOut(allDevices)` | Выход |
+| `refreshToken()` | Обновление токенов (rotation) |
+| `signOut(allDevices)` | Выход (all_devices=true — все сессии) |
 | `revokeDevice(deviceId)` | Отзыв устройства |
+| `requestPasswordReset(email)` | Отправка кода сброса пароля |
+| `resetPassword(token, newPassword)` | Сброс пароля по коду |
 
-## Profile (ProfileService — JWT-only)
+## Profile (ProfileService v2 — JWT-only, отдельный gRPC сервис)
 
 | Метод | Описание |
 |-------|----------|
-| `getProfile()` | Профиль из JWT |
+| `getProfile()` | Профиль из JWT (user_id, username, email, avatar, bio, status, locale, isSuperAdmin) |
 | `updateProfile({username, bio, status, locale})` | Обновить профиль |
 | `updateAvatar(avatarUrl, fullAvatarUrl?)` | Аватар |
-| `getUserSettings()` | Настройки |
+| `getUserSettings()` | Настройки (locale, themeId, pushEnabled, custom) |
 | `updateUserSettings({locale, themeId, pushEnabled})` | Обновить настройки |
-| `deleteProfile()` | Удалить аккаунт |
+| `deleteProfile(password?)` | Удалить аккаунт (пароль обязателен) |
 
 ## Chats
 
 | Метод | Описание |
 |-------|----------|
-| `getChats(userId, username?, options?)` | Список чатов (фильтр, лимит, offset) |
-| `getHistory(roomId, limit)` | История сообщений |
+| `getChats(userId, username?, options?)` | GetChatsV2: cursor-based pagination, фильтр (all/pinned/archived/muted) |
+| `getHistory(roomId, limit)` | История v1: limit + room |
+| `getHistoryV2(roomId, limit, cursor)` | История v2: cursor-based pagination (merge v1+v2) |
 | `createDirectChat(user1, user2, user1Id, user2Id)` | Создать личный чат |
 | `createGroupChat(name, participants, creator, creatorId, participantIds)` | Создать группу |
 | `deleteChat(chatId, requesterUsername, requesterUserId)` | Удалить чат |
@@ -36,23 +40,25 @@
 | `addParticipant(chatId, userId)` | Добавить участника |
 | `removeParticipant(chatId, userId)` | Удалить участника |
 | `markRead(roomId, username, userId)` | Отметить прочитанным |
+| `searchChats(query, limit, offset)` | Поиск чатов |
+| `getChatListVersion()` | Версия списка для кэширования |
 
-## Messages
+## Messages v1
 
 | Метод | Описание |
 |-------|----------|
-| `sendMessage(roomId, content, userId)` | Отправить (ephemeral BiDi stream, v1) |
-| `openReceiveStream(roomId, callback)` | Получать сообщения (persistent BiDi stream, v1) |
-| `setReaction(messageId, emoji)` | Реакция (v1) |
-| `deleteMessages(messageIds, roomId, userId)` | Удалить сообщения (v1) |
-| `editMessage(messageId, roomId, userId, newText)` | Редактировать (v1) |
+| `sendMessage(roomId, content, userId)` | Отправить (ephemeral BiDi stream) |
+| `openReceiveStream(roomId, callback)` | Получать сообщения (persistent BiDi stream) |
+| `setReaction(messageId, emoji)` | Реакция |
+| `deleteMessages(messageIds, roomId, userId)` | Удалить сообщения |
+| `editMessage(messageId, roomId, userId, newText)` | Редактировать |
 
 ## Messages v2
 
 | Метод | Описание |
 |-------|----------|
-| `getHistoryV2(roomId, limit, cursor)` | История (cursor-based pagination) |
-| `sendMessageV2(roomId, content, replyToId?)` | Отправить (unary RPC) |
+| `sendMessageV2(roomId, content, replyToId?)` | Отправить (unary RPC, oneof content: text/media) |
+| `sendMessageV2Media(roomId, media, replyToId?)` | Отправить медиа (image/file/voice) |
 | `editMessageV2(messageId, newText)` | Редактировать |
 | `deleteMessageV2(messageIds, requesterUserId)` | Удалить |
 | `setReactionV2(messageId, emoji)` | Реакция |
@@ -78,7 +84,7 @@
 
 | Метод | Описание |
 |-------|----------|
-| `saveDraft(userId, roomId, text)` | Сохранить черновик |
+| `saveDraft(userId, roomId, text)` | Сохранить черновик (серверный) |
 | `getDraft(userId, roomId)` | Получить черновик |
 | `deleteDraft(userId, roomId)` | Удалить черновик |
 
@@ -110,9 +116,10 @@
 
 | Метод | Описание |
 |-------|----------|
-| `getAllUsers()` | Все пользователи |
+| `getAllUsers()` | Все пользователи (UserInfo: username, avatar, userId, isSuperAdmin) |
 | `getUserProfile(username?, userId?)` | Профиль пользователя |
 | `getUserId(username)` | username → UUID |
+| `getUserAvatar(userIdOrUsername)` | Получить аватар |
 | `updateUsername(oldUsername, newUsername, userId)` | Сменить username |
 | `updatePassword(username, userId, oldPassword, newPassword)` | Сменить пароль |
 
@@ -120,7 +127,7 @@
 
 | Метод | Описание |
 |-------|----------|
-| `getContacts()` | Список контактов |
+| `getContacts()` | Список контактов (string[] usernames) |
 | `addContact(userId, username)` | Добавить контакт |
 | `removeContact(userId)` | Удалить контакт |
 
@@ -128,14 +135,21 @@
 
 | Метод | Описание |
 |-------|----------|
-| `chatWithAIV2(params)` | Async generator — стриминг AI ответов |
-| `getAIAgent(agentId)` | Информация об агенте |
+| `chatWithAIV2(params)` | Async generator — стриминг AI ответов (token, toolCalls, agentId, imageUrl) |
+| `getAIAgent(agentId)` | Информация об агенте (включая provider_config) |
 | `listAIAgents(includePublic)` | Список агентов |
 | `createAIAgent(agent)` | Создать агента (→ agent_id) |
 | `updateAIAgent(agent)` | Обновить агента |
 | `deleteAIAgent(agentId)` | Удалить агента |
 | `cloneAIAgent(agentId, newName)` | Клонировать агента |
 | `listAITools()` | Доступные инструменты |
+
+## AI Chat v2 Sessions
+
+| Метод | Описание |
+|-------|----------|
+| `listAIV2Chats()` | Список AI чат-сессий (id, name, chatType, agentId, timestamps) |
+| `getAIV2ChatHistory(sessionId, limit)` | История AI чата с метаданными агента |
 
 ## AI Marketplace
 
@@ -147,7 +161,14 @@
 | `getAIAgentStats(agentId)` | Статистика |
 | `shareAIAgent(agentId)` | Поделиться (→ share_code) |
 | `installAIAgent(shareCode)` | Установить по коду |
-| `getAIUsageStats()` | Статистика использования |
+| `getAIUsageStats()` | Статистика использования (totalTokens, totalRequests) |
+
+## AI Chat Settings (Per-Session)
+
+| Метод | Описание |
+|-------|----------|
+| `getAIChatSettings(sessionId)` | Настройки сессии (api_key, model, rate limits) |
+| `updateAIChatSettings(sessionId, apiKey, model)` | Обновить настройки (пустые значения = сброс) |
 
 ## Secret Chats (E2EE)
 
@@ -181,9 +202,34 @@
 | `getDevices()` | Устройства |
 | `deleteOtherDevices()` | Удалить остальные |
 
-## HTTP
+## HTTP Uploads (JWT Auth)
+
+| Метод | Описание |
+|-------|----------|
+| `uploadAvatar(avatar, avatarFull?)` | Загрузка аватара (multipart/form-data) |
+| `uploadImage(file)` | Загрузка изображения |
+| `uploadFile(file)` | Загрузка файла |
+| `uploadAudio(file)` | Загрузка аудио |
+| `uploadBackground(file)` | Загрузка фона |
+
+**Allowed extensions:**
+- Images: `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`
+- Audio: `.m4a`, `.aac`, `.ogg`, `.mp3`, `.wav`
+- Files: `.pdf`, `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx`, `.txt`, `.csv`, `.json`, `.xml`, `.zip`, `.rar`, `.7z`, `.mp3`, `.mp4`, `.avi`, `.mov`, `.mkv`, `.webm`
+
+## Streams
+
+| Метод | Описание |
+|-------|----------|
+| `openChatV2Stream(roomId, callback)` | BiDi stream (message/typing/system) |
+| `openReceiveStream(roomId, callback)` | BiDi stream v1 |
+| `openTypingStream(callback)` | BiDi typing stream (deprecated — use ChatV2) |
+| `callSession(messages)` | BiDi CallSession (WebRTC signaling) |
+
+## HTTP Endpoints (Non-gRPC)
 
 | Метод | Описание |
 |-------|----------|
 | `fetchServerInfo()` | GET `/info` — capability negotiation |
 | `checkHealth()` | GET `/health` — health check |
+| `fetchICEServers()` | GET `/turn-credentials` — TURN server credentials |

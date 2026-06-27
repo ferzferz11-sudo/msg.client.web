@@ -10,10 +10,12 @@ import { useAuthStore } from '@/store/authStore'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { t } from '@/shared/types'
 import type { Message } from '@/shared/types'
+import { useChatListV2 } from '@/hooks/useChatListV2'
 
 interface ChatScreenProps {
   chatId: string
   onBack: () => void
+  isSecret?: boolean
   onServerShutdown?: () => void
   onReconnecting?: (isReconnecting: boolean) => void
   onStreamError?: (error: string) => void
@@ -39,7 +41,7 @@ const TG = {
   replyBar: '#5EB5F7',
 }
 
-export function ChatScreen({ chatId, onServerShutdown, onReconnecting, onStreamError }: ChatScreenProps) {
+export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting, onStreamError }: ChatScreenProps) {
   const activeChat = useChatStore((s) => s.getActiveChat())
   const user = useAuthStore((s) => s.user)
   const {
@@ -70,7 +72,21 @@ export function ChatScreen({ chatId, onServerShutdown, onReconnecting, onStreamE
     sendTypingIndicator,
     replyToMessage,
     setReplyToMessage,
-  } = useChatMessages({ chatId, onServerShutdown, onReconnecting, onStreamError })
+  } = useChatMessages({ chatId, isSecret, onServerShutdown, onReconnecting, onStreamError })
+
+  const { pinChat, unpinChat, archiveChat, setMutedChat } = useChatListV2()
+  const [showChatMenu, setShowChatMenu] = useState(false)
+  const chatMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (chatMenuRef.current && !chatMenuRef.current.contains(e.target as Node)) {
+        setShowChatMenu(false)
+      }
+    }
+    if (showChatMenu) document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showChatMenu])
 
   const [inputText, setInputText] = useState('')
   const [contextMenu, setContextMenu] = useState<{ messageId: string; x: number; y: number } | null>(null)
@@ -240,20 +256,98 @@ export function ChatScreen({ chatId, onServerShutdown, onReconnecting, onStreamE
         </div>
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: 2 }}>
-          <button style={headerBtn} title={t('search')}>
+        <div style={{ display: 'flex', gap: 2, position: 'relative' }} ref={chatMenuRef}>
+          <button
+            style={headerBtn}
+            title="Звонок"
+            onClick={() => {
+              const targetId = activeChat?.participants ? JSON.parse(activeChat.participants).find((p: string) => p !== user?.username) : ''
+              if (targetId && activeChat) {
+                window.dispatchEvent(new CustomEvent('start-call', { detail: { targetId, targetUsername: targetId, roomId: chatId } }))
+              }
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={TG.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
+            </svg>
+          </button>
+          <button
+            style={headerBtn}
+            title={t('search')}
+            onClick={() => {
+              const query = prompt('Поиск в чате...')
+              if (query) window.dispatchEvent(new CustomEvent('chat-search', { detail: { query, chatId } }))
+            }}
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={TG.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </button>
-          <button style={headerBtn} title={t('more')}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill={TG.textSecondary}>
-              <circle cx="12" cy="5" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="12" cy="19" r="2" />
-            </svg>
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              style={headerBtn}
+              title={t('more')}
+              onClick={() => setShowChatMenu(!showChatMenu)}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill={TG.textSecondary}>
+                <circle cx="12" cy="5" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="19" r="2" />
+              </svg>
+            </button>
+            {showChatMenu && (
+              <div
+                style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: 4,
+                  background: '#17212B', borderRadius: 12, padding: '6px 0',
+                  minWidth: 200, boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+                  border: `1px solid ${TG.border}`, zIndex: 100,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {activeChat?.isPinned ? (
+                  <ChatMenuItem
+                    emoji="📌"
+                    label="Открепить"
+                    onClick={() => { unpinChat(chatId); setShowChatMenu(false) }}
+                  />
+                ) : (
+                  <ChatMenuItem
+                    emoji="📌"
+                    label="Закрепить"
+                    onClick={() => { pinChat(chatId); setShowChatMenu(false) }}
+                  />
+                )}
+                {activeChat?.isMuted ? (
+                  <ChatMenuItem
+                    emoji="🔕"
+                    label="Включить уведомления"
+                    onClick={() => { setMutedChat(chatId, false); setShowChatMenu(false) }}
+                  />
+                ) : (
+                  <ChatMenuItem
+                    emoji="🔔"
+                    label="Отключить уведомления"
+                    onClick={() => { setMutedChat(chatId, true); setShowChatMenu(false) }}
+                  />
+                )}
+                <ChatMenuItem
+                  emoji="📦"
+                  label="Архивировать"
+                  onClick={() => { archiveChat(chatId); setShowChatMenu(false) }}
+                />
+                <ChatMenuItem
+                  emoji="📌"
+                  label="Закреплённые сообщения"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('show-pinned', { detail: { chatId } }))
+                    setShowChatMenu(false)
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -523,6 +617,26 @@ function CtxItem({ emoji, label, onClick, destructive }: { emoji: string; label:
       }}
     >
       <span style={{ fontSize: 18, width: 24, textAlign: 'center' }}>{emoji}</span>
+      {label}
+    </button>
+  )
+}
+
+// --- Chat menu item ---
+function ChatMenuItem({ emoji, label, onClick, destructive }: { emoji: string; label: string; onClick: () => void; destructive?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+        padding: '10px 16px', background: 'transparent', border: 'none',
+        color: destructive ? '#E53935' : TG.text, fontSize: 14,
+        cursor: 'pointer', textAlign: 'left',
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+    >
+      <span style={{ fontSize: 16, width: 24, textAlign: 'center' }}>{emoji}</span>
       {label}
     </button>
   )

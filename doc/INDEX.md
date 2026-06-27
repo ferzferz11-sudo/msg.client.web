@@ -19,6 +19,7 @@ npm run proto:generate  # regen proto из proto/messenger.proto
 | gRPC | `13.140.25.249:50051` | `13.140.25.249:50052` |
 | HTTP | `13.140.25.249:8082` | `13.140.25.249:8083` |
 | Web client | `http://13.140.25.249/web/` | — |
+| Landing page | `http://13.140.25.249/` | — |
 | DB (prod) | `chat_db` (paveld) | `chat_db_dev` (lavender) |
 
 ## Структура проекта
@@ -40,13 +41,18 @@ src/
 │   ├── pinned/                # Pinned messages
 │   ├── archive/               # Archived chats
 │   ├── favorites/             # Favorites self-chat
-│   └── common/                # Screen layout wrapper
+│   ├── calls/                 # WebRTC call screen
+│   ├── secretChats/           # E2EE secret chat screen
+│   └── common/                # Screen layout wrapper, LazyAvatar
 ├── hooks/                     # Custom hooks (useChats, useChatMessages, etc.)
+│   ├── useWebRTC.ts           # WebRTC peer connection
+│   └── useGrpcStream.ts       # ChatV2 stream management
 ├── store/                     # Zustand stores (auth, chat, error)
 ├── shared/
 │   ├── types/                 # TypeScript interfaces + i18n
+│   ├── crypto.ts              # RSA-OAEP + AES-GCM E2EE
 │   └── api/
-│       ├── grpcClient.ts      # Singleton gRPC-web client (30+ methods)
+│       ├── grpcClient.ts      # Singleton gRPC-web client (40+ methods)
 │       └── gen/proto/         # Auto-generated from proto
 ├── styles/global.css          # CSS reset, iOS optimizations, animations
 └── gen/                       # Legacy proto stubs (unused)
@@ -62,77 +68,151 @@ src/
 | [GOTCHAS.md](GOTCHAS.md) | Known issues, proto gotchas, fixes, UI patterns |
 | [CHANGELOG.md](CHANGELOG.md) | История версий |
 
-## Статус интеграции (с сервером v1.3.0.18)
+## Статус интеграции (с сервером v1.3.0.23)
+
+**Web клиент:** v1.4.1 | **Дата проверки:** 2026-06-27
 
 ### ✅ Реализовано
 
 | Модуль | Готово | Версия | Детали |
 |--------|--------|--------|--------|
+| **Auth** | | | |
 | Auth V2 (JWT) | ✅ | v1.0.0 | signInV2, signUpV2, refresh, signOut |
 | Auth Interceptor | ✅ | v1.3.0 | isRefreshing, refreshFailedAt cooldown, stale token |
+| RevokeDevice | ✅ | v1.0.0 | revokeDevice |
+| Password Reset | ✅ | v1.3.9 | requestPasswordReset, resetPassword |
+| Capability Negotiation | ✅ | v1.1.0 | GET /info |
+| Health Check | ✅ | v1.0.0 | GET /health |
+| **Chat** | | | |
 | Chat Stream v1 | ✅ | v0.5.0 | BiDi stream, send/receive |
 | ChatV2 Stream | ✅ | v1.2.0 | BiDi stream, typing, system events |
 | Chat List (GetChatsV2) | ✅ | v1.1.2 | cursor-based pagination, filter |
-| Messages V1 | ✅ | v0.5.0 | getHistory, sendMessage, edit, delete, reactions |
-| Messages V2 | ✅ | v1.2.0 | getHistoryV2, sendMessageV2, editV2, deleteV2, reactionV2 |
+| CreateDirectChat | ✅ | v1.0.0 | user1_id, user2_id |
+| CreateGroupChat | ✅ | v1.0.0 | name, participant_ids |
+| DeleteChat | ✅ | v1.0.0 | chat_id, requester_user_id |
+| AddParticipant / RemoveParticipant | ✅ | v1.1.1 | chat_id, username, user_id |
 | Pin/Unpin Chat | ✅ | v1.1.1 | userId required |
 | Archive/Unarchive Chat | ✅ | v1.1.1 | userId required |
 | Muted Chats | ✅ | v1.0.0 | getMutedChats, setMutedChat |
 | Search Chats | ✅ | v1.0.0 | searchChats |
-| Pin/Unpin Messages | ✅ | v1.1.1 | userId required |
-| Profile (ProfileService v2) | ✅ | v1.0.0 | getProfile, updateProfile, updateAvatar |
-| User Settings | ✅ | v1.0.0 | getUserSettings, updateUserSettings |
-| Delete Profile | ✅ | v1.1.0 | requires password |
-| All Users | ✅ | v1.0.0 | getAllUsers, getUserId |
-| User Profile | ✅ | v1.0.0 | getUserProfile |
-| Contacts | ✅ | v1.1.0 | getContacts (string[]), addContact, removeContact |
-| Typing Indicators | ✅ | v1.3.1 | sendTyping (v1 stream), ChatV2 typing, openTypingStream |
-| HTTP Uploads | ✅ | v1.3.2 | uploadImage, uploadFile_, uploadAudio, uploadAvatar, uploadBackground |
+| ChatList Version | ✅ | v1.0.0 | getChatListVersion |
+| **Messages v1** | | | |
+| GetHistory | ✅ | v0.5.0 | limit + room |
+| SendMessage | ✅ | v0.5.0 | ephemeral BiDi stream |
+| EditMessage | ✅ | v1.0.0 | messageId, text |
+| DeleteMessages | ✅ | v1.0.0 | messages[], requesterUsername |
+| SetReaction | ✅ | v1.0.0 | nested { message_id, reaction: { user, emoji } } |
+| **Messages v2** | | | |
+| GetHistoryV2 | ✅ | v1.2.0 | cursor-based pagination |
+| SendMessageV2 | ✅ | v1.2.0 | oneof content (text/media), unary RPC |
+| EditMessageV2 | ✅ | v1.2.0 | messageId, text |
+| DeleteMessageV2 | ✅ | v1.2.0 | message_ids[], requester_user_id |
+| SetReactionV2 | ✅ | v1.2.0 | message_id, emoji |
+| **Pin Messages** | | | |
+| PinMessage / UnPinMessage | ✅ | v1.1.1 | userId required |
+| GetPinnedMessages | ✅ | v1.0.0 | chat_id |
+| **Profile** | | | |
+| GetProfile (ProfileService v2) | ✅ | v1.0.0 | JWT-only, separate gRPC service |
+| UpdateProfile | ✅ | v1.0.0 | username, bio, status, locale |
+| UpdateAvatar | ✅ | v1.0.0 | avatar_url, full_avatar_url |
+| DeleteProfile | ✅ | v1.1.0 | requires password |
+| GetUserSettings | ✅ | v1.0.0 | locale, theme_id, push_enabled, custom |
+| UpdateUserSettings | ✅ | v1.0.0 | locale, theme_id, push_enabled, custom |
+| **Users** | | | |
+| GetAllUsers | ✅ | v1.0.0 | UserInfo: username, avatar, userId, isSuperAdmin |
+| GetUserProfile | ✅ | v1.0.0 | username → profile |
+| GetUserId | ✅ | v1.0.0 | username → UUID |
+| **Contacts** | | | |
+| GetContacts | ✅ | v1.1.0 | string[] (usernames) |
+| AddContact / RemoveContact | ✅ | v1.1.0 | contactUsername, username |
+| **Favorites** | | | |
+| AddFavorite / RemoveFavorite / GetFavorites | ✅ | v1.3.6 | self-chat chatScreen wrapper |
+| Favorites sync | ✅ | v1.3.6 | sendMessageV2 |
+| **Drafts** | | | |
+| SaveDraft / GetDraft / DeleteDraft | ✅ | v1.3.3 | server-side drafts |
+| **Themes** | | | |
+| GetThemes / SaveTheme / SetCurrentTheme / DeleteTheme | ✅ | v1.0.0 | custom themes |
+| **Typing** | | | |
+| Typing Indicators | ✅ | v1.3.1 | via ChatV2 stream (BiDi v1 not supported) |
+| **HTTP Uploads** | | | |
+| Upload Avatar/Image/File/Audio/Background | ✅ | v1.3.2 | JWT auth, multipart/form-data |
 | Send Media Messages | ✅ | v1.3.2 | sendMessageV2Media (image/file/voice) |
-| Drafts (Server) | ✅ | v1.3.3 | saveDraft, getDraft, deleteDraft |
-| Favorites | ✅ | v1.3.6 | ChatScreen wrapper, полный функционал чата |
-| Favorites sync | ✅ | v1.3.6 | FavoritesScreen = ChatScreen, sendMessageV2 |
-| Auto Update | ✅ | v1.3.8 | version.json + UpdateBanner + cache clear |
-| Auth Screen Version | ✅ | v1.3.9 | Версия под названием приложения |
-| Themes | ✅ | v1.0.0 | getThemes, saveTheme, setCurrentTheme, deleteTheme |
-| AI Chat V2 | ✅ | v1.0.0 | chatWithAIV2 (streaming), images, tool calls |
+| **Notifications** | | | |
+| SubscribeNotifications | ✅ | v1.0.0 | Server Streaming |
+| Notification History / MarkRead / UnreadCount | ✅ | v1.0.0 | |
+| Native Browser Notifications | ✅ | v1.4.0 | Notification API |
+| **Push (FCM)** | | | |
+| RegisterPushToken | ✅ | v1.0.0 | user, token, pushEnabled, userId |
+| GetDevices / DeleteOtherDevices | ✅ | v1.0.0 | |
+| **AI v2** | | | |
+| ChatWithAIV2 (Streaming) | ✅ | v1.0.0 | token, toolCalls, agentId, imageUrl |
 | AI Agents CRUD | ✅ | v1.0.0 | create, update, delete, get, list, clone |
 | AI Marketplace | ✅ | v1.0.0 | listMarketplaceAgents, rate, reviews, stats, share, install |
 | AI Chat Settings | ✅ | v1.3.4 | getAIChatSettings, updateAIChatSettings |
 | AI Usage Stats | ✅ | v1.0.0 | getAIUsageStats |
 | AI Tools List | ✅ | v1.0.0 | listAITools |
-| Bot Commands | ✅ | v1.0.0 | processBotCommand, getBotCommands |
-| Notifications | ✅ | v1.0.0 | subscribeNotifications, history, markRead, unreadCount |
-| Push (FCM) | ✅ | v1.0.0 | registerPushToken, getDevices, deleteOtherDevices |
+| ListAIV2Chats | ✅ | v1.4.1 | list AI chat sessions |
+| GetAIV2ChatHistory | ✅ | v1.4.1 | chat history with agent metadata |
+| **Secret Chats (E2EE)** | | | |
+| Crypto Module | ✅ | v1.4.0 | RSA-OAEP 2048 + AES-GCM 256 |
+| CreateSecretChat | ✅ | v1.4.0 | key exchange UI |
+| ExchangeSecretKey / GetSecretChatKey | ✅ | v1.4.0 | |
+| **WebRTC Calls** | | | |
+| useWebRTC Hook | ✅ | v1.4.0 | STUN servers, peer connection |
+| CallScreen UI | ✅ | v1.4.0 | full-screen video/audio controls |
+| Signaling via CallSession | ✅ | v1.4.0 | BiDi stream |
+| TURN Credentials | ✅ | v1.4.1 | fetchICEServers |
+| **Bot Commands** | | | |
+| ProcessBotCommand / GetBotCommands | ✅ | v1.0.0 | |
+| **Resilience** | | | |
 | Graceful Shutdown | ✅ | v1.1.0 | SERVER_SHUTTINGDOWN handling |
 | Offline Mode | ✅ | v1.1.0 | indicators + cached data |
-| Capability Negotiation | ✅ | v1.1.0 | GET /info |
-| Health Check | ✅ | v1.0.0 | GET /health |
-| Free Models List | ✅ | v1.0.0 | getFreeModels |
+| Auto Reconnect | ✅ | v1.1.0 | exponential backoff (max 30s) |
+| Auto Update | ✅ | v1.3.8 | version.json + UpdateBanner + cache clear |
+| **UI** | | | |
+| Desktop Sidebar Nav | ✅ | v1.4.0 | AI Chats, Search, Archive, Notifications, Settings |
+| Lazy Avatar | ✅ | v1.4.0 | IntersectionObserver-based |
+| Desktop Right Panel | ✅ | v1.3.10 | profile, contacts, favorites in right panel |
+| Password Reset UI | ✅ | v1.3.9 | 3-step flow: email → code + password → success |
 
-### ❌ Не реализовано (нет UI)
-
-| Модуль | RPC | Приоритет | Описание |
-|--------|-----|-----------|----------|
-| E2EE Secret Chats | createSecretChat / exchangeSecretKey / getSecretChatKey | P3 | Требует RSA key gen + шифрование — сложная фича |
-| WebRTC Calls | callSession (BiDi stream) + TURN credentials | P3 | Требует TURN endpoint на сервере |
-
-### ⚠️ Известные проблемы
+### ⚠️ Частично реализовано / Known Issues
 
 | Проблема | Описание | Решение |
 |----------|----------|---------|
-| ChatV2 stream full transition | Сейчас dual-write v1+v2 | Полный переход когда messages_v2 заполнена |
-| getHistoryV2 merge | v1+v2 мерж при загрузке | Временно — нужен для чтения старых сообщений |
+| ChatV2 stream full transition | dual-write v1+v2 на сервере | getHistoryV2 мержит v1+v2 сообщения |
+| v1/v2 Message Merge | старые сообщения только в messages | getHistoryV2 с fallback на v1 |
+| Proto codegen | npm run proto:generate падает | `buf generate --path proto/messenger.proto` |
 
-## Следующие шаги (для новой сессии)
+### ❌ Не реализовано / Нет UI
 
-### Приоритет 1 — Важное
-- **ChatV2 stream**: полный переход на ChatV2 stream когда `messages_v2` таблица будет заполнена (сервер dual-write)
+| Модуль | RPC | Приоритет | Описание |
+|--------|-----|-----------|----------|
+| WebRTC NAT Traversal | TURN endpoint | P2 | TURN credentials endpoint уже работает, нужен полный TURN сервер |
+| Multi-Agent AI Chat | client-side routing | P3 | параллельные ChatWithAIV2 запросы для нескольких агентов |
+| E2EE Secret Chat UI | полный UI | P2 | Crypto модуль есть, нужен完整的UI поток |
+| Image Preview | lightbox | P3 | клик по изображению → полноэкранный просмотр |
+| Message Search | searchMessages | P2 | поиск по сообщениям внутри чата |
+| Chat Background | uploadBackground | P3 | пользовательский фон чата |
+| Read Receipts Sync | MarkRead v2 | P2 | автоматическая отправка read receipt |
+| Voice Messages Recording | MediaRecorder API | P3 | запись + отправка голосовых |
+| File Download Progress | — | P3 | прогресс-бар при скачивании файлов |
+| Pinned Messages Screen | getPinnedMessages UI | P2 | экран закреплённых сообщений |
 
-### Приоритет 2 — Сложные фичи
-- **E2EE Secret Chats**: RSA key generation (Web Crypto API) + key storage + message encryption/decryption
-- **WebRTC Calls**: TURN credentials endpoint + WebRTC UI
+## Следующие шаги
 
-### Приоритет 3 — Улучшения
-- **getUserAvatar lazy loading**: использовать getUserAvatar для ленивой загрузки аватаров
-- **Desktop sidebar**: добавить AI чаты и настройки в сайдбар
+### Приоритет 1 — Критичное
+- **ChatV2 полный переход**: когда messages_v2 будет заполнена, убрать v1 fallback
+- **Empty message fix**: исправлен SendMessageV2 oneof serialization (v1.4.1)
+
+### Приоритет 2 — Улучшения
+- **Message Search UI**: поиск по сообщениям внутри чата
+- **Read Receipts v2**: автоматический MarkRead при входе в чат
+- **E2EE полный UI**:SecretChatScreen с шифрованием/дешифрованием сообщений
+- **Image Lightbox**: полноэкранный просмотр изображений
+- **Pinned Messages Screen**: UI для закреплённых сообщений
+
+### Приоритет 3 — Фичи
+- **Voice Recording**: MediaRecorder API для записи голосовых
+- **File Download Progress**: прогресс-бар при скачивании
+- **Chat Background**: пользовательский фон чата
+- **Multi-Agent AI**: параллельные запросы к нескольким AI агентам

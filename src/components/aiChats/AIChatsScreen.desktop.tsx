@@ -14,7 +14,7 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
     marketplaceResults, usageStats,
     loadAgents,     createNewChat, sendMessage, stopStreaming,
     loadChatMessages, renameChat, deleteChat, selectAgent,
-    deleteAgent, cloneAgent,
+    createAgent, deleteAgent, cloneAgent,
     searchMarketplace, installAgent, loadUsageStats,
   } = useAIChats()
 
@@ -27,6 +27,9 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [showCreateAgent, setShowCreateAgent] = useState(false)
+  const [newAgent, setNewAgent] = useState({ name: '', description: '', model: '', systemPrompt: '' })
+  const [isCreatingAgent, setIsCreatingAgent] = useState(false)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -59,6 +62,27 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
 
   const handleNewChat = async () => {
     await createNewChat()
+  }
+
+  const handleCreateAgent = async () => {
+    if (!newAgent.name.trim()) return
+    setIsCreatingAgent(true)
+    try {
+      const id = await createAgent({
+        name: newAgent.name.trim(),
+        description: newAgent.description.trim(),
+        model: newAgent.model.trim(),
+        systemPrompt: newAgent.systemPrompt.trim(),
+      })
+      if (id) {
+        setShowCreateAgent(false)
+        setNewAgent({ name: '', description: '', model: '', systemPrompt: '' })
+        await loadAgents()
+        selectAgent(id)
+      }
+    } finally {
+      setIsCreatingAgent(false)
+    }
   }
 
   const handleChatClick = (chatId: string) => {
@@ -303,7 +327,7 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
           <div className="scrollable" style={{ flex: 1, padding: '12px' }}>
             {agentTab === 'agents' && (
               <>
-                <button onClick={() => {}} style={{
+                <button onClick={() => setShowCreateAgent(true)} style={{
                   width: '100%', padding: '8px 0', borderRadius: 8,
                   background: 'rgba(107,92,231,0.15)', border: 'none',
                   color: '#6b5ce7', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 8,
@@ -402,6 +426,101 @@ export default function AIChatsScreenDesktop({ onBack }: Props) {
                 ))}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {showCreateAgent && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={() => setShowCreateAgent(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{
+            width: 400, maxHeight: '80vh',
+            background: '#1e1e36', borderRadius: 16,
+            border: '1px solid rgba(255,255,255,0.1)',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 16px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <span style={{ fontSize: 16, fontWeight: 600, color: '#fff' }}>Новый агент</span>
+              <button onClick={() => setShowCreateAgent(false)} style={{
+                background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
+                cursor: 'pointer', fontSize: 18, padding: 4,
+              }}>✕</button>
+            </div>
+            <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, overflow: 'auto' }}>
+              <div>
+                <label style={{ fontSize: 12, color: '#888', marginBottom: 4, display: 'block' }}>Имя *</label>
+                <input
+                  value={newAgent.name}
+                  onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
+                  placeholder="Мой агент"
+                  autoFocus
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                    color: '#fff', fontSize: 14, outline: 'none',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: '#888', marginBottom: 4, display: 'block' }}>Описание</label>
+                <input
+                  value={newAgent.description}
+                  onChange={(e) => setNewAgent({ ...newAgent, description: e.target.value })}
+                  placeholder="Описание агента"
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                    color: '#fff', fontSize: 14, outline: 'none',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: '#888', marginBottom: 4, display: 'block' }}>Модель</label>
+                <input
+                  value={newAgent.model}
+                  onChange={(e) => setNewAgent({ ...newAgent, model: e.target.value })}
+                  placeholder="openrouter/auto"
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                    color: '#fff', fontSize: 14, outline: 'none',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: '#888', marginBottom: 4, display: 'block' }}>Системный промпт</label>
+                <textarea
+                  value={newAgent.systemPrompt}
+                  onChange={(e) => setNewAgent({ ...newAgent, systemPrompt: e.target.value })}
+                  placeholder="Ты полезный ассистент..."
+                  rows={4}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+                    color: '#fff', fontSize: 14, outline: 'none', resize: 'vertical',
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setShowCreateAgent(false)} style={{
+                padding: '8px 16px', borderRadius: 8,
+                background: 'rgba(255,255,255,0.06)', border: 'none',
+                color: '#888', fontSize: 14, cursor: 'pointer',
+              }}>Отмена</button>
+              <button onClick={handleCreateAgent} disabled={!newAgent.name.trim() || isCreatingAgent} style={{
+                padding: '8px 16px', borderRadius: 8,
+                background: newAgent.name.trim() ? '#6b5ce7' : 'rgba(107,92,231,0.3)',
+                border: 'none', color: '#fff', fontSize: 14, fontWeight: 600,
+                cursor: newAgent.name.trim() ? 'pointer' : 'default',
+              }}>{isCreatingAgent ? 'Создание...' : 'Создать'}</button>
+            </div>
           </div>
         </div>
       )}
