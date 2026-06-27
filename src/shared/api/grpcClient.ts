@@ -455,6 +455,23 @@ export function protoToUser(u: any): User {
   }
 }
 
+async function compressImage(file: File, maxDim = 1920, quality = 0.85): Promise<File> {
+  if (!file.type.startsWith('image/') || file.size < 2 * 1024 * 1024) return file
+  const bitmap = await createImageBitmap(file)
+  const canvas = document.createElement('canvas')
+  const ratio = Math.min(maxDim / bitmap.width, maxDim / bitmap.height, 1)
+  canvas.width = Math.round(bitmap.width * ratio)
+  canvas.height = Math.round(bitmap.height * ratio)
+  const ctx = canvas.getContext('2d')!
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      resolve(blob ? new File([blob], file.name, { type: 'image/jpeg' }) : file)
+    }, 'image/jpeg', quality)
+  })
+}
+
 // --- Singleton ---
 
 class GrpcClient {
@@ -1683,7 +1700,8 @@ class GrpcClient {
   }
 
   async uploadImage(file: File): Promise<string> {
-    return this.uploadFile('/upload-image', 'image', file)
+    const compressed = await compressImage(file)
+    return this.uploadFile('/upload-image', 'image', compressed)
   }
 
   async uploadFile_(file: File): Promise<string> {
