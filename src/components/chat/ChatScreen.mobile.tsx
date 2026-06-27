@@ -491,11 +491,9 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
             <CtxItem emoji="📋" label={t('copyText')} onClick={() => handleCopy(longPressMenu.messageId)} />
             <CtxItem emoji="⭐" label="В избранное" onClick={() => { handleFavorite(longPressMenu.messageId); closeMenus() }} />
             {messages.find((m) => m.id === longPressMenu.messageId)?.user === user?.username && (
-              <>
-                <CtxItem emoji="✏️" label={t('edit')} onClick={() => { const msg = messages.find((m) => m.id === longPressMenu.messageId); if (msg) handleEdit(msg) }} />
-                <CtxItem emoji="🗑" label={t('delete')} onClick={() => handleDelete(longPressMenu.messageId)} destructive />
-              </>
+              <CtxItem emoji="✏️" label={t('edit')} onClick={() => { const msg = messages.find((m) => m.id === longPressMenu.messageId); if (msg) handleEdit(msg) }} />
             )}
+            <CtxItem emoji="🗑" label={t('delete')} onClick={() => handleDelete(longPressMenu.messageId)} destructive />
           </div>
         </div>
       )}
