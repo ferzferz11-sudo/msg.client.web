@@ -1,6 +1,6 @@
 // ============================================
 // useChatMessages — Chat Messages Hook
-// Uses V2 methods with V1 fallback for history.
+// Uses V2 methods exclusively.
 // Supports E2EE encryption for secret chats.
 // ============================================
 
@@ -39,7 +39,6 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const nextCursorRef = useRef<string>('')
-  const usingV2Ref = useRef<boolean>(true)
 
   const userMapRef = useRef<Record<string, string>>({})
   const userMapReadyRef = useRef(false)
@@ -185,7 +184,6 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
         setMessages(chatId, resolved)
         setHasMore(more)
         nextCursorRef.current = nextCursor
-        usingV2Ref.current = nextCursor !== '' || resolved.length > 0
 
         if (resolved.length > 0 && user?.username && user?.id) {
           grpcClient.markRead(chatId, user.username, user.id).catch(() => {})

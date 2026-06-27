@@ -6,7 +6,7 @@
 // - Exponential backoff retry (3 attempts)
 // - Error classification (network/auth/rate-limit/server)
 // - Error store integration
-// - BiDi Chat streaming (auth via first message JWT)
+// - ChatV2 bidirectional streaming
 // ============================================
 
 /// <reference types="vite/client" />
@@ -220,42 +220,6 @@ function protoToChat(chat: any): Chat {
     allowMembersToAdd: chat.allowMembersToAdd || false,
     isSecret: chat.isSecret || false,
     e2eeReady: chat.e2eeReady || false,
-  }
-}
-
-function protoToMessage(msg: any): Message {
-  const rawReactions = msg.reactions || []
-  const reactions: Record<string, string[]> = {}
-  if (Array.isArray(rawReactions)) {
-    for (const r of rawReactions) {
-      const emoji = r.emoji || ''
-      const user = r.user || ''
-      if (emoji && user) {
-        if (!reactions[emoji]) reactions[emoji] = []
-        reactions[emoji].push(user)
-      }
-    }
-  }
-
-  return {
-    id: msg.id || '',
-    roomId: msg.roomId || msg.chatId || '',
-    user: msg.user || '',
-    text: msg.text || '',
-    createdAt: msg.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-    isOutgoing: false,
-    isRead: msg.isRead || false,
-    repliedToMessageId: msg.repliedToMessageId || '',
-    repliedToUser: msg.repliedToUser || '',
-    repliedToText: msg.repliedToText || '',
-    agentId: msg.agentId || '',
-    reactions,
-    imageUrl: msg.imageUrl || '',
-    imageUrls: msg.imageUrls || [],
-    isEdited: msg.edited || false,
-    userId: msg.userId || '',
-    voiceUrl: msg.voiceUrl || '',
-    duration: msg.duration || 0,
   }
 }
 
@@ -476,28 +440,6 @@ function protoToTheme(t: any): CustomTheme {
     outgoingTextColor: t.outgoingTextColor || t.outgoing_text_color || '',
     incomingTextColor: t.incomingTextColor || t.incoming_text_color || '',
   }
-}
-
-function handleChatMessage(msg: any, callback: StreamCallback): void {
-  if (!msg || !msg.user) return
-  const text = msg.text || ''
-  if (text.startsWith('SERVER_INFO:')) return
-  if (text === 'AUTH_FAILED') return
-  if (text.startsWith('DEPRECATED:')) return
-  if (text === 'SET_SUPER_ADMIN') return
-  if (text.startsWith('CLEAR_CACHE:')) return
-  if (text.startsWith('CHAT_DELETED:')) return
-  if (text === 'REGISTRATION_SUCCESS') return
-  if (text === 'USER_NOT_FOUND') return
-  if (text === 'SERVER_SHUTTINGDOWN') {
-    callback({ type: 'error', error: 'SERVER_SHUTTINGDOWN' })
-    return
-  }
-  if (text.startsWith('FORCE_DISCONNECT:')) {
-    callback({ type: 'error', error: text })
-    return
-  }
-  callback({ type: 'message', message: protoToMessage(msg) })
 }
 
 export function protoToUser(u: any): User {
@@ -863,18 +805,6 @@ class GrpcClient {
     )
   }
 
-  async getHistory(roomId: string, limit = 50): Promise<{ messages: Message[]; hasMore: boolean }> {
-    if (!this.chatClient) throw new Error('Not connected')
-    return withRetry(
-      async () => {
-        const response = await this.chatClient.getHistory({ room: roomId, limit })
-        const messages = (response.messages || []).map(protoToMessage)
-        return { messages, hasMore: messages.length === limit }
-      },
-      { maxRetries: 2, baseDelay: 500 },
-    )
-  }
-
   async createDirectChat(user1: string, user2: string, user1Id: string, user2Id: string): Promise<Chat> {
     if (!this.chatClient) throw new Error('Not connected')
     const response = await this.chatClient.createDirectChat({ user1, user2, user1Id, user2Id })
@@ -925,197 +855,6 @@ class GrpcClient {
     return response.success
   }
 
-  // --- BiDi Chat Stream (receive-only) ---
-  // Opens a Chat stream, sends JWT auth in the first message,
-  // then listens for broadcast messages from the server.
-
-  openReceiveStream(roomId: string, callback: StreamCallback): () => void {
-    const streamId = `recv-${roomId}`
-    const controller = new AbortController()
-    const signal = controller.signal
-
-    const existing = this.activeStreams.get(streamId)
-    if (existing) {
-      existing.abort()
-      this.activeStreams.delete(streamId)
-    }
-    this.activeStreams.set(streamId, controller)
-
-    const tokens = this._getTokens?.()
-    const jwtToken = tokens?.accessToken || ''
-
-    let authSent = false
-    const sendQueue: any[] = []
-    let sendResolve: ((value: IteratorResult<any>) => void) | null = null
-
-    const inputStream = {
-      [Symbol.asyncIterator]() {
-        return {
-          next(): Promise<IteratorResult<any>> {
-            if (sendQueue.length > 0) {
-              return Promise.resolve({ value: sendQueue.shift()!, done: false })
-            }
-            if (!authSent && jwtToken) {
-              authSent = true
-              const deviceInfo = getDeviceInfo()
-              const userId = useAuthStore.getState().user?.id || ''
-              return Promise.resolve({
-                value: {
-                  jwtToken,
-                  roomId,
-                  userId,
-                  clientVersion: '1.0.0',
-                  deviceId: deviceInfo.deviceId,
-                  deviceName: deviceInfo.deviceName,
-                },
-                done: false,
-              })
-            }
-            return new Promise<IteratorResult<any>>((resolve) => {
-              sendResolve = resolve
-            })
-          },
-        }
-      },
-    }
-
-    const stream = this.chatClient.chat(inputStream, { signal })
-
-    ;(async () => {
-      try {
-        for await (const msg of stream) {
-          if (signal.aborted) break
-          handleChatMessage(msg, callback)
-        }
-      } catch (err) {
-        if (!signal.aborted) {
-          const type = classifyError(err)
-          useErrorStore.getState().addError({
-            message: type === 'network' ? 'Потеряно соединение с сервером' : `Ошибка: ${err}`,
-            type,
-          })
-          callback({ type: 'error', error: String(err) })
-        }
-      }
-    })()
-
-    return () => {
-      controller.abort()
-      this.activeStreams.delete(streamId)
-      if (sendResolve) {
-        const resolve = sendResolve
-        sendResolve = null
-        resolve({ value: undefined as any, done: true })
-      }
-    }
-  }
-
-  // --- Send Message via ephemeral BiDi stream ---
-  // Opens a new Chat stream, sends auth + message, waits for the echoed response, then closes.
-
-  async sendMessage(
-    roomId: string,
-    content: string,
-    userId: string,
-    replyTo?: { messageId: string; user: string; text: string },
-  ): Promise<Message> {
-    if (!this.chatClient) throw new Error('Not connected')
-
-    return withRetry(
-      async () => {
-        const tokens = this._getTokens?.()
-        const jwtToken = tokens?.accessToken || ''
-
-        const sendQueue: any[] = []
-
-        const inputStream = {
-          [Symbol.asyncIterator]() {
-            return {
-              next(): Promise<IteratorResult<any>> {
-                if (sendQueue.length > 0) {
-                  return Promise.resolve({ value: sendQueue.shift()!, done: false })
-                }
-                return new Promise<IteratorResult<any>>(() => {})
-              },
-            }
-          },
-        }
-
-        const controller = new AbortController()
-        const stream = this.chatClient.chat(inputStream, { signal: controller.signal })
-
-        const deviceInfo = getDeviceInfo()
-        sendQueue.push({
-          jwtToken,
-          roomId,
-          userId,
-          clientVersion: '1.0.0',
-          deviceId: deviceInfo.deviceId,
-          deviceName: deviceInfo.deviceName,
-        })
-
-        const localId = `local-${Date.now()}`
-        const msg: any = { roomId, text: content, userId, id: localId }
-        if (replyTo) {
-          msg.repliedToMessageId = replyTo.messageId
-          msg.repliedToUser = replyTo.user
-          msg.repliedToText = replyTo.text
-        }
-        sendQueue.push(msg)
-
-        let savedMessage: Message | null = null
-
-        try {
-          for await (const msg of stream) {
-            if (controller.signal.aborted) break
-            const text = msg.text || ''
-            if (
-              !text ||
-              text.startsWith('SERVER_INFO:') ||
-              text === 'AUTH_FAILED' ||
-              text.startsWith('DEPRECATED:') ||
-              text === 'SET_SUPER_ADMIN' ||
-              text.startsWith('CLEAR_CACHE:') ||
-              text.startsWith('CHAT_DELETED:')
-            ) {
-              continue
-            }
-            savedMessage = { ...protoToMessage(msg), isOutgoing: true }
-            break
-          }
-        } finally {
-          controller.abort()
-        }
-
-        if (!savedMessage) {
-          throw new Error('Не удалось отправить сообщение')
-        }
-        return savedMessage
-      },
-      { maxRetries: 2, baseDelay: 300 },
-    )
-  }
-
-  // --- Message Operations ---
-
-  async setReaction(messageId: string, _roomId: string, userId: string, emoji: string): Promise<boolean> {
-    if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.setReaction({ messageId, reaction: { user: userId, emoji } })
-    return result.success ?? false
-  }
-
-  async deleteMessages(messageIds: string[], _roomId: string, userId: string): Promise<boolean> {
-    if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.deleteMessages({ messages: messageIds.map((id) => ({ id })), requesterUsername: userId })
-    return result.success ?? false
-  }
-
-  async editMessage(messageId: string, _roomId: string, _userId: string, newText: string): Promise<boolean> {
-    if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.editMessage({ messageId, text: newText })
-    return result.success ?? false
-  }
-
   // --- Messages V2 Methods ---
 
   async getHistoryV2(roomId: string, limit = 50, cursor = ''): Promise<{ messages: Message[]; nextCursor: string; hasMore: boolean }> {
@@ -1124,22 +863,6 @@ class GrpcClient {
       async () => {
         const response = await this.chatClient.getHistoryV2({ roomId, limit, cursor })
         const v2Messages = (response.messages || []).map((m: any) => protoToMessageV2(m))
-
-        if (!cursor) {
-          const v1 = await this.chatClient!.getHistory({ room: roomId, limit })
-          const v1Messages = (v1.messages || []).map(protoToMessage)
-          if (v1Messages.length > 0) {
-            const v2Ids = new Set(v2Messages.map((m: Message) => m.id))
-            const merged = [...v2Messages, ...v1Messages.filter((m: any) => !v2Ids.has(m.id))]
-            merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-            return {
-              messages: merged,
-              nextCursor: response.nextCursor ?? '',
-              hasMore: response.hasMore ?? false,
-            }
-          }
-        }
-
         return {
           messages: v2Messages,
           nextCursor: response.nextCursor ?? '',
@@ -1214,6 +937,18 @@ class GrpcClient {
     if (!this.chatClient) throw new Error('Not connected')
     const result = await this.chatClient.setReactionV2({ messageId, emoji })
     return result.success ?? false
+  }
+
+  async searchMessages(roomId: string, query: string, limit = 20): Promise<{ messageId: string; roomId: string; username: string; preview: string; createdAt: string }[]> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.searchMessages({ roomId, query, limit })
+    return (result.messages || []).map((r: any) => ({
+      messageId: r.messageId || '',
+      roomId: r.roomId || '',
+      username: r.username || '',
+      preview: r.preview || '',
+      createdAt: r.createdAt || '',
+    }))
   }
 
   // --- ChatV2 Stream (bidirectional) ---
@@ -1347,7 +1082,7 @@ class GrpcClient {
   async getPinnedMessages(chatId: string): Promise<Message[]> {
     if (!this.chatClient) throw new Error('Not connected')
     const result = await this.chatClient.getPinnedMessages({ chatId })
-    return (result.messages || []).map(protoToMessage)
+    return (result.messages || []).map((m: any) => protoToMessageV2(m))
   }
 
   // --- Draft Methods ---
@@ -1387,7 +1122,7 @@ class GrpcClient {
   async getFavorites(userId: string): Promise<Message[]> {
     if (!this.chatClient) throw new Error('Not connected')
     const result = await this.chatClient.getFavorites({ userId })
-    return (result.messages || []).map(protoToMessage)
+    return (result.messages || []).map((m: any) => protoToMessageV2(m))
   }
 
   // --- Theme Methods ---

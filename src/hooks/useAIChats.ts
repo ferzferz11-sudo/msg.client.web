@@ -143,19 +143,7 @@ export function useAIChats() {
       const list = await grpcClient.getAIV2ChatHistory(sessionId)
       setMessages(list)
     } catch {
-      try {
-        const result = await grpcClient.getHistory(sessionId, 50)
-        const list: AIMessage[] = result.messages.map((m) => ({
-          id: m.id,
-          role: m.user === 'assistant' || m.user === 'ai' ? 'assistant' : 'user',
-          content: m.text,
-          agentId: m.agentId || '',
-          timestamp: new Date(m.createdAt).getTime(),
-        }))
-        setMessages(list)
-      } catch {
-        addError({ message: 'Не удалось загрузить сообщения', type: 'network' })
-      }
+      addError({ message: 'Не удалось загрузить сообщения', type: 'network' })
     }
   }, [addError])
 

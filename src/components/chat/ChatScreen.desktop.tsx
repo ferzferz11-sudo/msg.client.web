@@ -204,6 +204,14 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
     deleteMessages([messageId])
   }, [deleteMessages])
 
+  const handleCopy = useCallback((messageId: string) => {
+    setContextMenu(null)
+    const msg = messages.find((m) => m.id === messageId)
+    if (msg?.text) {
+      navigator.clipboard.writeText(msg.text).catch(() => {})
+    }
+  }, [messages])
+
   const handleReply = useCallback((message: Message) => {
     setContextMenu(null)
     setReplyToMessage(message)
@@ -583,6 +591,7 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
           >
             <CtxItem emoji="😊" label={t('reaction')} onClick={() => handleReact(contextMenu.messageId)} />
             <CtxItem emoji="↩️" label={t('reply')} onClick={() => { const msg = messages.find((m) => m.id === contextMenu.messageId); if (msg) handleReply(msg) }} />
+            <CtxItem emoji="📋" label={t('copyText')} onClick={() => handleCopy(contextMenu.messageId)} />
             <CtxItem emoji="⭐" label="В избранное" onClick={() => { handleFavorite(contextMenu.messageId); closeMenus() }} />
             {messages.find((m) => m.id === contextMenu.messageId)?.user === user?.username && (
               <>
@@ -758,6 +767,7 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, onSelect, onCo
             fontSize: 14.5,
             lineHeight: 1.35,
             wordBreak: 'break-word',
+            userSelect: 'text',
             position: 'relative',
           }}
         >

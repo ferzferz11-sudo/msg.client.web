@@ -18,6 +18,7 @@ import { useAuthStore } from '@/store/authStore'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { t } from '@/shared/types'
 import type { User } from '@/shared/types'
+import { APP_VERSION } from '@/shared/version'
 
 interface ChatListScreenProps {
   onChatSelect: (chatId: string) => void
@@ -295,6 +296,9 @@ export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, 
             <div style={{ fontSize: 18, fontWeight: 500 }}>{t('selectChat')}</div>
             <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.2)' }}>
               {t('selectChatHint')}
+            </div>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.15)', marginTop: 8 }}>
+              v{APP_VERSION}
             </div>
           </div>
         )}

@@ -12678,6 +12678,153 @@ export class SetReactionV2Response extends Message$1<SetReactionV2Response> {
 }
 
 /**
+ * @generated from message messenger.SearchMessagesRequest
+ */
+export class SearchMessagesRequest extends Message$1<SearchMessagesRequest> {
+  /**
+   * @generated from field: string room_id = 1;
+   */
+  roomId = "";
+
+  /**
+   * @generated from field: string query = 2;
+   */
+  query = "";
+
+  /**
+   * @generated from field: int32 limit = 3;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<SearchMessagesRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.SearchMessagesRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchMessagesRequest {
+    return new SearchMessagesRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchMessagesRequest {
+    return new SearchMessagesRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchMessagesRequest {
+    return new SearchMessagesRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchMessagesRequest | PlainMessage<SearchMessagesRequest> | undefined, b: SearchMessagesRequest | PlainMessage<SearchMessagesRequest> | undefined): boolean {
+    return proto3.util.equals(SearchMessagesRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.SearchMessagesResponse
+ */
+export class SearchMessagesResponse extends Message$1<SearchMessagesResponse> {
+  /**
+   * @generated from field: repeated messenger.SearchResult messages = 1;
+   */
+  messages: SearchResult[] = [];
+
+  constructor(data?: PartialMessage<SearchMessagesResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.SearchMessagesResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "messages", kind: "message", T: SearchResult, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchMessagesResponse {
+    return new SearchMessagesResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchMessagesResponse {
+    return new SearchMessagesResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchMessagesResponse {
+    return new SearchMessagesResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchMessagesResponse | PlainMessage<SearchMessagesResponse> | undefined, b: SearchMessagesResponse | PlainMessage<SearchMessagesResponse> | undefined): boolean {
+    return proto3.util.equals(SearchMessagesResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.SearchResult
+ */
+export class SearchResult extends Message$1<SearchResult> {
+  /**
+   * @generated from field: string message_id = 1;
+   */
+  messageId = "";
+
+  /**
+   * @generated from field: string room_id = 2;
+   */
+  roomId = "";
+
+  /**
+   * @generated from field: string username = 3;
+   */
+  username = "";
+
+  /**
+   * @generated from field: string preview = 4;
+   */
+  preview = "";
+
+  /**
+   * @generated from field: string created_at = 5;
+   */
+  createdAt = "";
+
+  constructor(data?: PartialMessage<SearchResult>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.SearchResult";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "message_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "preview", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SearchResult {
+    return new SearchResult().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SearchResult {
+    return new SearchResult().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SearchResult {
+    return new SearchResult().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SearchResult | PlainMessage<SearchResult> | undefined, b: SearchResult | PlainMessage<SearchResult> | undefined): boolean {
+    return proto3.util.equals(SearchResult, a, b);
+  }
+}
+
+/**
  * @generated from message messenger.ChatWithAIV2Request
  */
 export class ChatWithAIV2Request extends Message$1<ChatWithAIV2Request> {
@@ -13536,6 +13683,13 @@ export class AgentInfoV2 extends Message$1<AgentInfoV2> {
    */
   shareCode = "";
 
+  /**
+   * JSON string — API key, model override etc.
+   *
+   * @generated from field: string provider_config = 22;
+   */
+  providerConfig = "";
+
   constructor(data?: PartialMessage<AgentInfoV2>) {
     super();
     proto3.util.initPartial(data, this);
@@ -13565,6 +13719,7 @@ export class AgentInfoV2 extends Message$1<AgentInfoV2> {
     { no: 19, name: "original_agent_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 20, name: "version", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 21, name: "share_code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 22, name: "provider_config", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AgentInfoV2 {

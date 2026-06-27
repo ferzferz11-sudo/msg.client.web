@@ -788,6 +788,7 @@ service ChatService {
   rpc EditMessageV2(EditMessageV2Request) returns (EditMessageV2Response);
   rpc DeleteMessageV2(DeleteMessageV2Request) returns (DeleteMessageV2Response);
   rpc SetReactionV2(SetReactionV2Request) returns (SetReactionV2Response);
+  rpc SearchMessages(SearchMessagesRequest) returns (SearchMessagesResponse);
 
   // === AI Services v2 ===
   rpc ChatWithAIV2(ChatWithAIV2Request) returns (stream ChatWithAIV2Response);
@@ -1753,6 +1754,24 @@ message SetReactionV2Request {
 message SetReactionV2Response {
   bool success = 1;
   bytes reactions = 2;
+}
+
+message SearchMessagesRequest {
+  string room_id = 1;
+  string query = 2;
+  int32 limit = 3;
+}
+
+message SearchMessagesResponse {
+  repeated SearchResult messages = 1;
+}
+
+message SearchResult {
+  string message_id = 1;
+  string room_id = 2;
+  string username = 3;
+  string preview = 4;
+  string created_at = 5;
 }
 
 // ======= AI Services v2 Messages =======

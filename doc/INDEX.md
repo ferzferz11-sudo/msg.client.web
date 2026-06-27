@@ -68,9 +68,9 @@ src/
 | [GOTCHAS.md](GOTCHAS.md) | Known issues, proto gotchas, fixes, UI patterns |
 | [CHANGELOG.md](CHANGELOG.md) | История версий |
 
-## Статус интеграции (с сервером v1.3.0.23)
+## Статус интеграции (с сервером v1.3.0.25)
 
-**Web клиент:** v0.1.4.4 | **Дата проверки:** 2026-06-27
+**Web клиент:** v0.1.5.0 | **Дата проверки:** 2026-06-27
 
 ### ✅ Реализовано
 
@@ -96,18 +96,15 @@ src/
 | Muted Chats | ✅ | v0.1.0.0 | getMutedChats, setMutedChat |
 | Search Chats | ✅ | v0.1.0.0 | searchChats |
 | ChatList Version | ✅ | v0.1.0.0 | getChatListVersion |
-| **Messages v1** | | | |
-| GetHistory | ✅ | v0.5.0 | limit + room |
-| SendMessage | ✅ | v0.5.0 | ephemeral BiDi stream |
-| EditMessage | ✅ | v0.1.0.0 | messageId, text |
-| DeleteMessages | ✅ | v0.1.0.0 | messages[], requesterUsername |
-| SetReaction | ✅ | v0.1.0.0 | nested { message_id, reaction: { user, emoji } } |
+| **Messages v1** | ❌ | removed | Удалено в v0.1.5.0 (сервер убрал dual-write) |
 | **Messages v2** | | | |
-| GetHistoryV2 | ✅ | v0.1.2.0 | cursor-based pagination |
-| SendMessageV2 | ✅ | v0.1.2.0 | oneof content (text/media), unary RPC |
-| EditMessageV2 | ✅ | v0.1.2.0 | messageId, text |
-| DeleteMessageV2 | ✅ | v0.1.2.0 | message_ids[], requester_user_id |
-| SetReactionV2 | ✅ | v0.1.2.0 | message_id, emoji |
+| GetHistoryV2 | ✅ | v0.1.5.0 | cursor-based pagination, v2 only (v1 fallback removed) |
+| SendMessageV2 | ✅ | v0.1.5.0 | oneof content (text/media), unary RPC |
+| EditMessageV2 | ✅ | v0.1.5.0 | messageId, text |
+| DeleteMessageV2 | ✅ | v0.1.5.0 | message_ids[], requester_user_id, soft delete |
+| SetReactionV2 | ✅ | v0.1.5.0 | message_id, emoji, inline JSONB |
+| SearchMessages | ✅ | v0.1.5.0 | single-chat or cross-chat search |
+| ChatV2 Stream | ✅ | v0.1.5.0 | BiDi stream, typing, system events (v1 stream removed) |
 | **Pin Messages** | | | |
 | PinMessage / UnPinMessage | ✅ | v0.1.1.1 | userId required |
 | GetPinnedMessages | ✅ | v0.1.0.0 | chat_id |
@@ -181,30 +178,29 @@ src/
 | Pinned Messages Screen | ✅ | v0.1.4.4 | desktop overlay + mobile full-screen |
 | Voice Recording | ✅ | v0.1.4.4 | MediaRecorder API, send as voice message |
 | Real-time Messages | ✅ | v0.1.4.4 | ChatV2 stream auth deadlock fix + server broadcast |
+| Copy Text | ✅ | v0.1.5.0 | context menu copy + text selection on bubbles |
+| Version Display | ✅ | v0.1.5.0 | app version on select chat screen |
 
 ### ⚠️ Частично реализовано / Known Issues
 
 | Проблема | Описание | Решение |
 |----------|----------|---------|
-| ChatV2 stream full transition | dual-write v1+v2 на сервере | getHistoryV2 мержит v1+v2 сообщения |
-| v1/v2 Message Merge | старые сообщения только в messages | getHistoryV2 с fallback на v1 |
 | Proto codegen | npm run proto:generate падает | `buf generate --path proto/messenger.proto` |
 
 ### ❌ Не реализовано / Нет UI
 
 | Модуль | RPC | Приоритет | Описание |
 |--------|-----|-----------|----------|
-| Message Search | searchMessages | P2 | поиск по сообщениям внутри чата |
+| Message Search UI | searchMessages | P2 | RPC готов, нужен UI поиска |
 | E2EE Secret Chat UI | полный UI поток | P2 | Crypto модуль есть, нужен完整的UI |
 | Chat Background | uploadBackground | P3 | пользовательский фон чата |
 | File Download Progress | — | P3 | прогресс-бар при скачивании файлов |
 | Multi-Agent AI Chat | client-side routing | P3 | параллельные ChatWithAIV2 запросы |
-| ChatV2 полный переход | dual-write removal | P2 | когда messages_v2 заполнена |
 
 ## Следующие шаги (для следующей сессии)
 
 ### Приоритет 1 — Улучшения UX
-- **Message Search UI**: серверный промт готов (`doc/PROMPT_SEARCH_MESSAGES.md`), нужна реализация на сервере + клиент-сайд UI
+- **Message Search UI**: RPC `searchMessages` готов, нужен UI — поле поиска + список результатов с навигацией
 
 ### Приоритет 2 — Фичи
 - **E2EE полный UI**: SecretChatScreen с полным потоком шифрования/дешифрования

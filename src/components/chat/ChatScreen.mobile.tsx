@@ -202,6 +202,14 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
     setLongPressMenu(null); deleteMessages([messageId])
   }, [deleteMessages])
 
+  const handleCopy = useCallback((messageId: string) => {
+    setLongPressMenu(null)
+    const msg = messages.find((m) => m.id === messageId)
+    if (msg?.text) {
+      navigator.clipboard.writeText(msg.text).catch(() => {})
+    }
+  }, [messages])
+
   const handleReply = useCallback((message: Message) => {
     setLongPressMenu(null); setReplyToMessage(message); inputRef.current?.focus()
   }, [setReplyToMessage])
@@ -442,6 +450,7 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
           }} onClick={(e) => e.stopPropagation()}>
             <CtxItem emoji="😊" label={t('reaction')} onClick={() => handleReact(longPressMenu.messageId)} />
             <CtxItem emoji="↩️" label={t('reply')} onClick={() => { const msg = messages.find((m) => m.id === longPressMenu.messageId); if (msg) handleReply(msg) }} />
+            <CtxItem emoji="📋" label={t('copyText')} onClick={() => handleCopy(longPressMenu.messageId)} />
             <CtxItem emoji="⭐" label="В избранное" onClick={() => { handleFavorite(longPressMenu.messageId); closeMenus() }} />
             {messages.find((m) => m.id === longPressMenu.messageId)?.user === user?.username && (
               <>
@@ -552,7 +561,7 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, onLongPressSta
             ? (message.repliedToMessageId ? '8px 8px 8px 0' : '12px 12px 0 12px')
             : (message.repliedToMessageId ? '8px 8px 8px 0' : '12px 12px 12px 0'),
           background: isOwn ? TG.outgoing : TG.incoming,
-          color: TG.text, fontSize: 16, lineHeight: 1.35, wordBreak: 'break-word',
+          color: TG.text, fontSize: 16, lineHeight: 1.35, wordBreak: 'break-word', userSelect: 'text',
         }}>
           {!isOwn && message.user && (
             <div style={{ fontSize: 13, fontWeight: 600, color: TG.accent, marginBottom: 2 }}>{message.user}</div>

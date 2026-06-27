@@ -338,6 +338,8 @@ const translations: Record<string, Record<Lang, string>> = {
   reply: { en: 'Reply', ru: 'Ответить' },
   edit: { en: 'Edit', ru: 'Редактировать' },
   delete: { en: 'Delete', ru: 'Удалить' },
+  copyText: { en: 'Copy', ru: 'Копировать' },
+  copied: { en: 'Copied', ru: 'Скопировано' },
   cancel: { en: 'Cancel', ru: 'Отмена' },
   selected: { en: 'selected', ru: 'выбрано' },
   editing: { en: 'Editing', ru: 'Редактирование' },

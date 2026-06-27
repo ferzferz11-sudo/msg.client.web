@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.1.5.0 (2026-06-27)
+
+v1→v2 Message Migration, SearchMessages, Copy Text, Version Display.
+
+### v1→v2 Message Migration (Breaking)
+
+Server removed v1 dual-write — all messages now only in `messages_v2`. Web client fully migrated:
+
+- **Removed v1 RPCs**: `getHistory`, `sendMessage` (BiDi stream), `setReaction`, `deleteMessages`, `editMessage`, `openReceiveStream`
+- **Removed v1 helpers**: `protoToMessage`, `handleChatMessage`
+- **getHistoryV2**: removed v1 fallback merge — reads v2 only
+- **getPinnedMessages/getFavorites**: now use `protoToMessageV2` instead of `protoToMessage`
+- **useAIChats**: removed v1 `getHistory` fallback — uses `getAIV2ChatHistory` only
+- **useChatMessages**: removed `usingV2Ref` dead code
+
+### SearchMessages
+
+- **Proto**: added `SearchMessages` RPC + `SearchMessagesRequest`/`SearchMessagesResponse`/`SearchResult` messages
+- **grpcClient**: `searchMessages(roomId, query, limit)` — single-chat or cross-chat search
+
+### Copy Text
+
+- **Context menu**: "📋 Копировать" / "Copy" option in both desktop (right-click) and mobile (long press) chat menus
+- **Text selection**: `user-select: text` on message bubbles — text is now selectable with mouse
+
+### Version Display
+
+- **Select chat screen**: app version displayed below the placeholder text
+- **version.json**: updated to `0.1.5.0`
+
 ## v0.1.4.4 (2026-06-27)
 
 Image Lightbox, Pinned Messages Screen, Voice Recording, ChatV2 stream fixes, version scheme v0.1.x.x.
