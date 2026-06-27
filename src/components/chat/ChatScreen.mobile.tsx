@@ -5,6 +5,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import { Screen, ImageLightbox } from '@/components/common'
+import { UserProfileModal } from '@/components/common/UserProfileModal'
 import { useChatMessages } from '@/hooks/useChatMessages'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
 import { useChatStore } from '@/store/chatStore'
@@ -91,6 +92,11 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
   const [longPressMenu, setLongPressMenu] = useState<{ messageId: string; x: number; y: number } | null>(null)
   const [reactionPicker, setReactionPicker] = useState<{ messageId: string; x: number; y: number } | null>(null)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const [showSearch, setShowSearch] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<{ messageId: string; roomId: string; username: string; preview: string; createdAt: string }[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [profileUser, setProfileUser] = useState<string | null>(null)
   const voiceRecorder = useVoiceRecorder()
   const virtuosoRef = useRef<VirtuosoHandle>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -167,6 +173,19 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
     if (hasMore && !isLoadingMore) loadMore()
   }, [hasMore, isLoadingMore, loadMore])
 
+  useEffect(() => {
+    if (!searchQuery.trim() || !chatId) { setSearchResults([]); return }
+    const timer = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const results = await grpcClient.searchMessages(chatId, searchQuery.trim(), 30)
+        setSearchResults(results)
+      } catch { setSearchResults([]) }
+      setIsSearching(false)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery, chatId])
+
   const handleTouchStart = useCallback((messageId: string, e: React.TouchEvent) => {
     const touch = e.touches[0]
     longPressTimerRef.current = setTimeout(() => {
@@ -233,6 +252,9 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
   }, [sendMediaMessage])
 
   const typingNames = Array.from(typingUsers.keys())
+  const otherUsername = activeChat?.type === 'direct' && activeChat?.participants
+    ? JSON.parse(activeChat.participants).find((p: string) => p !== user?.username) || ''
+    : ''
 
   return (
     <>
@@ -255,15 +277,19 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
               </button>
 
               {/* Avatar */}
-              <div style={{
-                width: 42, height: 42, borderRadius: '50%', flexShrink: 0, marginLeft: 4,
-                background: activeChat?.type === 'owl' ? '#6b5ce7' : activeChat?.type === 'hermes' ? '#e75c5c' : TG.accent,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 600, color: '#fff',
-              }}>
+              <div
+                onClick={() => { if (otherUsername) setProfileUser(otherUsername) }}
+                style={{
+                  width: 42, height: 42, borderRadius: '50%', flexShrink: 0, marginLeft: 4,
+                  background: activeChat?.type === 'owl' ? '#6b5ce7' : activeChat?.type === 'hermes' ? '#e75c5c' : TG.accent,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 600, color: '#fff',
+                  cursor: otherUsername ? 'pointer' : 'default',
+                }}
+              >
                 {activeChat?.name?.charAt(0)?.toUpperCase() || '?'}
               </div>
 
-              <div style={{ flex: 1, marginLeft: 12, minWidth: 0 }}>
+              <div onClick={() => { if (otherUsername) setProfileUser(otherUsername) }} style={{ flex: 1, marginLeft: 12, minWidth: 0, cursor: otherUsername ? 'pointer' : 'default' }}>
                 <div style={{ fontSize: 16, fontWeight: 600, color: TG.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {activeChat?.name}
                 </div>
@@ -286,6 +312,14 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={TG.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
+                </svg>
+              </button>
+              <button
+                style={{ width: 40, height: 40, borderRadius: '50%', background: 'transparent', border: 'none', color: TG.textSecondary, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onClick={() => setShowSearch(!showSearch)}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={TG.textSecondary} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </button>
               <div style={{ position: 'relative' }} ref={chatMenuRef}>
@@ -482,6 +516,60 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
       )}
     </Screen>
     {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
+
+    {/* Search panel */}
+    {profileUser && <UserProfileModal username={profileUser} onClose={() => setProfileUser(null)} />}
+    {showSearch && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 200, background: '#1a1a2e',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: `1px solid ${TG.border}` }}>
+          <button onClick={() => { setShowSearch(false); setSearchQuery(''); setSearchResults([]) }}
+            style={{ background: 'none', border: 'none', color: TG.accent, fontSize: 16, cursor: 'pointer', padding: 4 }}>
+            ← Назад
+          </button>
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Поиск сообщений..."
+            autoFocus
+            style={{
+              flex: 1, padding: '8px 12px', background: 'rgba(255,255,255,0.08)',
+              border: `1px solid ${TG.border}`, borderRadius: 8, color: '#fff', fontSize: 15,
+              outline: 'none',
+            }}
+          />
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {isSearching ? (
+            <div style={{ textAlign: 'center', padding: 24, color: TG.textSecondary }}>Поиск...</div>
+          ) : searchQuery.trim() && searchResults.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 24, color: TG.textSecondary }}>Ничего не найдено</div>
+          ) : (
+            searchResults.map((r) => (
+              <div
+                key={r.messageId}
+                onClick={() => {
+                  const idx = messages.findIndex((m) => m.id === r.messageId)
+                  if (idx >= 0) virtuosoRef.current?.scrollToIndex({ index: idx, align: 'start' })
+                  setShowSearch(false)
+                }}
+                style={{
+                  padding: '12px 16px', borderBottom: `1px solid ${TG.border}`, cursor: 'pointer',
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600, color: TG.accent, marginBottom: 2 }}>{r.username}</div>
+                <div style={{ fontSize: 14, color: TG.text, lineHeight: 1.4 }}>{r.preview}</div>
+                <div style={{ fontSize: 11, color: TG.textSecondary, marginTop: 4 }}>
+                  {r.createdAt ? new Date(r.createdAt).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    )}
     </>
   )
 }
