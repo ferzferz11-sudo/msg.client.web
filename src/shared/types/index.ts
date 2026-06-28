@@ -295,6 +295,7 @@ export type StreamEvent =
   | { type: 'message'; message: Message }
   | { type: 'typing'; chatId: string; userId: string; isTyping: boolean }
   | { type: 'presence'; userId: string; isOnline: boolean }
+  | { type: 'reaction_update'; messageId: string; reactions: Record<string, string[]> }
   | { type: 'error'; error: string }
   | { type: 'done' }
 

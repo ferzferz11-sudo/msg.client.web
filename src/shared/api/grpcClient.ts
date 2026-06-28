@@ -315,6 +315,24 @@ function handleChatV2Message(v2Msg: any, callback: StreamCallback): void {
       callback({ type: 'error', error: 'AUTH_FAILED' })
       return
     }
+    if (sys.type === 'REACTION_V2') {
+      const raw = sys.message || ''
+      const sep = raw.indexOf('|')
+      if (sep > 0) {
+        const messageId = raw.substring(0, sep)
+        const reactionsJSON = raw.substring(sep + 1)
+        const reactions: Record<string, string[]> = {}
+        try {
+          const parsed = JSON.parse(reactionsJSON)
+          for (const [userId, emoji] of Object.entries(parsed)) {
+            if (!reactions[emoji as string]) reactions[emoji as string] = []
+            reactions[emoji as string].push(userId)
+          }
+        } catch {}
+        callback({ type: 'reaction_update', messageId, reactions })
+      }
+      return
+    }
     return
   }
 
@@ -950,10 +968,21 @@ class GrpcClient {
     return result.success ?? false
   }
 
-  async setReactionV2(messageId: string, emoji: string): Promise<boolean> {
+  async setReactionV2(messageId: string, emoji: string): Promise<{ success: boolean; reactions: Record<string, string[]> }> {
     if (!this.chatClient) throw new Error('Not connected')
     const result = await this.chatClient.setReactionV2({ messageId, emoji })
-    return result.success ?? false
+    let reactions: Record<string, string[]> = {}
+    if (result.reactions && result.reactions.length > 0) {
+      try {
+        const decoded = new TextDecoder().decode(result.reactions)
+        const parsed = JSON.parse(decoded)
+        for (const [userId, emoji] of Object.entries(parsed)) {
+          if (!reactions[emoji as string]) reactions[emoji as string] = []
+          reactions[emoji as string].push(userId)
+        }
+      } catch {}
+    }
+    return { success: result.success ?? false, reactions }
   }
 
   async searchMessages(roomId: string, query: string, limit = 20): Promise<{ messageId: string; roomId: string; username: string; preview: string; createdAt: string }[]> {

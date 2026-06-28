@@ -219,7 +219,7 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
   onStreamErrorRef.current = onStreamError
 
   const handleStreamEvent = useCallback(
-    async (event: { type: string; message?: Message; chatId?: string; userId?: string; isTyping?: boolean; error?: string }) => {
+    async (event: { type: string; message?: Message; chatId?: string; userId?: string; isTyping?: boolean; error?: string; messageId?: string; reactions?: Record<string, string[]> }) => {
       if (event.type === 'error') {
         const errorMsg = event.error || ''
         if (errorMsg.includes('SERVER_SHUTTINGDOWN')) {
@@ -249,6 +249,9 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
           if (msg.text === '[deleted]' && !msg.imageUrl && !msg.voiceUrl && !msg.fileUrl) return
           addMessage(msg)
         }
+      }
+      if (event.type === 'reaction_update' && event.messageId && event.reactions) {
+        updateMessage(event.messageId, { reactions: event.reactions })
       }
       if (event.type === 'typing' && event.chatId === chatIdRef.current && event.userId !== userIdRef.current) {
         const userId = event.userId || ''
@@ -453,12 +456,15 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
     async (messageId: string, emoji: string) => {
       if (!chatId || !user?.username) return
       try {
-        await grpcClient.setReactionV2(messageId, emoji)
+        const result = await grpcClient.setReactionV2(messageId, emoji)
+        if (result.success) {
+          updateMessage(messageId, { reactions: result.reactions })
+        }
       } catch (err: any) {
         addError({ message: 'Не удалось поставить реакцию', type: 'network' })
       }
     },
-    [chatId, user]
+    [chatId, user, updateMessage]
   )
 
   const toggleSelectMessage = useCallback((messageId: string) => {
