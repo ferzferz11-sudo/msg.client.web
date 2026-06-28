@@ -20,7 +20,7 @@
 // for cross-platform consistency.
 // ============================================
 
-const CACHE_NAME = 'msg-v1'
+const CACHE_NAME = 'msg-v2'
 const OFFLINE_URL = '/'
 
 // --- Install: cache offline shell ---
