@@ -2,7 +2,7 @@
 
 ## v0.1.9.0 (2026-06-28)
 
-Fixes: reactions visible in chat, token refresh race condition, logout, logo reload.
+Fixes: reactions visible in chat, token refresh race condition, logout, logo reload, deleted message cleanup.
 
 ### Reactions Fix
 
