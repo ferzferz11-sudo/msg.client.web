@@ -190,9 +190,10 @@ export default function App() {
   }, [fetchServerCapabilities])
 
   const handleLogout = useCallback(async () => {
-    await grpcClient.signOut(false)
+    try { await grpcClient.signOut(false) } catch {}
     logout()
-    setCurrentScreen('auth')
+    grpcClient.disconnect()
+    window.location.reload()
   }, [logout])
 
   const handleChatSelect = useCallback((chatId: string) => {

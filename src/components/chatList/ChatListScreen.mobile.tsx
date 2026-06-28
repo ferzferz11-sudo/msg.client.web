@@ -4,6 +4,7 @@ import { ChatList } from '@/components/chatList/ChatList'
 import { useChats } from '@/hooks/useChats'
 import { useChatListV2 } from '@/hooks/useChatListV2'
 import { useChatStore } from '@/store/chatStore'
+import { grpcClient } from '@/shared/api/grpcClient'
 
 interface ChatListScreenProps {
   onChatSelect: (chatId: string) => void
@@ -71,7 +72,10 @@ function ChatListHeader({ onSearch, onProfile, onArchive }: {
       }}>
         Профиль
       </button>
-      <span style={{ fontSize: 17, fontWeight: 600, color: '#fff' }}>
+      <span
+        onClick={() => { try { grpcClient.signOut(false) } catch {} ; localStorage.removeItem('auth_tokens'); localStorage.removeItem('auth_user'); window.location.reload() }}
+        style={{ fontSize: 17, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+      >
         <img src="/logo.png" alt="Lava" style={{ height: 22, width: 22, borderRadius: 4 }} /> Лава
       </span>
       <div style={{ display: 'flex', gap: 8 }}>
