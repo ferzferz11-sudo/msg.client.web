@@ -164,6 +164,18 @@ v1 `typing()` RPC — BiDi stream. `@connectrpc/connect-web` используе�
 `grpcClient.ts:130` триггерит refresh когда `now >= accessExpiresAt`. При перезагрузке с валидным токеном сервер отклоняет refresh как "revoked or expired".
 **Решение**: `isRefreshing` флаг блокирует рекурсию, 30s cooldown после ошибки, stale token fallback.
 
+### Auth Refresh Timeout (v0.1.9.5 fix)
+Refresh token RPC мог зависнуть навсегда если сервер недоступен. Все параллельные запросы ждали в `refreshWaiters[]` без таймаута → chat list загрузка зависала, logout не работал.
+**Решение**: 10s timeout на `refreshToken` RPC + 10s timeout на waiter promises. После таймаута запросы падают с ошибкой вместо бесконечного ожидания.
+
+### Logout Hang (v0.1.9.5 fix)
+`handleLogout` вызывал `grpcClient.signOut()` → через интерсептор пытался refresh → зависал. После этого `window.location.reload()` конфликтовал с `window.location.href`.
+**Решение**: logout делает `logout()` + `disconnect()` сначала (мгновенно), потом clear caches + unregister SW, потом `location.href = '/'`.
+
+### SW Cache Stale (v0.1.9.5 fix)
+Service Worker кэшировал старые JS файлы. Обновление через `caches.delete` не помогало потому что SW перезакэшировал.
+**Решение**: `msg-v4` → `msg-v5` (новое имя кэша), `handleUpdate` и `handleLogout` делают `navigator.serviceWorker.getRegistrations()` → `unregister()` перед redirect.
+
 ### v1/v2 Message Migration (Completed v0.1.5.0)
 Сервер завершил миграцию v1→v2, убрал dual-write. Все сообщения теперь только в `messages_v2`.
 Клиент полностью переключен на v2 RPC.

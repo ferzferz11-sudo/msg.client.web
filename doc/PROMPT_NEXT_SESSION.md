@@ -1,23 +1,44 @@
-# Prompt: Next Session — v0.1.10.0
+# Prompt: Next Session — v0.1.9.6
 
-**Client:** v0.1.9.2 | **Date:** 2026-06-28 | **Status:** Admin Panel, E2EE badges, testing, multi-agent optimization
+**Client:** v0.1.9.5 | **Date:** 2026-06-28 | **Status:** Auth hotfix deployed, admin panel, e2ee, testing
 
 ---
 
-## Выполнено в этой сессии (v0.1.9.0–v0.1.9.2)
+## Выполнено в этой сессии (v0.1.9.0–v0.1.9.5)
 
 - ✅ Admin Panel: `getAdminUserList`, `useAdminUsers` hook, `AdminPanel.tsx`, `AdminUserCard.tsx`, кнопка в SettingsScreen для superAdmin
 - ✅ E2EE Secret Chat UI: 🔒 бейдж на сообщения в mobile + desktop MessageBubble
 - ✅ Testing System: 75 тестов, 9 файлов (authStore, chatStore, errorStore, crypto, Toast, AdminUserCard, AdminPanel, utils, types)
 - ✅ Multi-Agent AI Chat: batched state updates, persist selectedAgentId, per-agent errors
+- ✅ Auth Hotfix v0.1.9.5: logout hang fix, auth refresh timeout 10s, SW cache invalidation (msg-v5)
 - ✅ Chat Background: уже реализован (menu, upload, CSS background)
 - ✅ Деплой на сервер
 
 ---
 
-## Testing Checklist (Priority 2)
+## Known Issues (Fixed in v0.1.9.5)
+
+### Logout hang
+`handleLogout` вызывал `signOut` через интерсептор → зависал если refresh token невалиден. Исправлено: `logout()` + `disconnect()` сначала, потом cache clear + redirect.
+
+### Chat list loading hang
+Auth interceptor tenía refresh без таймаута → если сервер недоступен, все запросы зависали в `refreshWaiters[]` навсегда. Исправлено: 10s timeout на refresh + waiter promises.
+
+### SW cache stale
+Браузер кэшировал старый JS через Service Worker. Исправлено: `msg-v4` → `msg-v5`, SW unregister перед reload.
+
+---
+
+## Testing Checklist (Priority 1)
 
 Проверить все фичи на https://13.140.25.249/web/:
+
+### Auth (CRITICAL)
+- [ ] Токен протух → автоматический рефреш (10s timeout)
+- [ ] Refresh сервер недоступен → запрос падает через 10s (не зависает)
+- [ ] Logout → мгновенно очищает localStorage + redirect на `/`
+- [ ] Logout кнопка кликабельна и работает
+- [ ] Chat list загружается после логина
 
 ### Admin Panel
 - [ ] Войти как superAdmin → в настройках видна кнопка "Админ-панель"
@@ -40,21 +61,27 @@
 ### Реакции
 - [ ] Клик на сообщение → контекстное меню → "Реакция" → пикер эмодзи
 
-### Auth
-- [ ] Токен протух → автоматический рефреш
-- [ ] Logout → всегда работает
-
 ---
 
 ## Architecture Notes
 
-### Auth Interceptor (с очередью)
+### Auth Interceptor (с таймаутами)
 ```
 Request → isExpired?
   → Yes → isRefreshing?
-    → Yes → wait in refreshWaiters[]
-    → No → refreshToken() → resolve waiters
+    → Yes → wait in refreshWaiters[] (10s timeout)
+    → No → refreshToken() (10s timeout) → resolve waiters
   → No → proceed with token
+```
+
+### Logout Flow
+```
+handleLogout:
+  1. logout() — clear authStore + localStorage
+  2. grpcClient.disconnect() — abort all streams
+  3. Clear all caches (caches.keys → delete)
+  4. Unregister all service workers
+  5. window.location.href = '/'
 ```
 
 ### Testing

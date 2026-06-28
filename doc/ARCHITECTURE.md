@@ -32,19 +32,41 @@ Component → Hook → grpcClient (singleton) → gRPC-web transport → Envoy �
 1. signInV2(username, password) → access_token (15 мин) + refresh_token (30 дней)
 2. Каждый gRPC запрос: Authorization: Bearer <access_token>
 3. access истёк → RefreshToken(refresh_token) → новые токены (rotation)
+   - 10s timeout на refresh RPC
+   - 10s timeout на waiter promises (параллельные запросы)
 4. Токены в localStorage → автоматическое восстановление сессии
 5. При permanent fail → logout + reload
 6. Клик на логотип "Лава" → window.location.reload() — interceptor рефрешит токен
 ```
 
-### gRPC Interceptor (с очередью)
-- **Очередь запросов**: если токен протух и уже идёт refresh — запросы ждут в `refreshWaiters[]`, потом используют свежий токен
+### gRPC Interceptor (с очередью + таймаутами)
+- **Очередь запросов**: если токен протух и уже идёт refresh — запросы ждут в `refreshWaiters[]` (макс 10s), потом используют свежий токен
+- **10s timeout**: refresh RPC и waiter promises — предотвращает бесконечное зависание
 - `isRefreshing` флаг — предотвращает параллельные refresh
 - `refreshFailedAt` — 30s cooldown после неудачного refresh
-- `permanentFail` — блокирует все запросы после永久失败
+- `permanentFail` — блокирует все запросы после permanent failure
 - Stale token fallback — токен всегда attached к запросу
 - Экспоненциальный retry (3 попытки) для network/server ошибок
 - Классификация ошибок: network | auth | rate_limit | server | unknown
+
+### Logout Flow (v0.1.9.5)
+```
+handleLogout:
+  1. logout() — clear authStore + localStorage (мгновенно)
+  2. grpcClient.disconnect() — abort все стримы
+  3. Clear all caches (caches.keys → delete)
+  4. Unregister все service workers
+  5. window.location.href = '/' — чистый redirect
+```
+
+### Update Flow (v0.1.9.5)
+```
+handleUpdate:
+  1. localStorage.removeItem('app_version')
+  2. Clear all caches (caches.keys → delete)
+  3. Unregister все service workers
+  4. window.location.href = '/' — чистый redirect
+```
 
 ### Message V2 (oneof content)
 ```typescript
@@ -106,6 +128,7 @@ const request = new SendMessageV2Request({
 | FavoritesScreen | ✅ | ✅ | Избранное (self-chat) |
 | SecretChatScreen | ✅ | ✅ | E2EE ключевой обмен |
 | CallScreen | ✅ | ✅ | WebRTC звонок |
+| AdminPanel | — | ✅ | Панель администратора (только desktop) |
 
 ## Resilience
 
@@ -114,7 +137,9 @@ const request = new SendMessageV2Request({
 - **Offline mode**: индикаторы + показ кэшированных данных
 - **Health polling**: GET `/health` при ошибках подключения
 - **Auth recovery**: permanent fail → logout + reload
-- **Auto update**: version.json polling → UpdateBanner → cache clear → reload
+- **Auth timeout**: 10s timeout на refresh RPC + waiter promises (v0.1.9.5)
+- **Logout reliability**: logout делает disconnect() сначала, не ждёт signOut (v0.1.9.5)
+- **Auto update**: version.json polling → UpdateBanner → SW unregister + cache clear → redirect
 
 ## Testing
 

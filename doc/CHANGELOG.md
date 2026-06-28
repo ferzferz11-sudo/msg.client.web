@@ -2,19 +2,25 @@
 
 ## v0.1.9.5 (2026-06-28)
 
-Fix update mechanism and logout — force clear SW cache.
+Hotfix: logout hang, auth refresh timeout, SW cache invalidation.
 
-### Update Fix
+### Auth Fix (Critical)
 
-- **SW cache version**: bumped to `msg-v5` (was `msg-v4`) to force cache invalidation
-- **handleUpdate**: unregisters service worker before reload, uses `location.href` instead of `location.reload()`
-- **handleLogout**: unregisters service worker + clears all caches, uses `location.href = '/'` for clean reload
+- **Logout hangs no more**: `handleLogout` clears local state first (`logout()` + `disconnect()`), skips unreliable `signOut` server call, then clears caches and redirects
+- **Auth refresh timeout**: 10s timeout on `refreshToken` RPC and on waiter promises — prevents infinite hang when refresh server is unreachable
+- **Refresh waiter timeout**: concurrent requests waiting for refresh now time out after 10s instead of hanging forever
+
+### Service Worker Cache
+
+- **Cache version**: `msg-v4` → `msg-v5` to force browser cache invalidation
+- **handleUpdate**: unregisters SW before reload, uses `location.href = '/'` for clean navigation
+- **handleLogout**: clears all caches + unregisters SW before redirect
 
 ### Infrastructure
 
 - Package version: `0.1.9.5` (was `0.1.9.4`)
 
-## v0.1.9.2 (2026-06-28)
+## v0.1.9.4 (2026-06-28)
 
 Multi-Agent AI Chat optimization.
 
