@@ -190,10 +190,24 @@ export default function App() {
   }, [fetchServerCapabilities])
 
   const handleLogout = useCallback(async () => {
-    try { await grpcClient.signOut(false) } catch {}
+    try { await grpcClient.signOut(false) } catch (_) { /* ignore */ }
     logout()
     grpcClient.disconnect()
-    window.location.reload()
+    const clearAndReload = () => {
+      window.location.href = '/'
+    }
+    const clearCaches = async () => {
+      if ('caches' in window) {
+        const names = await caches.keys()
+        await Promise.all(names.map((n) => caches.delete(n)))
+      }
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(regs.map((r) => r.unregister()))
+      }
+      clearAndReload()
+    }
+    clearCaches()
   }, [logout])
 
   const handleChatSelect = useCallback((chatId: string) => {
@@ -265,7 +279,15 @@ export default function App() {
   const handleUpdate = useCallback(() => {
     const doReload = () => {
       localStorage.removeItem('app_version')
-      location.reload()
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          Promise.all(regs.map((r) => r.unregister())).then(() => {
+            window.location.href = '/'
+          })
+        })
+      } else {
+        window.location.href = '/'
+      }
     }
     if ('caches' in window) {
       caches.keys().then((names) => {

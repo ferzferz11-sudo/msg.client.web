@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.1.9.5 (2026-06-28)
+
+Fix update mechanism and logout — force clear SW cache.
+
+### Update Fix
+
+- **SW cache version**: bumped to `msg-v5` (was `msg-v4`) to force cache invalidation
+- **handleUpdate**: unregisters service worker before reload, uses `location.href` instead of `location.reload()`
+- **handleLogout**: unregisters service worker + clears all caches, uses `location.href = '/'` for clean reload
+
+### Infrastructure
+
+- Package version: `0.1.9.5` (was `0.1.9.4`)
+
 ## v0.1.9.2 (2026-06-28)
 
 Multi-Agent AI Chat optimization.
