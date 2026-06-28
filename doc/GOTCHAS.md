@@ -220,3 +220,28 @@ Desktop использует `ChatListScreen` с `rightPanel` prop: `'profile' |
 - Outgoing: `#2B5278`, Incoming: `#182533`
 - Text: `#F5F5F5`, Secondary: `#6C7883`, Accent: `#5EB5F7`, Online: `#4FAE4E`
 - Destructive: `#E53935`
+
+---
+
+## v0.1.7.0 Gotchas
+
+### version.json location (CRITICAL)
+`version.json` lives in `public/version.json`, NOT root `version.json`. Vite copies `public/` to `dist/` on build. If you update root `version.json`, the update banner won't work — must update `public/version.json`.
+
+### Toast error system
+All errors should go through `useErrorStore.addError()` → `ToastContainer` renders them. Never use bare `console.error` for user-facing errors. Error types: `network`, `auth`, `rate_limit`, `server`, `unknown`.
+
+### Multi-Agent streaming abort
+`useAIChats` has two abort mechanisms:
+- `abortRef` — single-agent streaming (sendMessage)
+- `multiAbortRefs` — multi-agent streaming (sendMultiAgentMessage)
+Both must be cleaned up on unmount. `stopStreaming` aborts `abortRef`, `stopMultiStreaming` aborts all in `multiAbortRefs`.
+
+### Message ID uniqueness
+Message IDs use `Date.now()-random` suffix to prevent React key collisions when multiple messages are sent within the same millisecond.
+
+### AI provider error codes
+- **402** + `BUDGET_EXHAUSTED` — Reve/OpenRouter budget exhausted, show "Бюджет AI провайдера исчерпан"
+- **429** — rate limited, show "Превышен лимит запросов" with retry hint
+- **401** — auth failure, show "Ошибка авторизации AI"
+- **500/502/503** — server down, show "Сервер AI временно недоступен"

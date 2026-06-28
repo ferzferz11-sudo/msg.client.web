@@ -1,12 +1,12 @@
-# Prompt: Next Session — Testing + Multi-Agent AI Chat
+# Prompt: Next Session — Testing + E2EE Secret Chat UI
 
-**Client:** v0.1.6.1 | **Date:** 2026-06-27 | **Status:** Ready for testing
+**Client:** v0.1.7.0 | **Date:** 2026-06-28 | **Status:** Ready for testing
 
 ---
 
 ## Goal
 
-Test all new features from v0.1.5.0–v0.1.6.1 and implement Multi-Agent AI Chat.
+Test all features from v0.1.5.0–v0.1.7.0 and implement E2EE Secret Chat UI.
 
 ---
 
@@ -49,71 +49,78 @@ Verify all features work correctly on https://13.140.25.249/web/:
 - [ ] Click "Обновить" → page reloads with new version
 - [ ] Version displayed on "Select a chat" screen
 
+### Multi-Agent AI Chat
+- [ ] Click 🔀 in agent panel → multi-select mode activates
+- [ ] Select 2+ agents → checkboxes appear
+- [ ] Click "Новый чат" → agent picker modal shows agents
+- [ ] Select agent → chat created with that agent
+- [ ] Send message → parallel streaming to all selected agents
+- [ ] Tab bar shows agent names with streaming status
+- [ ] Click tab → switches to that agent's response
+- [ ] Stop button → cancels all parallel streams
+
+### Error Toasts
+- [ ] Trigger a network error → toast appears with icon
+- [ ] Toast auto-dismisses after 5 seconds
+- [ ] Click toast → dismisses immediately
+- [ ] Max 3 toasts visible at once
+
 ---
 
-## New Feature: Multi-Agent AI Chat (Priority 2)
+## New Feature: E2EE Secret Chat UI (Priority 2)
 
 ### Goal
-Allow users to send the same message to multiple AI agents simultaneously and see all responses.
+Full UI flow for end-to-end encrypted secret chats with key exchange.
 
 ### Implementation
 
-#### 1. Agent Selection UI
-- In AI Chats screen, add multi-select mode for agents
-- Checkbox or toggle on each agent card
-- "Send to selected" button
+#### 1. Secret Chat Creation Flow
+- In New Chat modal, add 🔐 button next to each user
+- Clicking 🔐 creates a secret chat + generates RSA keypair
+- Public key sent to server via `exchangeSecretKey`
 
-#### 2. Parallel Streaming
-- When message sent to multiple agents, create parallel `chatWithAIV2` streams
-- Each stream gets its own `sessionId`
-- Responses render in separate tabs/panels below the input
+#### 2. Key Exchange UI
+- `SecretChatScreen` shows key exchange progress:
+  - Waiting for peer's public key
+  - Key received → derive shared AES key
+  - Ready to chat
+- Status indicators: 🔒 Waiting / 🔓 Ready
 
-#### 3. Response Display
-- Tab bar showing agent names (Agent 1 | Agent 2 | Agent 3)
-- Each tab shows that agent's streaming response
-- Active tab highlighted
+#### 3. Encrypted Messaging
+- Messages encrypted with AES-GCM before send
+- Messages decrypted on receive/load
+- E2EE badge on messages in secret chats
 
-#### 4. Proto
-- No new proto needed — reuse existing `ChatWithAIV2` RPC
-- Each agent gets its own session
-
-### Files to modify
-- `src/hooks/useAIChats.ts` — add multi-agent send logic
-- `src/components/aiChats/AIChatsScreen.desktop.tsx` — multi-select UI
-- `src/components/aiChats/AIChatsScreen.mobile.tsx` — multi-select UI
+#### 4. Files to modify
+- `src/components/secretChats/SecretChatScreen.tsx` — key exchange UI
+- `src/components/chat/ChatScreen.tsx` — E2EE mode
+- `src/hooks/useChatMessages.ts` — encrypt/decrypt pipeline
 
 ---
 
 ## Architecture Notes
 
-### Upload Endpoints (via nginx proxy)
-All uploads go through `/api/` prefix → nginx proxies to port 8082:
-- `/api/upload-image` → `http://localhost:8082/upload-image`
-- `/api/upload-file` → `http://localhost:8082/upload-file`
-- `/api/upload-audio` → `http://localhost:8082/upload-audio`
-- `/api/upload-avatar` → `http://localhost:8082/upload-avatar`
-- `/api/upload-background` → `http://localhost:8082/upload-background`
-
-**Critical nginx config**: `proxy_pass` must have trailing slash:
+### Error Toast System
 ```
-location /api/ {
-    proxy_pass http://127.0.0.1:8082/;  # trailing slash strips /api/ prefix
-}
+Component → useErrorStore.addError({ message, type }) → ToastContainer renders toast
+Types: network | auth | rate_limit | server | unknown
+Auto-dismiss: 5s, max 3 visible
 ```
 
-### Image Compression
-All images compressed to JPEG before upload:
-- Max dimension: 1920px
-- Quality: 85%
-- Function: `compressImage()` in `grpcClient.ts`
+### Multi-Agent AI Chat
+```
+User selects agents → sendMultiAgentMessage() → parallel chatWithAIV2 streams
+Each agent gets its own sessionId → responses stored in multiAgentMessages
+Tab bar shows active/completed status per agent
+AbortController per agent for clean cancellation
+```
 
-### Deleted Messages
-Server uses soft delete (`content_type='deleted'`). Client filters:
-- `text === '[deleted]'` with no media → filtered out
-- Applied in: initial load, pagination, real-time stream
-
-### Message Search
-- RPC: `searchMessages(roomId, query, limit)`
-- UI: search panel in chat header (desktop: right panel, mobile: full screen)
-- Results: message preview + sender + timestamp
-- Click: scrolls to message via Virtuoso
+### Testing
+```bash
+npm test              # run all tests
+npm run test:watch    # watch mode
+npm run test:coverage # coverage report
+```
+- Framework: Vitest + @testing-library/react
+- Setup: `src/test/setup.ts`
+- Test files: `*.test.ts(x)` colocated with source

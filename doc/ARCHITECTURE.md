@@ -23,6 +23,8 @@
 Component → Hook → grpcClient (singleton) → gRPC-web transport → Envoy → Go server
                  ↕
            Zustand Store (normalized state)
+                 ↕
+           ToastContainer (error toasts from errorStore)
 ```
 
 ### Auth Flow
@@ -102,3 +104,11 @@ const request = new SendMessageV2Request({
 - **Health polling**: GET `/health` при ошибках подключения
 - **Auth recovery**: permanent fail → logout + reload
 - **Auto update**: version.json polling → UpdateBanner → cache clear → reload
+
+## Testing
+
+- **Framework**: Vitest + @testing-library/react + jsdom
+- **Setup**: `src/test/setup.ts` (localStorage mock, fetch mock, IntersectionObserver mock)
+- **Run**: `npm test` (single run), `npm run test:watch` (watch mode)
+- **Coverage**: `npm run test:coverage`
+- **Test files**: colocated with source as `*.test.ts(x)`

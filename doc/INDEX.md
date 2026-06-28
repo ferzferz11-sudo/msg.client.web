@@ -8,6 +8,8 @@
 npm install
 npm run dev          # dev server на :3000
 npm run build        # production build в dist/
+npm run test         # run unit tests
+npm run test:watch   # watch mode
 npm run proto:generate  # regen proto из proto/messenger.proto
 ./deploy.sh          # build + deploy на сервер
 ```
@@ -70,7 +72,7 @@ src/
 
 ## Статус интеграции (с сервером v1.3.0.25)
 
-**Web клиент:** v0.1.6.1 | **Дата проверки:** 2026-06-27
+**Web клиент:** v0.1.7.0 | **Дата проверки:** 2026-06-28
 
 ### ✅ Реализовано
 
@@ -153,6 +155,8 @@ src/
 | AI Tools List | ✅ | v0.1.0.0 | listAITools |
 | ListAIV2Chats | ✅ | v0.1.4.1 | list AI chat sessions |
 | GetAIV2ChatHistory | ✅ | v0.1.4.1 | chat history with agent metadata |
+| Multi-Agent AI Chat | ✅ | v0.1.7.0 | parallel streaming to multiple agents, tabbed responses |
+| Agent Picker (New Chat) | ✅ | v0.1.7.0 | agent selection modal when creating AI chat |
 | **Secret Chats (E2EE)** | | | |
 | Crypto Module | ✅ | v0.1.4.0 | RSA-OAEP 2048 + AES-GCM 256 |
 | CreateSecretChat | ✅ | v0.1.4.0 | key exchange UI |
@@ -184,6 +188,8 @@ src/
 | Contact Profile Modal | ✅ | v0.1.5.1 | click avatar/name in header opens profile modal |
 | Chat Background | ✅ | v0.1.5.2 | upload image via chat menu, applies as background |
 | File Download Progress | ✅ | v0.1.5.2 | progress bar during file download |
+| Error Toast System | ✅ | v0.1.7.0 | global ToastContainer, user-friendly error messages |
+| Automated Testing | ✅ | v0.1.7.0 | Vitest + Testing Library, 20 tests |
 
 ### ⚠️ Частично реализовано / Known Issues
 
@@ -210,6 +216,7 @@ src/
 - Проверить фон чата
 - Проверить прогресс-бар скачивания файлов
 - Проверить удаление сообщений (включая картинки)
+- Проверить Multi-Agent AI Chat (параллельный стриминг)
 
 ### Приоритет 2 — Фичи
-- **Multi-Agent AI Chat**: параллельные ChatWithAIV2 запросы к нескольким агентам
+- **E2EE Secret Chat UI**: полный UI поток (crypto модуль есть)
