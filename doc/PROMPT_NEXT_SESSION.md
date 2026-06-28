@@ -15,7 +15,35 @@
 
 ---
 
-## Новая фича: E2EE Secret Chat UI (Priority 1)
+## Новая фича: Admin Panel (Priority 1)
+
+### Цель
+Панель администратора для просмотра списка пользователей (как на Android в `SuperAdminActivity`).
+
+### Реализация
+
+#### 1. Доступ
+- Проверка `isSuperAdmin` в профиле пользователя
+- Кнопка "Админ" в настройках/меню (только для superAdmin)
+
+#### 2. Экран AdminPanel
+- Список пользователей с cursor-based пагинацией
+- Информация: username, avatar, email, isSuperAdmin, lastClientVersion, lastSeenAt, isOnline, lastMessageText, lastMessageTime, chatCount
+- Поиск по username/email
+- Сортировка: lastSeenAt, username, chatCount
+- Клик на пользователя → профиль модалка
+
+#### 3. Файлы для создания
+- `src/components/admin/AdminPanel.tsx` — основной экран
+- `src/components/admin/AdminUserCard.tsx` — карточка пользователя
+- `src/hooks/useAdminUsers.ts` — хук для загрузки данных
+
+#### 4. API
+- `grpcClient.getAdminUserList(query, cursor, limit, sortBy)` — уже реализован на сервере
+
+---
+
+## Новая фича: E2EE Secret Chat UI (Priority 2)
 
 ### Цель
 Полный UI flow для end-to-end encrypted secret chats с обменом ключами.
