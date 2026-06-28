@@ -184,7 +184,6 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
             return m
           }))
         }
-        resolved = resolved.filter((m) => !(m.text === '[deleted]' && !m.imageUrl && !m.voiceUrl && !m.fileUrl))
         setMessages(chatId, resolved)
         setHasMore(more)
         nextCursorRef.current = nextCursor
@@ -246,7 +245,6 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
             } catch {}
           }
           if (!msg.text && !msg.imageUrl && !msg.voiceUrl && !msg.fileUrl) return
-          if (msg.text === '[deleted]' && !msg.imageUrl && !msg.voiceUrl && !msg.fileUrl) return
           addMessage(msg)
         }
       }
@@ -316,7 +314,6 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
             return m
           }))
         }
-        resolved = resolved.filter((m) => !(m.text === '[deleted]' && !m.imageUrl && !m.voiceUrl && !m.fileUrl))
         prependMessages(chatId, resolved)
       }
 
