@@ -210,6 +210,56 @@ message AdminUpdatePasswordResponse {
   string message = 2;
 }
 
+// ======= Admin User List Messages =======
+
+message AdminUserInfo {
+  string username = 1;
+  string avatar_url = 2;
+  string email = 3;
+  string user_id = 4;
+  bool is_super_admin = 5;
+  string last_client_version = 6;
+  google.protobuf.Timestamp last_seen_at = 7;
+  bool is_online = 8;
+  string last_message_text = 9;
+  google.protobuf.Timestamp last_message_time = 10;
+  int32 chat_count = 11;
+}
+
+message GetAdminUserListRequest {
+  string query = 1;
+  string cursor = 2;
+  int32 limit = 3;
+  string sort_by = 4;
+}
+
+message GetAdminUserListResponse {
+  repeated AdminUserInfo users = 1;
+  string next_cursor = 2;
+  bool has_more = 3;
+  google.protobuf.Timestamp server_time = 4;
+}
+
+// ======= Admin User Sessions Messages =======
+
+message AdminUserSession {
+  string device_id = 1;
+  string device_name = 2;
+  string device_type = 3;
+  string client_version = 4;
+  string ip_address = 5;
+  google.protobuf.Timestamp last_seen_at = 6;
+  bool is_online = 7;
+}
+
+message GetAdminUserSessionsRequest {
+  string user_id = 1;
+}
+
+message GetAdminUserSessionsResponse {
+  repeated AdminUserSession sessions = 1;
+}
+
 message MarkReadRequest {
   string room_id = 1;
   string username = 2;
@@ -810,6 +860,10 @@ service ChatService {
   // === AI Chat v2 ===
   rpc GetAIV2ChatHistory(GetAIV2ChatHistoryRequest) returns (GetAIV2ChatHistoryResponse);
   rpc ListAIV2Chats(ListAIV2ChatsRequest) returns (ListAIV2ChatsResponse);
+
+  // === Admin ===
+  rpc GetAdminUserList(GetAdminUserListRequest) returns (GetAdminUserListResponse);
+  rpc GetAdminUserSessions(GetAdminUserSessionsRequest) returns (GetAdminUserSessionsResponse);
 }
 
 // ======= AI Pipeline Messages =======

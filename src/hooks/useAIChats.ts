@@ -4,19 +4,25 @@ import { useErrorStore } from '@/store/errorStore'
 import { useAuthStore } from '@/store/authStore'
 import type { Chat, AIAgentV2, AIMessage, AIMarketplaceAgent, AIUsageStatsResponse } from '@/shared/types'
 
+const AGENT_STORAGE_KEY = 'ai_selected_agent'
+
 export function useAIChats() {
   const [chats, setChats] = useState<Chat[]>([])
   const [agents, setAgents] = useState<AIAgentV2[]>([])
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [messages, setMessages] = useState<AIMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
-  const [selectedAgentId, setSelectedAgentId] = useState<string>('')
+  const [selectedAgentId, setSelectedAgentId] = useState<string>(
+    () => localStorage.getItem(AGENT_STORAGE_KEY) || ''
+  )
   const [marketplaceResults, setMarketplaceResults] = useState<AIMarketplaceAgent[]>([])
   const [marketplaceTotal, setMarketplaceTotal] = useState(0)
   const [usageStats, setUsageStats] = useState<AIUsageStatsResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [agentErrors, setAgentErrors] = useState<Record<string, string>>({})
   const addError = useErrorStore((s) => s.addError)
   const abortRef = useRef<AbortController | null>(null)
+  const multiMessagesRef = useRef<Record<string, AIMessage[]>>({})
 
   const [multiSelectedIds, setMultiSelectedIds] = useState<string[]>([])
   const [isMultiMode, setIsMultiMode] = useState(false)
@@ -211,6 +217,11 @@ export function useAIChats() {
 
   const selectAgent = useCallback((agentId: string) => {
     setSelectedAgentId(agentId)
+    if (agentId) {
+      localStorage.setItem(AGENT_STORAGE_KEY, agentId)
+    } else {
+      localStorage.removeItem(AGENT_STORAGE_KEY)
+    }
   }, [])
 
   const createAgent = useCallback(async (agent: Partial<AIAgentV2>): Promise<string | null> => {
@@ -374,9 +385,11 @@ export function useAIChats() {
     for (const agentId of multiSelectedIds) {
       initialMessages[agentId] = [userMsg]
     }
-    setMultiAgentMessages(initialMessages)
+    multiMessagesRef.current = { ...initialMessages }
+    setMultiAgentMessages({ ...initialMessages })
     setActiveMultiTab(multiSelectedIds[0])
     setMultiStreamingCount(multiSelectedIds.length)
+    setAgentErrors({})
 
     const promises = multiSelectedIds.map(async (agentId) => {
       const agentMsgId = `ai-${agentId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
@@ -390,14 +403,16 @@ export function useAIChats() {
         timestamp: Date.now(),
       }
 
-      setMultiAgentMessages((prev) => ({
-        ...prev,
-        [agentId]: [...(prev[agentId] || []), agentMsg],
-      }))
+      multiMessagesRef.current = {
+        ...multiMessagesRef.current,
+        [agentId]: [...(multiMessagesRef.current[agentId] || []), agentMsg],
+      }
+      setMultiAgentMessages({ ...multiMessagesRef.current })
 
       const ctrl = new AbortController()
       multiAbortRefs.current[agentId] = ctrl
 
+      let lastUpdate = 0
       try {
         const body: any = {
           sessionId: activeChatId || '',
@@ -408,41 +423,44 @@ export function useAIChats() {
 
         for await (const chunk of grpcClient.chatWithAIV2(body)) {
           if (ctrl.signal.aborted) break
-          setMultiAgentMessages((prev) => {
-            const msgs = prev[agentId] || []
-            return {
-              ...prev,
-              [agentId]: msgs.map((m) =>
-                m.id === agentMsgId
-                  ? {
-                      ...m,
-                      content: chunk.content || m.content,
-                      agentId: chunk.agentId || m.agentId,
-                      agentName: chunk.agentName || m.agentName,
-                      modelUsed: chunk.modelUsed || m.modelUsed,
-                      tokenCount: chunk.tokenCount || m.tokenCount,
-                      hasRagContext: chunk.hasRagContext || m.hasRagContext,
-                      imageUrl: chunk.imageUrl || m.imageUrl,
-                      isStreaming: chunk.isStreaming,
-                    }
-                  : m
-              ),
-            }
-          })
-        }
-      } catch (err: any) {
-        if (ctrl.signal.aborted) return
-        setMultiAgentMessages((prev) => {
-          const msgs = prev[agentId] || []
-          return {
-            ...prev,
+          const msgs = multiMessagesRef.current[agentId] || []
+          multiMessagesRef.current = {
+            ...multiMessagesRef.current,
             [agentId]: msgs.map((m) =>
               m.id === agentMsgId
-                ? { ...m, content: `Ошибка: ${err.message || 'Не удалось получить ответ'}` }
+                ? {
+                    ...m,
+                    content: chunk.content || m.content,
+                    agentId: chunk.agentId || m.agentId,
+                    agentName: chunk.agentName || m.agentName,
+                    modelUsed: chunk.modelUsed || m.modelUsed,
+                    tokenCount: chunk.tokenCount || m.tokenCount,
+                    hasRagContext: chunk.hasRagContext || m.hasRagContext,
+                    imageUrl: chunk.imageUrl || m.imageUrl,
+                    isStreaming: chunk.isStreaming,
+                  }
                 : m
             ),
           }
-        })
+          const now = Date.now()
+          if (now - lastUpdate > 50 || chunk.isStreaming === false) {
+            lastUpdate = now
+            setMultiAgentMessages({ ...multiMessagesRef.current })
+          }
+        }
+      } catch (err: any) {
+        if (ctrl.signal.aborted) return
+        const msgs = multiMessagesRef.current[agentId] || []
+        multiMessagesRef.current = {
+          ...multiMessagesRef.current,
+          [agentId]: msgs.map((m) =>
+            m.id === agentMsgId
+              ? { ...m, content: `Ошибка: ${err.message || 'Не удалось получить ответ'}` }
+              : m
+          ),
+        }
+        setMultiAgentMessages({ ...multiMessagesRef.current })
+
         const msg = err?.message || ''
         const is429 = msg.includes('429')
         const is402 = msg.includes('402')
@@ -450,6 +468,7 @@ export function useAIChats() {
         let userMessage = `Ошибка AI (${agent?.name || agentId.slice(0, 8)})`
         if (isBudget || is402) userMessage = `Бюджет ${agent?.name || 'AI'} исчерпан`
         else if (is429) userMessage = `Rate limit ${agent?.name || 'AI'} — подождите 25 сек`
+        setAgentErrors((prev) => ({ ...prev, [agentId]: userMessage }))
         addError({ message: userMessage, type: is429 ? 'rate_limit' : is402 || isBudget ? 'server' : 'network' })
       } finally {
         delete multiAbortRefs.current[agentId]
@@ -487,6 +506,7 @@ export function useAIChats() {
     marketplaceResults,
     marketplaceTotal,
     usageStats,
+    agentErrors,
     loadChats,
     loadAgents,
     createNewChat,

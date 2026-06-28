@@ -447,6 +447,7 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
                 isOwn={msg.user === user?.username}
                 isSelecting={isSelecting}
                 isSelected={selectedMessages.includes(msg.id)}
+                isSecret={isSecret}
                 onLongPressStart={() => handleLongPressStart(msg.id)}
                 onSelect={() => toggleSelectMessage(msg.id)}
                 onLongPress={(e) => handleTouchStart(msg.id, e)}
@@ -611,7 +612,7 @@ function MobileMenuItem({ emoji, label, onClick, destructive }: { emoji: string;
   )
 }
 
-function MessageBubble({ message, isOwn, isSelecting, isSelected, onLongPressStart, onSelect, onLongPress, onLongPressEnd, onLongPressMove, onContextMenu, onImageClick }: MessageBubbleProps) {
+function MessageBubble({ message, isOwn, isSelecting, isSelected, isSecret, onLongPressStart, onSelect, onLongPress, onLongPressEnd, onLongPressMove, onContextMenu, onImageClick }: MessageBubbleProps) {
   const reactions = message.reactions || {}
 
   return (
@@ -698,6 +699,7 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, onLongPressSta
             color: isOwn ? 'rgba(255,255,255,0.45)' : TG.textSecondary,
             marginTop: 4, marginLeft: 8, display: 'flex', alignItems: 'center', gap: 3, lineHeight: 1,
           }}>
+            {isSecret && <span style={{ fontSize: 10 }} title="Зашифровано E2EE">🔒</span>}
             {message.isEdited && <span style={{ fontSize: 10, fontStyle: 'italic' }}>ред.</span>}
             {new Date(message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
             {isOwn && (
@@ -742,6 +744,7 @@ interface MessageBubbleProps {
   isOwn: boolean
   isSelecting: boolean
   isSelected: boolean
+  isSecret?: boolean
   onLongPressStart: () => void
   onSelect: () => void
   onLongPress: (e: React.TouchEvent) => void

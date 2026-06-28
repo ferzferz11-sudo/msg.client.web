@@ -1865,6 +1865,101 @@ class GrpcClient {
     const result = await this.chatClient.getSecretChatKey({ chatId })
     return result.peerPublicKey ?? ''
   }
+
+  // --- Admin Methods ---
+
+  async getAdminUserList(options: {
+    query?: string
+    cursor?: string
+    limit?: number
+    sortBy?: 'lastSeenAt' | 'username' | 'chatCount'
+  } = {}): Promise<{
+    users: {
+      username: string
+      email: string
+      userId: string
+      avatarUrl: string
+      fullAvatarUrl: string
+      isSuperAdmin: boolean
+      lastClientVersion: string
+      lastSeenAt: string
+      isOnline: boolean
+      lastMessageText: string
+      lastMessageTime: string
+      chatCount: number
+    }[]
+    nextCursor: string
+    hasMore: boolean
+  }> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getAllUsers({})
+    const users = (result.users || []).map((u: any) => {
+      const user = protoToUser(u)
+      return {
+        username: user.username,
+        email: u.email || '',
+        userId: user.id,
+        avatarUrl: u.avatarUrl || u.avatar_url || '',
+        fullAvatarUrl: u.fullAvatarUrl || u.full_avatar_url || '',
+        isSuperAdmin: u.isSuperAdmin || u.is_super_admin || false,
+        lastClientVersion: u.lastClientVersion || u.last_client_version || '',
+        lastSeenAt: user.lastSeenAt || '',
+        isOnline: u.isOnline || false,
+        lastMessageText: u.lastMessageText || '',
+        lastMessageTime: u.lastMessageTime || '',
+        chatCount: u.chatCount || 0,
+      }
+    })
+
+    let filtered = users
+    if (options.query) {
+      const q = options.query.toLowerCase()
+      filtered = users.filter(
+        (u: any) => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      )
+    }
+
+    const sortBy = options.sortBy || 'lastSeenAt'
+    filtered.sort((a: any, b: any) => {
+      if (sortBy === 'username') return a.username.localeCompare(b.username)
+      if (sortBy === 'chatCount') return b.chatCount - a.chatCount
+      return new Date(b.lastSeenAt || 0).getTime() - new Date(a.lastSeenAt || 0).getTime()
+    })
+
+    const limit = options.limit ?? 50
+    const cursor = options.cursor || ''
+    const startIdx = cursor ? filtered.findIndex((u: any) => u.userId === cursor) + 1 : 0
+    const page = filtered.slice(startIdx, startIdx + limit)
+    const nextCursor = page.length === limit ? page[page.length - 1].userId : ''
+
+    return { users: page, nextCursor, hasMore: nextCursor !== '' }
+  }
+
+  async getAdminUserSessions(userId: string): Promise<{
+    sessions: {
+      deviceId: string
+      deviceName: string
+      deviceType: string
+      clientVersion: string
+      ipAddress: string
+      lastSeenAt: string
+      isOnline: boolean
+    }[]
+  }> {
+    if (!this.chatClient) throw new Error('Not connected')
+    const result = await this.chatClient.getAdminUserSessions({ userId })
+    return {
+      sessions: (result.sessions || []).map((s: any) => ({
+        deviceId: s.deviceId || s.device_id || '',
+        deviceName: s.deviceName || s.device_name || '',
+        deviceType: s.deviceType || s.device_type || '',
+        clientVersion: s.clientVersion || s.client_version || '',
+        ipAddress: s.ipAddress || s.ip_address || '',
+        lastSeenAt: s.lastSeenAt?.toDate?.()?.toISOString() || s.last_seen_at?.toDate?.()?.toISOString() || '',
+        isOnline: s.isOnline || s.is_online || false,
+      })),
+    }
+  }
 }
 
 export const grpcClient = GrpcClient.getInstance()

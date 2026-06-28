@@ -18,7 +18,7 @@ import { isMobile } from '@/shared/utils'
 import { ToastContainer } from '@/components/common/Toast'
 import '@/styles/global.css'
 
-type Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites' | 'contacts' | 'aiChats' | 'settings' | 'archive' | 'search' | 'pinned'
+type Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites' | 'contacts' | 'aiChats' | 'settings' | 'archive' | 'search' | 'pinned' | 'admin'
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth')
@@ -226,6 +226,10 @@ export default function App() {
     setCurrentScreen('settings')
   }, [])
 
+  const handleAdmin = useCallback(() => {
+    setCurrentScreen('admin')
+  }, [])
+
   const handleArchive = useCallback(() => {
     setCurrentScreen('archive')
   }, [])
@@ -316,12 +320,14 @@ export default function App() {
           onSettings={handleSettings}
           onArchive={handleArchive}
           onSearch={handleSearch}
+          onAdmin={handleAdmin}
           rightPanel={
             currentScreen === 'profile' ? 'profile' :
             currentScreen === 'contacts' ? 'contacts' :
             currentScreen === 'favorites' ? 'favorites' :
             currentScreen === 'aiChats' ? 'aiChats' :
             currentScreen === 'settings' ? 'settings' :
+            currentScreen === 'admin' ? 'settings' :
             currentScreen === 'archive' ? 'archive' :
             currentScreen === 'search' ? 'search' :
             null

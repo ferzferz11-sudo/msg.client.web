@@ -5,6 +5,7 @@ import { useState } from 'react'
 
 interface SettingsScreenProps {
   onBack: () => void
+  onAdmin?: () => void
 }
 
 const themes = [
@@ -16,7 +17,7 @@ const themes = [
   { id: 'ocean', name: 'Ocean', colors: ['#0c1929', '#38bdf8'] },
 ]
 
-export function SettingsScreen({ onBack }: SettingsScreenProps) {
+export function SettingsScreen({ onBack, onAdmin }: SettingsScreenProps) {
   const { profile, settings, updateSettings, updateUsername, updatePassword, deleteProfile, serverInfo } = useProfile()
   const { devices, revokeDevice, deleteOtherDevices } = useDevices()
 
@@ -245,6 +246,22 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
           <span style={{ color: '#888' }}>Версия сервера</span>
           <span style={{ color: '#fff' }}>{serverInfo.version || '—'}</span>
         </div>
+
+        {profile?.isSuperAdmin && onAdmin && (
+          <>
+            <SectionTitle>Администрирование</SectionTitle>
+            <button onClick={onAdmin} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              width: '100%', padding: '12px 16px',
+              background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.25)',
+              borderRadius: 10, cursor: 'pointer',
+            }}>
+              <span style={{ fontSize: 20 }}>⚙️</span>
+              <span style={{ fontSize: 15, color: '#a78bfa' }}>Админ-панель</span>
+              <span style={{ marginLeft: 'auto', fontSize: 14, color: '#666' }}>→</span>
+            </button>
+          </>
+        )}
 
         {/* Danger Zone */}
         <SectionTitle>Опасная зона</SectionTitle>

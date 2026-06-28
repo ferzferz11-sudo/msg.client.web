@@ -454,6 +454,7 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
                 isOwn={msg.user === user?.username}
                 isSelecting={isSelecting}
                 isSelected={selectedMessages.includes(msg.id)}
+                isSecret={isSecret}
                 onSelect={() => toggleSelectMessage(msg.id)}
                 onContextMenu={(e) => {
                   e.preventDefault()
@@ -805,13 +806,14 @@ interface MessageBubbleProps {
   isOwn: boolean
   isSelecting: boolean
   isSelected: boolean
+  isSecret?: boolean
   onSelect: () => void
   onContextMenu: (e: React.MouseEvent) => void
   onReaction: (emoji: string) => void
   onImageClick?: (url: string) => void
 }
 
-function MessageBubble({ message, isOwn, isSelecting, isSelected, onSelect, onContextMenu, onImageClick }: MessageBubbleProps) {
+function MessageBubble({ message, isOwn, isSelecting, isSelected, isSecret, onSelect, onContextMenu, onImageClick }: MessageBubbleProps) {
   const reactions = message.reactions || {}
 
   return (
@@ -917,6 +919,7 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, onSelect, onCo
             gap: 3,
             lineHeight: 1,
           }}>
+            {isSecret && <span style={{ fontSize: 10 }} title="Зашифровано E2EE">🔒</span>}
             {message.isEdited && <span style={{ fontSize: 10, fontStyle: 'italic' }}>ред.</span>}
             {new Date(message.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
             {isOwn && (

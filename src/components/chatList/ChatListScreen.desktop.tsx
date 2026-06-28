@@ -6,6 +6,7 @@ import { ContactsScreen } from '@/components/contacts/ContactsScreen'
 import { FavoritesScreen } from '@/components/favorites/FavoritesScreen'
 import AIChatsScreenDesktop from '@/components/aiChats/AIChatsScreen.desktop'
 import { SettingsScreen } from '@/components/settings/SettingsScreen'
+import { AdminPanel } from '@/components/admin/AdminPanel'
 import { ArchiveScreen } from '@/components/archive/ArchiveScreen'
 
 import { SearchScreen } from '@/components/search/SearchScreen'
@@ -30,11 +31,12 @@ interface ChatListScreenProps {
   onSettings?: () => void
   onArchive?: () => void
   onSearch?: () => void
-  rightPanel?: 'profile' | 'contacts' | 'favorites' | 'aiChats' | 'settings' | 'archive' | 'search' | null
+  onAdmin?: () => void
+  rightPanel?: 'profile' | 'contacts' | 'favorites' | 'aiChats' | 'settings' | 'archive' | 'search' | 'admin' | null
   onCloseRightPanel?: () => void
 }
 
-export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, onFavorites, onAIChats, onSettings, onArchive, onSearch, rightPanel, onCloseRightPanel }: ChatListScreenProps) {
+export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, onFavorites, onAIChats, onSettings, onArchive, onSearch, onAdmin, rightPanel, onCloseRightPanel }: ChatListScreenProps) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const { chats, isLoadingChats, openChat } = useChats()
   const { pinChat, unpinChat, archiveChat, setMutedChat, deleteChat } = useChatListV2()
@@ -272,7 +274,9 @@ export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, 
         ) : rightPanel === 'aiChats' ? (
           <AIChatsScreenDesktop onBack={onCloseRightPanel || (() => {})} />
         ) : rightPanel === 'settings' ? (
-          <SettingsScreen onBack={onCloseRightPanel || (() => {})} />
+          <SettingsScreen onBack={onCloseRightPanel || (() => {})} onAdmin={onAdmin} />
+        ) : rightPanel === 'admin' ? (
+          <AdminPanel onBack={onCloseRightPanel || (() => {})} />
         ) : rightPanel === 'archive' ? (
           <ArchiveScreen onBack={onCloseRightPanel || (() => {})} onChatSelect={(chatId) => { onCloseRightPanel?.(); handleChatClick(chatId); }} />
         ) : rightPanel === 'search' ? (

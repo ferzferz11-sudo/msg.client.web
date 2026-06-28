@@ -45,6 +45,7 @@ src/
 │   ├── favorites/             # Favorites self-chat
 │   ├── calls/                 # WebRTC call screen
 │   ├── secretChats/           # E2EE secret chat screen
+│   ├── admin/                 # Admin panel (AdminPanel, AdminUserCard)
 │   └── common/                # Screen layout wrapper, LazyAvatar
 ├── hooks/                     # Custom hooks (useChats, useChatMessages, etc.)
 │   ├── useWebRTC.ts           # WebRTC peer connection
@@ -72,7 +73,7 @@ src/
 
 ## Статус интеграции (с сервером v1.3.0.25)
 
-**Web клиент:** v0.1.7.0 | **Дата проверки:** 2026-06-28
+**Web клиент:** v0.1.9.2 | **Дата проверки:** 2026-06-28
 
 ### ✅ Реализовано
 
@@ -161,6 +162,13 @@ src/
 | Crypto Module | ✅ | v0.1.4.0 | RSA-OAEP 2048 + AES-GCM 256 |
 | CreateSecretChat | ✅ | v0.1.4.0 | key exchange UI |
 | ExchangeSecretKey / GetSecretChatKey | ✅ | v0.1.4.0 | |
+| E2EE Badge on Messages | ✅ | v0.1.9.1 | 🔒 badge in mobile + desktop |
+| Multi-Agent Optimization | ✅ | v0.1.9.2 | batched updates, persist agent, per-agent errors |
+| **Admin Panel** | | | |
+| Admin Panel | ✅ | v0.1.9.1 | user list, search, sort, profile modal |
+| AdminUserCard | ✅ | v0.1.9.1 | user card with avatar, status, ADMIN badge |
+| useAdminUsers | ✅ | v0.1.9.1 | hook for loading admin user data |
+| getAdminUserList | ✅ | v0.1.9.1 | client-side filtering/sorting/pagination |
 | **WebRTC Calls** | | | |
 | useWebRTC Hook | ✅ | v0.1.4.0 | STUN servers, peer connection |
 | CallScreen UI | ✅ | v0.1.4.0 | full-screen video/audio controls |
@@ -189,7 +197,7 @@ src/
 | Chat Background | ✅ | v0.1.5.2 | upload image via chat menu, applies as background |
 | File Download Progress | ✅ | v0.1.5.2 | progress bar during file download |
 | Error Toast System | ✅ | v0.1.7.0 | global ToastContainer, user-friendly error messages |
-| Automated Testing | ✅ | v0.1.7.0 | Vitest + Testing Library, 20 tests |
+| Automated Testing | ✅ | v0.1.9.2 | Vitest + Testing Library, 75 tests, 9 files |
 
 ### ⚠️ Частично реализовано / Known Issues
 
@@ -201,10 +209,8 @@ src/
 
 | Модуль | RPC | Приоритет | Описание |
 |--------|-----|-----------|----------|
-| E2EE Secret Chat UI | полный UI поток | P2 | Crypto модуль есть, нужен完整的UI |
 | Chat Background | uploadBackground | P3 | пользовательский фон чата |
 | File Download Progress | — | P3 | прогресс-бар при скачивании файлов |
-| Multi-Agent AI Chat | client-side routing | P3 | параллельные ChatWithAIV2 запросы |
 
 ## Следующие шаги (для следующей сессии)
 
@@ -216,7 +222,6 @@ src/
 - Проверить фон чата
 - Проверить прогресс-бар скачивания файлов
 - Проверить удаление сообщений (включая картинки)
-- Проверить Multi-Agent AI Chat (параллельный стриминг)
 
 ### Приоритет 2 — Фичи
-- **E2EE Secret Chat UI**: полный UI поток (crypto модуль есть)
+- **Chat Background**: загрузка и применение пользовательского фона чата

@@ -216,6 +216,12 @@
 | `openTypingStream(callback)` | BiDi typing stream (deprecated — use ChatV2) |
 | `callSession(messages)` | BiDi CallSession (WebRTC signaling) |
 
+## Admin
+
+| Метод | Описание |
+|-------|----------|
+| `getAdminUserList({query?, cursor?, limit?, sortBy?})` | Список пользователей с фильтрацией/сортировкой/пагинацией |
+
 ## HTTP Endpoints (Non-gRPC)
 
 | Метод | Описание |

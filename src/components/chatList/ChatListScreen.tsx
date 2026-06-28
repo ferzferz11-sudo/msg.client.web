@@ -16,7 +16,8 @@ export interface ChatListScreenProps {
   onAIChats?: () => void
   onSettings?: () => void
   onNotifications?: () => void
-  rightPanel?: 'profile' | 'contacts' | 'favorites' | 'aiChats' | 'settings' | 'archive' | 'notifications' | 'search' | null
+  onAdmin?: () => void
+  rightPanel?: 'profile' | 'contacts' | 'favorites' | 'aiChats' | 'settings' | 'archive' | 'notifications' | 'search' | 'admin' | null
   onCloseRightPanel?: () => void
 }
 

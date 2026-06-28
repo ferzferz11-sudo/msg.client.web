@@ -1754,6 +1754,360 @@ export class AdminUpdatePasswordResponse extends Message$1<AdminUpdatePasswordRe
 }
 
 /**
+ * @generated from message messenger.AdminUserInfo
+ */
+export class AdminUserInfo extends Message$1<AdminUserInfo> {
+  /**
+   * @generated from field: string username = 1;
+   */
+  username = "";
+
+  /**
+   * @generated from field: string avatar_url = 2;
+   */
+  avatarUrl = "";
+
+  /**
+   * @generated from field: string email = 3;
+   */
+  email = "";
+
+  /**
+   * @generated from field: string user_id = 4;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: bool is_super_admin = 5;
+   */
+  isSuperAdmin = false;
+
+  /**
+   * @generated from field: string last_client_version = 6;
+   */
+  lastClientVersion = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_seen_at = 7;
+   */
+  lastSeenAt?: Timestamp;
+
+  /**
+   * @generated from field: bool is_online = 8;
+   */
+  isOnline = false;
+
+  /**
+   * @generated from field: string last_message_text = 9;
+   */
+  lastMessageText = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_message_time = 10;
+   */
+  lastMessageTime?: Timestamp;
+
+  /**
+   * @generated from field: int32 chat_count = 11;
+   */
+  chatCount = 0;
+
+  constructor(data?: PartialMessage<AdminUserInfo>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.AdminUserInfo";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "is_super_admin", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 6, name: "last_client_version", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "last_seen_at", kind: "message", T: Timestamp },
+    { no: 8, name: "is_online", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 9, name: "last_message_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "last_message_time", kind: "message", T: Timestamp },
+    { no: 11, name: "chat_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AdminUserInfo {
+    return new AdminUserInfo().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AdminUserInfo {
+    return new AdminUserInfo().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AdminUserInfo {
+    return new AdminUserInfo().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AdminUserInfo | PlainMessage<AdminUserInfo> | undefined, b: AdminUserInfo | PlainMessage<AdminUserInfo> | undefined): boolean {
+    return proto3.util.equals(AdminUserInfo, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAdminUserListRequest
+ */
+export class GetAdminUserListRequest extends Message$1<GetAdminUserListRequest> {
+  /**
+   * @generated from field: string query = 1;
+   */
+  query = "";
+
+  /**
+   * @generated from field: string cursor = 2;
+   */
+  cursor = "";
+
+  /**
+   * @generated from field: int32 limit = 3;
+   */
+  limit = 0;
+
+  /**
+   * @generated from field: string sort_by = 4;
+   */
+  sortBy = "";
+
+  constructor(data?: PartialMessage<GetAdminUserListRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAdminUserListRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "sort_by", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAdminUserListRequest {
+    return new GetAdminUserListRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAdminUserListRequest {
+    return new GetAdminUserListRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAdminUserListRequest {
+    return new GetAdminUserListRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAdminUserListRequest | PlainMessage<GetAdminUserListRequest> | undefined, b: GetAdminUserListRequest | PlainMessage<GetAdminUserListRequest> | undefined): boolean {
+    return proto3.util.equals(GetAdminUserListRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAdminUserListResponse
+ */
+export class GetAdminUserListResponse extends Message$1<GetAdminUserListResponse> {
+  /**
+   * @generated from field: repeated messenger.AdminUserInfo users = 1;
+   */
+  users: AdminUserInfo[] = [];
+
+  /**
+   * @generated from field: string next_cursor = 2;
+   */
+  nextCursor = "";
+
+  /**
+   * @generated from field: bool has_more = 3;
+   */
+  hasMore = false;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp server_time = 4;
+   */
+  serverTime?: Timestamp;
+
+  constructor(data?: PartialMessage<GetAdminUserListResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAdminUserListResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "users", kind: "message", T: AdminUserInfo, repeated: true },
+    { no: 2, name: "next_cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "has_more", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 4, name: "server_time", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAdminUserListResponse {
+    return new GetAdminUserListResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAdminUserListResponse {
+    return new GetAdminUserListResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAdminUserListResponse {
+    return new GetAdminUserListResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAdminUserListResponse | PlainMessage<GetAdminUserListResponse> | undefined, b: GetAdminUserListResponse | PlainMessage<GetAdminUserListResponse> | undefined): boolean {
+    return proto3.util.equals(GetAdminUserListResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.AdminUserSession
+ */
+export class AdminUserSession extends Message$1<AdminUserSession> {
+  /**
+   * @generated from field: string device_id = 1;
+   */
+  deviceId = "";
+
+  /**
+   * @generated from field: string device_name = 2;
+   */
+  deviceName = "";
+
+  /**
+   * @generated from field: string device_type = 3;
+   */
+  deviceType = "";
+
+  /**
+   * @generated from field: string client_version = 4;
+   */
+  clientVersion = "";
+
+  /**
+   * @generated from field: string ip_address = 5;
+   */
+  ipAddress = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_seen_at = 6;
+   */
+  lastSeenAt?: Timestamp;
+
+  /**
+   * @generated from field: bool is_online = 7;
+   */
+  isOnline = false;
+
+  constructor(data?: PartialMessage<AdminUserSession>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.AdminUserSession";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "device_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "device_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "device_type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "client_version", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "ip_address", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "last_seen_at", kind: "message", T: Timestamp },
+    { no: 7, name: "is_online", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AdminUserSession {
+    return new AdminUserSession().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AdminUserSession {
+    return new AdminUserSession().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AdminUserSession {
+    return new AdminUserSession().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AdminUserSession | PlainMessage<AdminUserSession> | undefined, b: AdminUserSession | PlainMessage<AdminUserSession> | undefined): boolean {
+    return proto3.util.equals(AdminUserSession, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAdminUserSessionsRequest
+ */
+export class GetAdminUserSessionsRequest extends Message$1<GetAdminUserSessionsRequest> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  constructor(data?: PartialMessage<GetAdminUserSessionsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAdminUserSessionsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAdminUserSessionsRequest {
+    return new GetAdminUserSessionsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAdminUserSessionsRequest {
+    return new GetAdminUserSessionsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAdminUserSessionsRequest {
+    return new GetAdminUserSessionsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAdminUserSessionsRequest | PlainMessage<GetAdminUserSessionsRequest> | undefined, b: GetAdminUserSessionsRequest | PlainMessage<GetAdminUserSessionsRequest> | undefined): boolean {
+    return proto3.util.equals(GetAdminUserSessionsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message messenger.GetAdminUserSessionsResponse
+ */
+export class GetAdminUserSessionsResponse extends Message$1<GetAdminUserSessionsResponse> {
+  /**
+   * @generated from field: repeated messenger.AdminUserSession sessions = 1;
+   */
+  sessions: AdminUserSession[] = [];
+
+  constructor(data?: PartialMessage<GetAdminUserSessionsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "messenger.GetAdminUserSessionsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "sessions", kind: "message", T: AdminUserSession, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAdminUserSessionsResponse {
+    return new GetAdminUserSessionsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAdminUserSessionsResponse {
+    return new GetAdminUserSessionsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAdminUserSessionsResponse {
+    return new GetAdminUserSessionsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAdminUserSessionsResponse | PlainMessage<GetAdminUserSessionsResponse> | undefined, b: GetAdminUserSessionsResponse | PlainMessage<GetAdminUserSessionsResponse> | undefined): boolean {
+    return proto3.util.equals(GetAdminUserSessionsResponse, a, b);
+  }
+}
+
+/**
  * @generated from message messenger.MarkReadRequest
  */
 export class MarkReadRequest extends Message$1<MarkReadRequest> {

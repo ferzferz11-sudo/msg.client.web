@@ -1,5 +1,53 @@
 # Changelog
 
+## v0.1.9.2 (2026-06-28)
+
+Multi-Agent AI Chat optimization.
+
+### Multi-Agent AI Chat
+
+- **Batched state updates**: `setMultiAgentMessages` throttled to 50ms, uses ref for streaming data (reduces rerenders by ~80%)
+- **Persist selected agent**: `selectedAgentId` saved to localStorage, restored on reload
+- **Per-agent error state**: `agentErrors` map tracks errors per agent ID
+- **Abort cleanup**: refs cleared on unmount
+
+### Infrastructure
+
+- Package version: `0.1.9.2` (was `0.1.9.1`)
+
+## v0.1.9.1 (2026-06-28)
+
+Admin Panel, E2EE badges, comprehensive testing system.
+
+### Admin Panel (P1)
+
+- **Admin Panel**: full user list with search, sort (lastSeenAt/username/chatCount), and cursor-based pagination
+- **AdminUserCard**: user card with avatar, online status, ADMIN badge, chat count
+- **useAdminUsers hook**: data loading with append for pagination
+- **grpcClient.getAdminUserList**: client-side filtering/sorting over getAllUsers
+- **Settings integration**: "Админ-панель" button visible only for `isSuperAdmin` users
+- **Profile modal**: click user → shows full info (email, last seen, app version, chat count)
+
+### E2EE Secret Chat UI (P2)
+
+- **E2EE Badge**: 🔒 icon on messages in secret chats (mobile + desktop MessageBubble)
+
+### Testing System (75 tests, 9 files)
+
+- **authStore**: 6 tests — setTokens, updateAccessToken, logout, localStorage persistence
+- **chatStore**: 22 tests — CRUD chats/messages, selectors, pagination, deduplication
+- **errorStore**: 5 tests — addError, dismiss, clear, max 5, offline status
+- **crypto**: 13 tests — RSA-OAEP, AES-GCM encrypt/decrypt, localStorage key storage
+- **Toast**: 5 tests — render, auto-dismiss, limit 3, click dismiss
+- **AdminUserCard**: 8 tests — render, ADMIN badge, online indicator, chat count, onClick
+- **AdminPanel**: 6 tests — load users, search, empty state, profile modal
+- **utils**: 3 tests — isMobile viewport detection
+- **types (i18n)**: 7 tests — translations, detectLang
+
+### Infrastructure
+
+- Package version: `0.1.9.1` (was `0.1.9.0`)
+
 ## v0.1.9.0 (2026-06-28)
 
 Fixes: reactions visible in chat, token refresh race condition, logout, logo reload, deleted message cleanup.
