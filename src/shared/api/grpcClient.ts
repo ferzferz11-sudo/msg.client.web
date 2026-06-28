@@ -143,14 +143,19 @@ function createAuthInterceptor(
 
       if (isExpired) {
         if (isRefreshing && (now - refreshFailedAt > 30)) {
-          // Another request is refreshing — wait for it
-          await new Promise<void>((resolve) => { refreshWaiters.push(resolve) })
+          await Promise.race([
+            new Promise<void>((resolve) => { refreshWaiters.push(resolve) }),
+            new Promise<void>((resolve) => setTimeout(resolve, 10000)),
+          ])
         } else if (!isRefreshing && (now - refreshFailedAt > 30)) {
           isRefreshing = true
           try {
             const client = authClientRef.current
             if (client) {
-              const result = await client.refreshToken({ refreshToken: tokens.refreshToken })
+              const result = await Promise.race([
+                client.refreshToken({ refreshToken: tokens.refreshToken }),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Refresh timeout')), 10000)),
+              ])
               const newTokens: TokenPair = {
                 accessToken: result.accessToken,
                 refreshToken: result.refreshToken,
@@ -181,7 +186,6 @@ function createAuthInterceptor(
         }
       }
 
-      // Re-read fresh tokens from store (may have been refreshed by another request)
       const latestTokens = getTokens()
       req.header.set('Authorization', `Bearer ${latestTokens?.accessToken || tokens.accessToken}`)
     }

@@ -190,13 +190,9 @@ export default function App() {
   }, [fetchServerCapabilities])
 
   const handleLogout = useCallback(async () => {
-    try { await grpcClient.signOut(false) } catch (_) { /* ignore */ }
     logout()
     grpcClient.disconnect()
-    const clearAndReload = () => {
-      window.location.href = '/'
-    }
-    const clearCaches = async () => {
+    try {
       if ('caches' in window) {
         const names = await caches.keys()
         await Promise.all(names.map((n) => caches.delete(n)))
@@ -205,9 +201,8 @@ export default function App() {
         const regs = await navigator.serviceWorker.getRegistrations()
         await Promise.all(regs.map((r) => r.unregister()))
       }
-      clearAndReload()
-    }
-    clearCaches()
+    } catch {}
+    window.location.href = '/'
   }, [logout])
 
   const handleChatSelect = useCallback((chatId: string) => {
