@@ -119,11 +119,12 @@ async function withRetry<T>(
   throw lastErr
 }
 
-// --- Auth Interceptor (V2 — with auto-refresh) ---
+// --- Auth Interceptor (V2 — with auto-refresh + request queue) ---
 
 let isRefreshing = false
 let refreshFailedAt = 0
 let permanentFail = false
+let refreshWaiters: (() => void)[] = []
 
 function createAuthInterceptor(
   getTokens: () => TokenPair | null,
@@ -136,44 +137,47 @@ function createAuthInterceptor(
       throw new Error('Session expired. Please sign in again.')
     }
 
-    // Always attach token (even during refresh — prevents empty-auth requests)
     if (tokens) {
       const now = Math.floor(Date.now() / 1000)
       const isExpired = now >= tokens.accessExpiresAt
 
-      // Skip refresh if: not expired, already refreshing, or recently failed (30s cooldown)
-      if (isExpired && !isRefreshing && (now - refreshFailedAt > 30)) {
-        isRefreshing = true
-        try {
-          const client = authClientRef.current
-          if (client) {
-            const result = await client.refreshToken({ refreshToken: tokens.refreshToken })
-            const newTokens: TokenPair = {
-              accessToken: result.accessToken,
-              refreshToken: result.refreshToken,
-              accessExpiresAt: Number(result.accessExpiresAt),
-              refreshExpiresAt: Number(result.refreshExpiresAt),
+      if (isExpired) {
+        if (isRefreshing && (now - refreshFailedAt > 30)) {
+          // Another request is refreshing — wait for it
+          await new Promise<void>((resolve) => { refreshWaiters.push(resolve) })
+        } else if (!isRefreshing && (now - refreshFailedAt > 30)) {
+          isRefreshing = true
+          try {
+            const client = authClientRef.current
+            if (client) {
+              const result = await client.refreshToken({ refreshToken: tokens.refreshToken })
+              const newTokens: TokenPair = {
+                accessToken: result.accessToken,
+                refreshToken: result.refreshToken,
+                accessExpiresAt: Number(result.accessExpiresAt),
+                refreshExpiresAt: Number(result.refreshExpiresAt),
+              }
+              useAuthStore.getState().updateAccessToken(newTokens)
             }
-            useAuthStore.getState().updateAccessToken(newTokens)
-            req.header.set('Authorization', `Bearer ${newTokens.accessToken}`)
-            return next(req)
+          } catch (err: any) {
+            console.warn('[Auth] Token refresh failed:', err)
+            const isPermanent = err?.code === 'UNAUTHENTICATED' ||
+              err?.message?.includes('invalid_token') ||
+              err?.message?.includes('token expired') ||
+              err?.message?.includes('refresh token')
+            if (isPermanent) {
+              console.warn('[Auth] Permanent refresh failure — logging out')
+              permanentFail = true
+              useAuthStore.getState().logout()
+              window.location.reload()
+              throw new Error('Session expired. Please sign in again.')
+            }
+            refreshFailedAt = Math.floor(Date.now() / 1000)
+          } finally {
+            isRefreshing = false
+            refreshWaiters.forEach((w) => w())
+            refreshWaiters = []
           }
-        } catch (err: any) {
-          console.warn('[Auth] Token refresh failed:', err)
-          const isPermanent = err?.code === 'UNAUTHENTICATED' ||
-            err?.message?.includes('invalid_token') ||
-            err?.message?.includes('token expired') ||
-            err?.message?.includes('refresh token')
-          if (isPermanent) {
-            console.warn('[Auth] Permanent refresh failure — logging out')
-            permanentFail = true
-            useAuthStore.getState().logout()
-            window.location.reload()
-            throw new Error('Session expired. Please sign in again.')
-          }
-          refreshFailedAt = Math.floor(Date.now() / 1000)
-        } finally {
-          isRefreshing = false
         }
       }
 
