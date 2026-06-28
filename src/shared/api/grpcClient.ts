@@ -169,7 +169,7 @@ function createAuthInterceptor(
             refreshFailedAt = Math.floor(Date.now() / 1000)
             permanentFail = true
             useAuthStore.getState().logout()
-            window.location.reload()
+            window.location.href = '/web/'
             throw new Error('Session expired. Please sign in again.')
           } finally {
             isRefreshing = false

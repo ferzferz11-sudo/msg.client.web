@@ -202,7 +202,7 @@ export default function App() {
         await Promise.all(regs.map((r) => r.unregister()))
       }
     } catch {}
-    window.location.href = '/'
+    window.location.href = '/web/'
   }, [logout])
 
   const handleChatSelect = useCallback((chatId: string) => {
@@ -277,11 +277,11 @@ export default function App() {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then((regs) => {
           Promise.all(regs.map((r) => r.unregister())).then(() => {
-            window.location.href = '/'
+            window.location.href = '/web/'
           })
         })
       } else {
-        window.location.href = '/'
+        window.location.href = '/web/'
       }
     }
     if ('caches' in window) {
