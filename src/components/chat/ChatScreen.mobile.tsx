@@ -444,7 +444,7 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
             itemContent={(_index, msg) => (
               <MessageBubble
                 message={msg}
-                isOwn={msg.user === user?.username}
+                isOwn={msg.isOutgoing}
                 isSelecting={isSelecting}
                 isSelected={selectedMessages.includes(msg.id)}
                 isSecret={isSecret}
