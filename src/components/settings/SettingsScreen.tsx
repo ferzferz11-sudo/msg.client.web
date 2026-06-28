@@ -2,6 +2,7 @@ import { Screen } from '@/components/common'
 import { useProfile } from '@/hooks/useProfile'
 import { useDevices } from '@/hooks/useDevices'
 import { useState } from 'react'
+import { APP_VERSION } from '@/shared/version'
 
 interface SettingsScreenProps {
   onBack: () => void
@@ -237,14 +238,14 @@ export function SettingsScreen({ onBack, onAdmin }: SettingsScreenProps) {
           display: 'flex', justifyContent: 'space-between', fontSize: 14,
         }}>
           <span style={{ color: '#888' }}>Версия приложения</span>
-          <span style={{ color: '#fff' }}>1.0.0</span>
+          <span style={{ color: '#fff' }}>v{APP_VERSION}</span>
         </div>
         <div style={{
           padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
           display: 'flex', justifyContent: 'space-between', fontSize: 14,
         }}>
           <span style={{ color: '#888' }}>Версия сервера</span>
-          <span style={{ color: '#fff' }}>{serverInfo.version || '—'}</span>
+          <span style={{ color: '#fff' }}>{serverInfo.chat || serverInfo.version || '—'}</span>
         </div>
 
         {profile?.isSuperAdmin && onAdmin && (

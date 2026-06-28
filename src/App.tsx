@@ -344,7 +344,7 @@ export default function App() {
             currentScreen === 'favorites' ? 'favorites' :
             currentScreen === 'aiChats' ? 'aiChats' :
             currentScreen === 'settings' ? 'settings' :
-            currentScreen === 'admin' ? 'settings' :
+            currentScreen === 'admin' ? 'admin' :
             currentScreen === 'archive' ? 'archive' :
             currentScreen === 'search' ? 'search' :
             null
