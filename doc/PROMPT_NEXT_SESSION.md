@@ -1,118 +1,101 @@
-# Prompt: Next Session — Testing + E2EE Secret Chat UI
+# Prompt: Next Session — E2EE Secret Chat UI + Testing
 
-**Client:** v0.1.7.0 | **Date:** 2026-06-28 | **Status:** Ready for testing
-
----
-
-## Goal
-
-Test all features from v0.1.5.0–v0.1.7.0 and implement E2EE Secret Chat UI.
+**Client:** v0.1.9.0 | **Date:** 2026-06-28 | **Status:** Reactions, auth, logout fixed
 
 ---
 
-## Testing Checklist (Priority 1)
+## Выполнено в этой сессии (v0.1.8.0–v0.1.9.0)
 
-Verify all features work correctly on https://13.140.25.249/web/:
-
-### Upload
-- [ ] Send image in chat → compresses and uploads via `/api/upload-image`
-- [ ] Send file in chat → uploads via `/api/upload-file`
-- [ ] Send voice message → uploads via `/api/upload-audio`
-- [ ] Upload avatar in profile → uploads via `/api/upload-avatar`
-
-### Message Features
-- [ ] Copy text from context menu (right-click / long press)
-- [ ] Select text in message bubble with mouse
-- [ ] Delete any message (including images) via context menu
-- [ ] Edit own messages via context menu
-
-### Search
-- [ ] Click 🔍 in chat header → search panel opens
-- [ ] Type query → debounced results appear
-- [ ] Click result → scrolls to message in chat
-
-### Profile
-- [ ] Click avatar or name in chat header → profile modal opens
-- [ ] Shows username, avatar, bio, status
-- [ ] Works for direct chats only
-
-### Chat Background
-- [ ] Click ⋮ menu → "Фон чата" → file picker opens
-- [ ] Select image → uploads and applies as background
-
-### File Download
-- [ ] Click file attachment → progress bar appears
-- [ ] File downloads with progress tracking
-
-### Version
-- [ ] Hard refresh → update banner appears if new version
-- [ ] Click "Обновить" → page reloads with new version
-- [ ] Version displayed on "Select a chat" screen
-
-### Multi-Agent AI Chat
-- [ ] Click 🔀 in agent panel → multi-select mode activates
-- [ ] Select 2+ agents → checkboxes appear
-- [ ] Click "Новый чат" → agent picker modal shows agents
-- [ ] Select agent → chat created with that agent
-- [ ] Send message → parallel streaming to all selected agents
-- [ ] Tab bar shows agent names with streaming status
-- [ ] Click tab → switches to that agent's response
-- [ ] Stop button → cancels all parallel streams
-
-### Error Toasts
-- [ ] Trigger a network error → toast appears with icon
-- [ ] Toast auto-dismisses after 5 seconds
-- [ ] Click toast → dismisses immediately
-- [ ] Max 3 toasts visible at once
+- ✅ Реакции: `BroadcastV2Reaction` на сервере + обработка `REACTION_V2` в ChatV2 stream + `toggleReaction` обновляет локальное состояние
+- ✅ Auth interceptor: очередь `refreshWaiters[]` для concurrent запросов при рефреше токена
+- ✅ Logout: всегда работает (try/catch + disconnect + reload)
+- ✅ Логотип "Лава": клик = `window.location.reload()` (интерсептор рефрешит токен)
+- ✅ Удаление сообщений: убраны проверки `[deleted]` — сервер физически удаляет записи
+- ✅ Service Worker: кеш `msg-v3` для force update
 
 ---
 
-## New Feature: E2EE Secret Chat UI (Priority 2)
+## Новая фича: E2EE Secret Chat UI (Priority 1)
 
-### Goal
-Full UI flow for end-to-end encrypted secret chats with key exchange.
+### Цель
+Полный UI flow для end-to-end encrypted secret chats с обменом ключами.
 
-### Implementation
+### Реализация
 
 #### 1. Secret Chat Creation Flow
-- In New Chat modal, add 🔐 button next to each user
-- Clicking 🔐 creates a secret chat + generates RSA keypair
-- Public key sent to server via `exchangeSecretKey`
+- В модалке нового чата добавить 🔐 кнопку рядом с каждым пользователем
+- Клик по 🔐 создаёт secret chat + генерирует RSA keypair
+- Публичный ключ отправляется на сервер через `exchangeSecretKey`
 
 #### 2. Key Exchange UI
-- `SecretChatScreen` shows key exchange progress:
-  - Waiting for peer's public key
-  - Key received → derive shared AES key
-  - Ready to chat
-- Status indicators: 🔒 Waiting / 🔓 Ready
+- `SecretChatScreen` показывает прогресс обмена ключами:
+  - Ожидание публичного ключа пира
+  - Ключ получен → общий AES ключ derived
+  - Готов к чату
+- Индикаторы: 🔒 Ожидание / 🔓 Готов
 
 #### 3. Encrypted Messaging
-- Messages encrypted with AES-GCM before send
-- Messages decrypted on receive/load
-- E2EE badge on messages in secret chats
+- Сообщения шифруются AES-GCM перед отправкой
+- Сообщения расшифровываются при получении/загрузке
+- E2EE badge на сообщениях в секретных чатах
 
-#### 4. Files to modify
-- `src/components/secretChats/SecretChatScreen.tsx` — key exchange UI
-- `src/components/chat/ChatScreen.tsx` — E2EE mode
-- `src/hooks/useChatMessages.ts` — encrypt/decrypt pipeline
+#### 4. Файлы для изменения
+- `src/components/secretChats/SecretChatScreen.tsx` — UI обмена ключами
+- `src/components/chat/ChatScreen.tsx` — E2EE режим
+- `src/hooks/useChatMessages.ts` — pipeline шифрования/дешифрования
+
+---
+
+## Testing Checklist (Priority 2)
+
+Проверить все фичи v0.1.5.0–v0.1.9.0 на https://13.140.25.249/web/:
+
+### Реакции
+- [ ] Клик на сообщение → контекстное меню → "Реакция" → пикер эмодзи
+- [ ] Выбрать эмодзи → реакция появляется под сообщением
+- [ ] Реакция видна другим пользователям в реальном времени
+
+### Auth
+- [ ] Токен протух → автоматический рефреш без ошибок
+- [ ] Несколько запросов одновременно → все ждут рефреша иucceed
+- [ ] Клик на "Лава" → страница перезагружается
+- [ ] Logout → всегда работает
+
+### Загрузка
+- [ ] Список чатов загружается
+- [ ] Сообщения загружаются в чате
+- [ ] Старые сообщения подгружаются при скролле вверх
+
+### Multi-Agent AI Chat
+- [ ] Click 🔀 in agent panel → multi-select mode
+- [ ] Select 2+ agents → parallel streaming
+- [ ] Tab bar shows agent status
+
+### Error Toasts
+- [ ] Network error → toast appears
+- [ ] Auto-dismiss after 5s
+- [ ] Max 3 toasts visible
 
 ---
 
 ## Architecture Notes
 
-### Error Toast System
+### Auth Interceptor (с очередью)
 ```
-Component → useErrorStore.addError({ message, type }) → ToastContainer renders toast
-Types: network | auth | rate_limit | server | unknown
-Auto-dismiss: 5s, max 3 visible
+Request → isExpired?
+  → Yes → isRefreshing?
+    → Yes → wait in refreshWaiters[]
+    → No → refreshToken() → resolve waiters
+  → No → proceed with token
 ```
 
-### Multi-Agent AI Chat
+### Reactions Flow
 ```
-User selects agents → sendMultiAgentMessage() → parallel chatWithAIV2 streams
-Each agent gets its own sessionId → responses stored in multiAgentMessages
-Tab bar shows active/completed status per agent
-AbortController per agent for clean cancellation
+setReactionV2 → server saves JSONB → returns { success, reactions }
+                                    → Broadcast() → v1 WebSocket
+                                    → BroadcastV2Reaction() → ChatV2 stream
+Client: toggleReaction → updateMessage(reactions) → UI updates
+Stream: REACTION_V2 → reaction_update → updateMessage
 ```
 
 ### Testing
