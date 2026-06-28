@@ -166,23 +166,18 @@ function createAuthInterceptor(
             }
           } catch (err: any) {
             console.warn('[Auth] Token refresh failed:', err)
-            const isPermanent = err?.code === 'UNAUTHENTICATED' ||
-              err?.message?.includes('invalid_token') ||
-              err?.message?.includes('token expired') ||
-              err?.message?.includes('refresh token')
-            if (isPermanent) {
-              console.warn('[Auth] Permanent refresh failure — logging out')
-              permanentFail = true
-              useAuthStore.getState().logout()
-              window.location.reload()
-              throw new Error('Session expired. Please sign in again.')
-            }
             refreshFailedAt = Math.floor(Date.now() / 1000)
+            permanentFail = true
+            useAuthStore.getState().logout()
+            window.location.reload()
+            throw new Error('Session expired. Please sign in again.')
           } finally {
             isRefreshing = false
             refreshWaiters.forEach((w) => w())
             refreshWaiters = []
           }
+        } else {
+          throw new Error('Session expired. Please sign in again.')
         }
       }
 
