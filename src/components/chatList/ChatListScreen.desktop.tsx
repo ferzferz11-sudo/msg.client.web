@@ -127,7 +127,7 @@ export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, 
           }}
         >
           <span
-            onClick={() => { try { grpcClient.signOut(false) } catch {} ; localStorage.removeItem('auth_tokens'); localStorage.removeItem('auth_user'); window.location.reload() }}
+            onClick={() => window.location.reload()}
             style={{ fontSize: 18, fontWeight: 700, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
           >
             <img src="/logo.png" alt="Lava" style={{ height: 28, width: 28, borderRadius: 6 }} /> Lava
