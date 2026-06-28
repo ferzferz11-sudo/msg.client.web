@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.1.9.0 (2026-06-28)
+
+Fixes: reactions visible in chat, token refresh race condition, logout, logo reload.
+
+### Reactions Fix
+
+- **Server broadcast**: `BroadcastV2Reaction` sends `REACTION_V2` system messages to ChatV2 stream clients (previously only v1 WebSocket)
+- **Client stream handler**: `handleChatV2Message` parses `REACTION_V2` from ChatV2 stream and emits `reaction_update` events
+- **`setReactionV2` returns reactions**: method now returns `{ success, reactions }` instead of `boolean`
+- **`toggleReaction` updates local state**: immediately updates message reactions from server response (optimistic update)
+- **`StreamEvent` type**: added `reaction_update` event type
+
+### Auth Fixes
+
+- **Token refresh race condition**: concurrent requests now queue while refresh is in progress instead of failing with expired token
+- **Logout always works**: `handleLogout` wraps `signOut` in try/catch, always calls `disconnect()` + `reload()`
+- **Logo click = page reload**: clicking "Лава" logo does `window.location.reload()` — interceptor auto-refreshes token on next request
+
+### Infrastructure
+
+- **Service Worker**: cache bumped to `msg-v3` for force update
+- **Package version**: `0.1.9.0` (was `0.1.7.0`)
+
+## v0.1.8.0 (2026-06-28)
+
+Initial reactions fix attempt (incomplete — server broadcast was missing).
+
 ## v0.1.7.0 (2026-06-28)
 
 Multi-Agent AI Chat — parallel streaming to multiple agents.

@@ -34,10 +34,12 @@ Component → Hook → grpcClient (singleton) → gRPC-web transport → Envoy �
 3. access истёк → RefreshToken(refresh_token) → новые токены (rotation)
 4. Токены в localStorage → автоматическое восстановление сессии
 5. При permanent fail → logout + reload
+6. Клик на логотип "Лава" → window.location.reload() — interceptor рефрешит токен
 ```
 
-### gRPC Interceptor
-- `isRefreshing` флаг блокирует рекурсию (refreshToken сам проходит через interceptor)
+### gRPC Interceptor (с очередью)
+- **Очередь запросов**: если токен протух и уже идёт refresh — запросы ждут в `refreshWaiters[]`, потом используют свежий токен
+- `isRefreshing` флаг — предотвращает параллельные refresh
 - `refreshFailedAt` — 30s cooldown после неудачного refresh
 - `permanentFail` — блокирует все запросы после永久失败
 - Stale token fallback — токен всегда attached к запросу
@@ -52,6 +54,15 @@ const request = new SendMessageV2Request({
   content: { case: 'text', value: text },
 })
 // НЕ используйте any-тип — oneof не сериализуется корректно
+```
+
+### Reactions Flow
+```
+1. setReactionV2(messageId, emoji) → сервер сохраняет в JSONB, возвращает { success, reactions }
+2. toggleReaction обновляет локальное состояние из response (optimistic update)
+3. Сервер broadcast: Broadcast() → v1 WebSocket + BroadcastV2Reaction() → ChatV2 stream
+4. ChatV2 stream handler: REACTION_V2 → callback({ type: 'reaction_update', messageId, reactions })
+5. useChatMessages: updateMessage(messageId, { reactions }) → UI обновляется
 ```
 
 ### E2EE Flow
