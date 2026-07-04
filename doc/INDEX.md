@@ -71,9 +71,9 @@ src/
 | [GOTCHAS.md](GOTCHAS.md) | Known issues, proto gotchas, fixes, UI patterns |
 | [CHANGELOG.md](CHANGELOG.md) | История версий |
 
-## Статус интеграции (с сервером v1.3.0.25)
+## Статус интеграции (с сервером v1.3.1.21)
 
-**Web клиент:** v0.1.9.5 | **Дата проверки:** 2026-06-28
+**Web клиент:** v0.1.10.0 | **Дата проверки:** 2026-07-04
 
 ### ✅ Реализовано
 
@@ -88,7 +88,7 @@ src/
 | Health Check | ✅ | v0.1.0.0 | GET /health |
 | **Chat** | | | |
 | Chat Stream v1 | ✅ | v0.5.0 | BiDi stream, send/receive |
-| ChatV2 Stream | ✅ | v0.1.2.0 | BiDi stream, typing, system events |
+| ChatV2 Stream | ✅ | v0.1.9.6 | BiDi stream, Bearer auth, typing, system events (ONLINE_USERS_UPDATE), reaction dedup |
 | Chat List (GetChatsV2) | ✅ | v0.1.1.2 | cursor-based pagination, filter |
 | CreateDirectChat | ✅ | v0.1.0.0 | user1_id, user2_id |
 | CreateGroupChat | ✅ | v0.1.0.0 | name, participant_ids |
@@ -104,7 +104,7 @@ src/
 | GetHistoryV2 | ✅ | v0.1.5.0 | cursor-based pagination, v2 only (v1 fallback removed) |
 | SendMessageV2 | ✅ | v0.1.5.0 | oneof content (text/media), unary RPC |
 | EditMessageV2 | ✅ | v0.1.5.0 | messageId, text |
-| DeleteMessageV2 | ✅ | v0.1.5.0 | message_ids[], requester_user_id, soft delete |
+| DeleteMessageV2 | ✅ | v0.1.5.0 | message_ids[], requester_user_id, hard delete (records removed from DB) |
 | SetReactionV2 | ✅ | v0.1.5.0 | message_id, emoji, inline JSONB |
 | SearchMessages | ✅ | v0.1.5.0 | single-chat or cross-chat search |
 | ChatV2 Stream | ✅ | v0.1.5.0 | BiDi stream, typing, system events (v1 stream removed) |
@@ -138,14 +138,14 @@ src/
 | **Read Receipts** | | | |
 | Automatic MarkRead | ✅ | v0.1.4.2 | on chat open + unreadCount reset |
 | **HTTP Uploads** | | | |
-| Upload Avatar/Image/File/Audio/Background | ✅ | v0.1.3.2 | JWT auth, multipart/form-data |
+| Upload Avatar/Image/File/Audio/Background | ✅ | v0.1.9.6 | JWT auth, multipart/form-data, correct paths (/upload-*) |
 | Send Media Messages | ✅ | v0.1.3.2 | sendMessageV2Media (image/file/voice) |
 | **Notifications** | | | |
 | SubscribeNotifications | ✅ | v0.1.0.0 | Server Streaming |
 | Notification History / MarkRead / UnreadCount | ✅ | v0.1.0.0 | |
 | Native Browser Notifications | ✅ | v0.1.4.0 | Notification API |
 | **Push (FCM)** | | | |
-| RegisterPushToken | ✅ | v0.1.0.0 | user, token, pushEnabled, userId |
+| RegisterPushToken | ✅ | v0.1.9.6 | userId, token, platform: "web", deviceId |
 | GetDevices / DeleteOtherDevices | ✅ | v0.1.0.0 | |
 | **AI v2** | | | |
 | ChatWithAIV2 (Streaming) | ✅ | v0.1.0.0 | token, toolCalls, agentId, imageUrl |
@@ -169,6 +169,17 @@ src/
 | AdminUserCard | ✅ | v0.1.9.1 | user card with avatar, status, ADMIN badge |
 | useAdminUsers | ✅ | v0.1.9.1 | hook for loading admin user data |
 | getAdminUserList | ✅ | v0.1.9.1 | client-side filtering/sorting/pagination |
+| **Company System** | | | |
+| Company CRUD | ✅ | v0.1.10.0 | create, update, delete, get, list companies |
+| Positions Management | ✅ | v0.1.10.0 | create, update, delete, list positions (level 0-3) |
+| Members Management | ✅ | v0.1.10.0 | add, remove, update position, list members |
+| Company Chats | ✅ | v0.1.10.0 | create, set access, get company chats |
+| Join/Leave Company | ✅ | v0.1.10.0 | join by invite code, leave company |
+| GetUserInfo | ✅ | v0.1.10.0 | public user info with company fields |
+| Profile Integration | ✅ | v0.1.10.0 | company fields in GetProfileResponse |
+| ChatInfo Integration | ✅ | v0.1.10.0 | company fields in ChatInfo |
+| CompanyProfileScreen | ✅ | v0.1.10.0 | full company management UI (info, positions, members, chats) |
+| Profile Create Button | ✅ | v0.1.10.0 | create company from profile screen |
 | **WebRTC Calls** | | | |
 | useWebRTC Hook | ✅ | v0.1.4.0 | STUN servers, peer connection |
 | CallScreen UI | ✅ | v0.1.4.0 | full-screen video/audio controls |

@@ -122,14 +122,14 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
     if (!initialScrollDone.current && messages.length > 0) {
       initialScrollDone.current = true
       const firstUnreadIdx = messages.findIndex((m) => !m.isRead && !m.isOutgoing)
-      if (firstUnreadIdx > 0) {
-        const scrollTo = Math.max(0, firstUnreadIdx - 3)
-        setTimeout(() => {
+      setTimeout(() => {
+        if (firstUnreadIdx > 0) {
+          const scrollTo = Math.max(0, firstUnreadIdx - 3)
           virtuosoRef.current?.scrollToIndex({ index: scrollTo, align: 'start' })
-        }, 100)
-      } else {
-        virtuosoRef.current?.scrollToIndex({ index: messages.length - 1, align: 'end' })
-      }
+        } else {
+          virtuosoRef.current?.scrollToIndex({ index: messages.length - 1, align: 'end' })
+        }
+      }, 150)
     } else if (shouldFollowOutput.current && messages.length > 0) {
       virtuosoRef.current?.scrollToIndex({
         index: messages.length - 1,
@@ -137,6 +137,15 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
       })
     }
   }, [messages.length])
+
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      const msgCount = useChatStore.getState().chatMessages[chatId || '']?.length || 0
+      if (msgCount > 0) {
+        virtuosoRef.current?.scrollToIndex({ index: msgCount - 1, align: 'end', behavior: 'smooth' })
+      }
+    }, 100)
+  }, [chatId])
 
   const handleSend = useCallback(() => {
     if (!inputText.trim() || isSendingMessage) return
@@ -148,8 +157,9 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
     setInputText('')
     clearDraft()
     shouldFollowOutput.current = true
+    scrollToBottom()
     setTimeout(() => inputRef.current?.focus(), 50)
-  }, [inputText, isSendingMessage, sendMessage, editingMessageId, editMessage, clearDraft])
+  }, [inputText, isSendingMessage, sendMessage, editingMessageId, editMessage, clearDraft, scrollToBottom])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -170,12 +180,12 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
       const blob = await voiceRecorder.stopRecording()
       if (blob) {
         const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type })
-        sendMediaMessage(file, 'voice')
+        sendMediaMessage(file, 'voice').then(scrollToBottom)
       }
     } else {
       await voiceRecorder.startRecording()
     }
-  }, [voiceRecorder, sendMediaMessage])
+  }, [voiceRecorder, sendMediaMessage, scrollToBottom])
 
   const handleVoiceCancel = useCallback(() => {
     voiceRecorder.cancelRecording()
@@ -254,9 +264,9 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
     if (!file) return
     const isImage = file.type.startsWith('image/')
     const isAudio = file.type.startsWith('audio/')
-    sendMediaMessage(file, isImage ? 'image' : isAudio ? 'voice' : 'file')
+    sendMediaMessage(file, isImage ? 'image' : isAudio ? 'voice' : 'file').then(scrollToBottom)
     e.target.value = ''
-  }, [sendMediaMessage])
+  }, [sendMediaMessage, scrollToBottom])
 
   const typingNames = Array.from(typingUsers.keys())
   const chatName = activeChat?.name || t('chat')
@@ -937,7 +947,6 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, isSecret, onSe
               </span>
             )}
           </span>
-        </div>
 
         {/* Reactions */}
         {Object.keys(reactions).length > 0 && (
@@ -956,6 +965,7 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, isSecret, onSe
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   )

@@ -17,8 +17,10 @@ export interface ChatListScreenProps {
   onSettings?: () => void
   onNotifications?: () => void
   onAdmin?: () => void
-  rightPanel?: 'profile' | 'contacts' | 'favorites' | 'aiChats' | 'settings' | 'archive' | 'notifications' | 'search' | 'admin' | null
+  rightPanel?: 'profile' | 'contacts' | 'favorites' | 'aiChats' | 'settings' | 'archive' | 'notifications' | 'search' | 'admin' | 'company' | null
   onCloseRightPanel?: () => void
+  activeCompanyId?: string | null
+  onCompany?: (companyId: string) => void
 }
 
 function createLazyLoader(

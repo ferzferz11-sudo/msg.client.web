@@ -167,15 +167,22 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
       .getHistoryV2(chatId, 50)
       .then(async ({ messages: msgs, nextCursor, hasMore: more }) => {
         if (cancelled || chatIdRef.current !== chatId) return
-        let resolved = msgs.map((m) => {
-          const uid = m.userId || ''
-          const user = userMapRef.current[uid]
-          return {
-            ...m,
-            user: m.user || user || '',
-            isOutgoing: uid === userIdRef.current,
-          }
-        })
+        let resolved = msgs
+          .filter((m) => {
+            const hasContent = m.text || m.imageUrl || m.voiceUrl || m.fileUrl ||
+              (m.imageUrls && m.imageUrls.length > 0) || m.repliedToMessageId
+            const hasReactions = m.reactions && Object.keys(m.reactions).length > 0
+            return hasContent || !hasReactions
+          })
+          .map((m) => {
+            const uid = m.userId || ''
+            const user = userMapRef.current[uid]
+            return {
+              ...m,
+              user: m.user || user || '',
+              isOutgoing: uid === userIdRef.current,
+            }
+          })
         if (isSecretRef.current && encryptKeyRef.current) {
           resolved = await Promise.all(resolved.map(async (m) => {
             if (m.text) {
@@ -218,7 +225,7 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
   onStreamErrorRef.current = onStreamError
 
   const handleStreamEvent = useCallback(
-    async (event: { type: string; message?: Message; chatId?: string; userId?: string; isTyping?: boolean; error?: string; messageId?: string; reactions?: Record<string, string[]> }) => {
+    async (event: { type: string; message?: Message; chatId?: string; userId?: string; isTyping?: boolean; error?: string; messageId?: string; reactions?: Record<string, string[]>; onlineUserIds?: string[] }) => {
       if (event.type === 'error') {
         const errorMsg = event.error || ''
         if (errorMsg.includes('SERVER_SHUTTINGDOWN')) {
@@ -245,6 +252,33 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
             } catch {}
           }
           if (!msg.text && !msg.imageUrl && !msg.voiceUrl && !msg.fileUrl) return
+
+          const store = useChatStore.getState()
+          const existingMsg = store.messages[msg.id]
+          if (existingMsg) {
+            updateMessage(msg.id, {
+              reactions: msg.reactions,
+              isRead: msg.isRead,
+              isEdited: msg.isEdited,
+            })
+            return
+          }
+
+          const chatMsgIds = store.chatMessages[msg.roomId] || []
+          for (const id of chatMsgIds) {
+            const m = store.messages[id]
+            if (m && m.userId === msg.userId && m.text === msg.text &&
+                m.imageUrl === msg.imageUrl && m.voiceUrl === msg.voiceUrl &&
+                m.fileUrl === msg.fileUrl) {
+              updateMessage(id, {
+                reactions: msg.reactions,
+                isRead: msg.isRead,
+                isEdited: msg.isEdited,
+              })
+              return
+            }
+          }
+
           addMessage(msg)
         }
       }
@@ -297,15 +331,22 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
       )
 
       if (olderMsgs.length > 0) {
-        let resolved = olderMsgs.map((m) => {
-          const uid = m.userId || ''
-          const user = userMapRef.current[uid]
-          return {
-            ...m,
-            user: m.user || user || '',
-            isOutgoing: uid === userIdRef.current,
-          }
-        })
+        let resolved = olderMsgs
+          .filter((m) => {
+            const hasContent = m.text || m.imageUrl || m.voiceUrl || m.fileUrl ||
+              (m.imageUrls && m.imageUrls.length > 0) || m.repliedToMessageId
+            const hasReactions = m.reactions && Object.keys(m.reactions).length > 0
+            return hasContent || !hasReactions
+          })
+          .map((m) => {
+            const uid = m.userId || ''
+            const user = userMapRef.current[uid]
+            return {
+              ...m,
+              user: m.user || user || '',
+              isOutgoing: uid === userIdRef.current,
+            }
+          })
         if (isSecretRef.current && encryptKeyRef.current) {
           resolved = await Promise.all(resolved.map(async (m) => {
             if (m.text) {
@@ -378,7 +419,11 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
         if (type === 'image') {
           url = await grpcClient.uploadImage(file)
         } else if (type === 'voice') {
-          const result = await fetch('/api/upload-audio', {
+          if (file.size > grpcClient.maxUploadSize) {
+            const maxMB = Math.round(grpcClient.maxUploadSize / (1024 * 1024))
+            throw new Error(`Файл слишком большой (макс. ${maxMB} МБ)`)
+          }
+          const result = await fetch('/upload-audio', {
             method: 'POST',
             headers: { Authorization: `Bearer ${useAuthStore.getState().tokens?.accessToken || ''}` },
             body: (() => { const fd = new FormData(); fd.append('audio', file); fd.append('duration', String(duration || 0)); return fd })(),

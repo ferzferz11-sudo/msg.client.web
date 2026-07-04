@@ -36,7 +36,7 @@ import type {
 } from '@/shared/types'
 import { useAuthStore } from '@/store/authStore'
 import { useErrorStore } from '@/store/errorStore'
-import { AuthService, ChatService, ProfileService } from './gen/proto/messenger_connect'
+import { AuthService, ChatService, ProfileService, CompanyService } from './gen/proto/messenger_connect'
 
 // --- Device Info ---
 
@@ -126,6 +126,15 @@ let refreshFailedAt = 0
 let permanentFail = false
 let refreshWaiters: (() => void)[] = []
 
+function isNetworkError(err: any): boolean {
+  const msg = String(err?.message || err || '').toLowerCase()
+  const code = err?.code
+  return code === 'UNAVAILABLE' || code === 14 ||
+    msg.includes('unavailable') || msg.includes('502') || msg.includes('503') ||
+    msg.includes('connection refused') || msg.includes('failed to fetch') ||
+    msg.includes('network') || msg.includes('timeout') || msg.includes('refresh timeout')
+}
+
 function createAuthInterceptor(
   getTokens: () => TokenPair | null,
   authClientRef: { current: any },
@@ -154,7 +163,7 @@ function createAuthInterceptor(
             if (client) {
               const result = await Promise.race([
                 client.refreshToken({ refreshToken: tokens.refreshToken }),
-                new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Refresh timeout')), 10000)),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Refresh timeout')), 15000)),
               ])
               const newTokens: TokenPair = {
                 accessToken: result.accessToken,
@@ -167,6 +176,12 @@ function createAuthInterceptor(
           } catch (err: any) {
             console.warn('[Auth] Token refresh failed:', err)
             refreshFailedAt = Math.floor(Date.now() / 1000)
+            if (isNetworkError(err)) {
+              isRefreshing = false
+              refreshWaiters.forEach((w) => w())
+              refreshWaiters = []
+              throw new Error('Server unavailable. Retrying...')
+            }
             permanentFail = true
             useAuthStore.getState().logout()
             window.location.href = '/web/'
@@ -223,6 +238,9 @@ function protoToChat(chat: any): Chat {
     allowMembersToAdd: chat.allowMembersToAdd || false,
     isSecret: chat.isSecret || false,
     e2eeReady: chat.e2eeReady || false,
+    companyId: chat.companyId || chat.company_id || '',
+    companyChatAccess: chat.companyChatAccess || chat.company_chat_access || '',
+    companyMinPositionLevel: chat.companyMinPositionLevel || chat.company_min_position_level || 0,
   }
 }
 
@@ -299,6 +317,7 @@ function protoToMessageV2(msg: any, outgoing = false, userMap?: Record<string, s
     userId: senderId,
     voiceUrl,
     duration,
+    mentions: msg.mentions || [],
   }
 }
 
@@ -334,6 +353,13 @@ function handleChatV2Message(v2Msg: any, callback: StreamCallback): void {
         } catch {}
         callback({ type: 'reaction_update', messageId, reactions })
       }
+      return
+    }
+    if (sys.type === 'ONLINE_USERS_UPDATE') {
+      try {
+        const onlineUserIds = JSON.parse(sys.message || '[]')
+        callback({ type: 'online_users_update', onlineUserIds })
+      } catch {}
       return
     }
     return
@@ -501,9 +527,11 @@ class GrpcClient {
   private authClient: any = null
   private chatClient: any = null
   private profileClient: any = null
+  private companyClient: any = null
   private connected: boolean = false
   private activeStreams: Map<string, AbortController> = new Map()
   private _getTokens: (() => TokenPair | null) | null = null
+  private _maxUploadSize: number = 30 * 1024 * 1024
 
   private constructor() {}
 
@@ -534,6 +562,7 @@ class GrpcClient {
     this.authClient = createClient(AuthService as any, this.transport)
     this.chatClient = createClient(ChatService as any, this.transport)
     this.profileClient = createClient(ProfileService as any, this.transport)
+    this.companyClient = createClient(CompanyService as any, this.transport)
     authClientRef.current = this.authClient
     this.connected = true
 
@@ -546,6 +575,8 @@ class GrpcClient {
 
   private handleOnline = () => {
     useErrorStore.getState().setOffline(false)
+    refreshFailedAt = 0
+    permanentFail = false
   }
 
   private handleOffline = () => {
@@ -573,6 +604,28 @@ class GrpcClient {
 
   isConnected(): boolean {
     return this.connected
+  }
+
+  resetAuthState(): void {
+    refreshFailedAt = 0
+    permanentFail = false
+    isRefreshing = false
+    refreshWaiters.forEach((w) => w())
+    refreshWaiters = []
+  }
+
+  async refreshAccessToken(): Promise<void> {
+    const tokens = this._getTokens?.()
+    if (!tokens || !this.authClient) return
+    const now = Math.floor(Date.now() / 1000)
+    if (now < tokens.accessExpiresAt) return
+    const result = await this.authClient.refreshToken({ refreshToken: tokens.refreshToken })
+    useAuthStore.getState().updateAccessToken({
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      accessExpiresAt: Number(result.accessExpiresAt),
+      refreshExpiresAt: Number(result.refreshExpiresAt),
+    })
   }
 
   // --- Auth V2 Methods ---
@@ -706,7 +759,7 @@ class GrpcClient {
 
   // --- Profile Methods (ProfileService v2 with ChatService fallback) ---
 
-  async getProfile(): Promise<User & { bio: string; status: string; locale: string; isSuperAdmin: boolean; fullAvatarUrl: string }> {
+  async getProfile(): Promise<User & { bio: string; status: string; locale: string; isSuperAdmin: boolean; fullAvatarUrl: string; companyId: string; companyName: string; positionTitle: string; positionLevel: number }> {
     if (!this.chatClient) throw new Error('Not connected')
     try {
       if (this.profileClient) {
@@ -723,6 +776,10 @@ class GrpcClient {
           isSuperAdmin: result.isSuperAdmin || false,
           createdAt: result.createdAt || '',
           lastSeenAt: result.lastSeenAt || '',
+          companyId: result.companyId || '',
+          companyName: result.companyName || '',
+          positionTitle: result.positionTitle || '',
+          positionLevel: result.positionLevel || 0,
         }
       }
     } catch (e: any) {
@@ -741,6 +798,10 @@ class GrpcClient {
       isSuperAdmin: result.isSuperAdmin || false,
       createdAt: result.createdAt || '',
       lastSeenAt: result.lastSeenAt || '',
+      companyId: result.companyId || '',
+      companyName: result.companyName || '',
+      positionTitle: result.positionTitle || '',
+      positionLevel: result.positionLevel || 0,
     }
   }
 
@@ -875,9 +936,9 @@ class GrpcClient {
     }
   }
 
-  async deleteChat(chatId: string, requesterUsername: string, requesterUserId: string): Promise<boolean> {
+  async deleteChat(chatId: string, _requesterUsername: string, requesterUserId: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const response = await this.chatClient.deleteChat({ chatId, requesterUsername, requesterUserId })
+    const response = await this.chatClient.deleteChat({ chatId, requesterUserId })
     return response.success
   }
 
@@ -887,9 +948,10 @@ class GrpcClient {
     return response.success
   }
 
-  async registerPushToken(userId: string, token: string, pushEnabled: boolean): Promise<boolean> {
+  async registerPushToken(userId: string, token: string, _pushEnabled: boolean): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const response = await this.chatClient.registerToken({ user: userId, token, pushEnabled, userId })
+    const deviceInfo = getDeviceInfo()
+    const response = await this.chatClient.registerToken({ userId, token, platform: 'web', deviceId: deviceInfo.deviceId })
     return response.success
   }
 
@@ -1038,7 +1100,15 @@ class GrpcClient {
     const stream = this.chatClient.chatV2(inputStream, { signal })
 
     // Send auth immediately — server waits for JWT before sending anything
-    sendQueue.push({ jwtToken, roomId })
+    const deviceInfo = getDeviceInfo()
+    sendQueue.push({
+      jwtToken: `Bearer ${jwtToken}`,
+      roomId,
+      userId: this._getTokens?.() ? useAuthStore.getState().user?.id || '' : '',
+      clientVersion: import.meta.env.VITE_APP_VERSION || '0.1.10.0',
+      deviceId: deviceInfo.deviceId,
+      deviceName: deviceInfo.deviceName,
+    })
 
     const processStream = async () => {
       try {
@@ -1092,7 +1162,8 @@ class GrpcClient {
 
   async searchChats(query: string, limit = 50, offset = 0): Promise<Chat[]> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.searchChats({ query, limit, offset })
+    const userId = useAuthStore.getState().user?.id || ''
+    const result = await this.chatClient.searchChats({ userId, query, limit, offset })
     return (result.chats || []).map(protoToChat)
   }
 
@@ -1685,7 +1756,21 @@ class GrpcClient {
       throw new Error(`Failed to fetch server info: ${response.status}`)
     }
     const data = await response.json()
-    return data.services || {}
+    if (data.max_upload_size) {
+      this._maxUploadSize = Number(data.max_upload_size)
+    }
+    return { ...(data.services || {}), version: data.version || '' }
+  }
+
+  get maxUploadSize(): number {
+    return this._maxUploadSize
+  }
+
+  private validateFileSize(file: File): void {
+    if (file.size > this._maxUploadSize) {
+      const maxMB = Math.round(this._maxUploadSize / (1024 * 1024))
+      throw new Error(`Файл слишком большой (макс. ${maxMB} МБ)`)
+    }
   }
 
   async checkHealth(): Promise<boolean> {
@@ -1703,6 +1788,7 @@ class GrpcClient {
   // --- Upload Methods ---
 
   private async uploadFile(endpoint: string, fieldName: string, file: File): Promise<string> {
+    this.validateFileSize(file)
     const tokens = this._getTokens?.()
     const formData = new FormData()
     formData.append(fieldName, file)
@@ -1717,11 +1803,13 @@ class GrpcClient {
   }
 
   async uploadAvatar(avatar: File, avatarFull?: File): Promise<{ avatarUrl: string; fullAvatarUrl: string }> {
+    this.validateFileSize(avatar)
+    if (avatarFull) this.validateFileSize(avatarFull)
     const tokens = this._getTokens?.()
     const formData = new FormData()
     formData.append('avatar', avatar)
     if (avatarFull) formData.append('avatar_full', avatarFull)
-    const response = await fetch('/api/upload-avatar', {
+    const response = await fetch('/upload-avatar', {
       method: 'POST',
       headers: { Authorization: `Bearer ${tokens?.accessToken || ''}` },
       body: formData,
@@ -1733,19 +1821,19 @@ class GrpcClient {
 
   async uploadImage(file: File): Promise<string> {
     const compressed = await compressImage(file)
-    return this.uploadFile('/api/upload-image', 'image', compressed)
+    return this.uploadFile('/upload-image', 'image', compressed)
   }
 
   async uploadFile_(file: File): Promise<string> {
-    return this.uploadFile('/api/upload-file', 'file', file)
+    return this.uploadFile('/upload-file', 'file', file)
   }
 
   async uploadAudio(file: File): Promise<string> {
-    return this.uploadFile('/api/upload-audio', 'audio', file)
+    return this.uploadFile('/upload-audio', 'audio', file)
   }
 
   async uploadBackground(file: File): Promise<string> {
-    return this.uploadFile('/api/upload-background', 'background', file)
+    return this.uploadFile('/upload-background', 'background', file)
   }
 
   // --- Typing Stream ---
@@ -2015,8 +2103,229 @@ class GrpcClient {
         ipAddress: s.ipAddress || s.ip_address || '',
         lastSeenAt: s.lastSeenAt?.toDate?.()?.toISOString() || s.last_seen_at?.toDate?.()?.toISOString() || '',
         isOnline: s.isOnline || s.is_online || false,
-      })),
+        })),
     }
+  }
+
+  // --- Company Methods ---
+
+  async createCompany(name: string): Promise<import('@/shared/types').Company> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.createCompany({ name })
+    return this.protoToCompany(result.company)
+  }
+
+  async getCompany(companyId: string): Promise<{
+    company: import('@/shared/types').Company
+    positions: import('@/shared/types').CompanyPosition[]
+    memberCount: number
+  }> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.getCompany({ companyId })
+    return {
+      company: this.protoToCompany(result.company),
+      positions: (result.positions || []).map(this.protoToPosition),
+      memberCount: result.memberCount || 0,
+    }
+  }
+
+  async updateCompany(companyId: string, name?: string, avatarUrl?: string): Promise<boolean> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.updateCompany({
+      companyId,
+      name: name || '',
+      avatarUrl: avatarUrl || '',
+    })
+    return result.success ?? false
+  }
+
+  async deleteCompany(companyId: string): Promise<boolean> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.deleteCompany({ companyId })
+    return result.success ?? false
+  }
+
+  async listCompanies(): Promise<import('@/shared/types').Company[]> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const userId = useAuthStore.getState().user?.id || ''
+    const result = await this.companyClient.listCompanies({ userId })
+    return (result.companies || []).map(this.protoToCompany)
+  }
+
+  async createPosition(companyId: string, title: string, level: number, chatAccess: string): Promise<import('@/shared/types').CompanyPosition> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.createPosition({ companyId, title, level, chatAccess })
+    return this.protoToPosition(result.position)
+  }
+
+  async updatePosition(positionId: string, title: string, level: number, chatAccess: string): Promise<boolean> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.updatePosition({ positionId, title, level, chatAccess })
+    return result.success ?? false
+  }
+
+  async deletePosition(positionId: string): Promise<boolean> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.deletePosition({ positionId })
+    return result.success ?? false
+  }
+
+  async listPositions(companyId: string): Promise<import('@/shared/types').CompanyPosition[]> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.listPositions({ companyId })
+    return (result.positions || []).map(this.protoToPosition)
+  }
+
+  async addMember(companyId: string, userId: string, positionId: string): Promise<boolean> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.addMember({ companyId, userId, positionId })
+    return result.success ?? false
+  }
+
+  async removeMember(companyId: string, userId: string): Promise<boolean> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.removeMember({ companyId, userId })
+    return result.success ?? false
+  }
+
+  async updateMemberPosition(companyId: string, userId: string, positionId: string): Promise<boolean> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.updateMemberPosition({ companyId, userId, positionId })
+    return result.success ?? false
+  }
+
+  async listMembers(companyId: string, cursor = '', limit = 50): Promise<{
+    members: import('@/shared/types').CompanyMember[]
+    nextCursor: string
+    hasMore: boolean
+  }> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.listMembers({ companyId, cursor, limit })
+    return {
+      members: (result.members || []).map(this.protoToMember),
+      nextCursor: result.nextCursor || '',
+      hasMore: result.hasMore ?? false,
+    }
+  }
+
+  async createCompanyChat(companyId: string, name: string, accessLevel: string, minPositionLevel: number, participantIds: string[] = []): Promise<string> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.createCompanyChat({
+      companyId, name, accessLevel, minPositionLevel, participantIds,
+    })
+    return result.chatId || ''
+  }
+
+  async setCompanyChatAccess(chatId: string, accessLevel: string, minPositionLevel: number): Promise<boolean> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.setCompanyChatAccess({ chatId, accessLevel, minPositionLevel })
+    return result.success ?? false
+  }
+
+  async getCompanyChats(companyId: string): Promise<import('@/shared/types').CompanyChatInfo[]> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.getCompanyChats({ companyId })
+    return (result.chats || []).map((c: any) => ({
+      chatId: c.chatId || c.chat_id || '',
+      companyId: c.companyId || c.company_id || '',
+      accessLevel: c.accessLevel || c.access_level || '',
+      minPositionLevel: c.minPositionLevel || c.min_position_level || 0,
+    }))
+  }
+
+  async joinCompany(companyId: string, inviteCode: string): Promise<boolean> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.joinCompany({ companyId, inviteCode })
+    return result.success ?? false
+  }
+
+  async leaveCompany(companyId: string): Promise<boolean> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.leaveCompany({ companyId })
+    return result.success ?? false
+  }
+
+  async getUserInfo(userId: string): Promise<any> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.getUserInfo({ userId })
+    const info = result.info || {}
+    return {
+      userId: info.userId || info.user_id || '',
+      username: info.username || '',
+      avatarUrl: info.avatarUrl || info.avatar_url || '',
+      fullAvatarUrl: info.fullAvatarUrl || info.full_avatar_url || '',
+      bio: info.bio || '',
+      status: info.status || '',
+      isOnline: info.isOnline || info.is_online || false,
+      lastSeenAt: info.lastSeenAt || info.last_seen_at || '',
+      companyId: info.companyId || info.company_id || '',
+      companyName: info.companyName || info.company_name || '',
+      positionTitle: info.positionTitle || info.position_title || '',
+      positionLevel: info.positionLevel || info.position_level || 0,
+    }
+  }
+
+  async getCompanyByUser(userId: string): Promise<{
+    company: import('@/shared/types').Company | null
+    member: import('@/shared/types').CompanyMember | null
+  }> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.getCompanyByUser({ userId })
+    return {
+      company: result.company ? this.protoToCompany(result.company) : null,
+      member: result.member ? this.protoToMember(result.member) : null,
+    }
+  }
+
+  private protoToCompany(c: any): import('@/shared/types').Company {
+    return {
+      id: c.id || '',
+      name: c.name || '',
+      ownerId: c.ownerId || c.owner_id || '',
+      avatarUrl: c.avatarUrl || c.avatar_url || '',
+      createdAt: c.createdAt || c.created_at || '',
+      memberCount: c.memberCount || c.member_count || 0,
+    }
+  }
+
+  private protoToPosition(p: any): import('@/shared/types').CompanyPosition {
+    return {
+      id: p.id || '',
+      companyId: p.companyId || p.company_id || '',
+      title: p.title || '',
+      level: p.level || 0,
+      chatAccess: p.chatAccess || p.chat_access || 'member',
+    }
+  }
+
+  private protoToMember(m: any): import('@/shared/types').CompanyMember {
+    return {
+      id: m.id || '',
+      companyId: m.companyId || m.company_id || '',
+      userId: m.userId || m.user_id || '',
+      username: m.username || '',
+      avatarUrl: m.avatarUrl || m.avatar_url || '',
+      position: m.position ? this.protoToPosition(m.position) : undefined,
+      joinedAt: m.joinedAt || m.joined_at || '',
+    }
+  }
+
+  // --- Multi-Company Support ---
+
+  async setPrimaryCompany(companyId: string): Promise<boolean> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.setPrimaryCompany({ companyId })
+    return result.success ?? false
+  }
+
+  async getUserCompanies(): Promise<import('@/shared/types').CompanyCompanyMember[]> {
+    if (!this.companyClient) throw new Error('Not connected')
+    const result = await this.companyClient.getUserCompanies({})
+    return (result.companies || []).map((c: any) => ({
+      company: this.protoToCompany(c.company),
+      member: this.protoToMember(c.member),
+      isPrimary: c.isPrimary || c.is_primary || false,
+    }))
   }
 }
 

@@ -30,6 +30,9 @@ export interface Chat {
   allowMembersToAdd?: boolean
   isSecret?: boolean
   e2eeReady?: boolean
+  companyId?: string
+  companyChatAccess?: string
+  companyMinPositionLevel?: number
 }
 
 export interface Message {
@@ -53,6 +56,7 @@ export interface Message {
   voiceUrl?: string
   duration?: number
   isSuperAdmin?: boolean
+  mentions?: string[]
 }
 
 export interface User {
@@ -259,6 +263,47 @@ export interface FreeModelInfo {
   sortOrder: number
 }
 
+// Company System types
+export interface Company {
+  id: string
+  name: string
+  ownerId: string
+  avatarUrl?: string
+  createdAt: string
+  memberCount: number
+}
+
+export interface CompanyPosition {
+  id: string
+  companyId: string
+  title: string
+  level: number  // 0=Employee, 1=Manager, 2=TopManager, 3=Owner
+  chatAccess: string  // 'none' | 'member' | 'management' | 'owner_only' | 'all'
+}
+
+export interface CompanyMember {
+  id: string
+  companyId: string
+  userId: string
+  username: string
+  avatarUrl?: string
+  position?: CompanyPosition
+  joinedAt: string
+}
+
+export interface CompanyChatInfo {
+  chatId: string
+  companyId: string
+  accessLevel: string
+  minPositionLevel: number
+}
+
+export interface CompanyCompanyMember {
+  company: Company
+  member: CompanyMember
+  isPrimary: boolean
+}
+
 // Auth V2 types
 export interface TokenPair {
   accessToken: string
@@ -296,6 +341,7 @@ export type StreamEvent =
   | { type: 'typing'; chatId: string; userId: string; isTyping: boolean }
   | { type: 'presence'; userId: string; isOnline: boolean }
   | { type: 'reaction_update'; messageId: string; reactions: Record<string, string[]> }
+  | { type: 'online_users_update'; onlineUserIds: string[] }
   | { type: 'error'; error: string }
   | { type: 'done' }
 

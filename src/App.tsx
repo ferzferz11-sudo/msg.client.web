@@ -10,6 +10,7 @@ import { ProfileScreen } from '@/components/profile/ProfileScreen'
 import { FavoritesScreen } from '@/components/favorites/FavoritesScreen'
 import { CallScreen } from '@/components/calls/CallScreen'
 import { PinnedMessagesScreen } from '@/components/pinned/PinnedMessagesScreen'
+import { CompanyProfileScreen } from '@/components/company/CompanyProfileScreen'
 import { useWebRTC } from '@/hooks/useWebRTC'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { useIOSKeyboard } from '@/hooks/useIOSKeyboard'
@@ -18,7 +19,7 @@ import { isMobile } from '@/shared/utils'
 import { ToastContainer } from '@/components/common/Toast'
 import '@/styles/global.css'
 
-type Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites' | 'contacts' | 'aiChats' | 'settings' | 'archive' | 'search' | 'pinned' | 'admin'
+type Screen = 'auth' | 'chatList' | 'chat' | 'profile' | 'favorites' | 'contacts' | 'aiChats' | 'settings' | 'archive' | 'search' | 'pinned' | 'admin' | 'company'
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth')
@@ -29,6 +30,7 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(false)
   const [hasUpdate, setHasUpdate] = useState(false)
   const [latestVersion, setLatestVersion] = useState('')
+  const [activeCompanyId, setActiveCompanyId] = useState<string | null>(null)
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const logout = useAuthStore((s) => s.logout)
@@ -110,8 +112,19 @@ export default function App() {
             refreshExpiresAt: tokens.refreshExpiresAt,
             user,
           })
-          setCurrentScreen('chatList')
-          fetchServerCapabilities()
+          const accessExpired = now >= tokens.accessExpiresAt
+          if (accessExpired) {
+            grpcClient.refreshAccessToken().then(() => {
+              setCurrentScreen('chatList')
+              fetchServerCapabilities()
+            }).catch(() => {
+              setCurrentScreen('chatList')
+              fetchServerCapabilities()
+            })
+          } else {
+            setCurrentScreen('chatList')
+            fetchServerCapabilities()
+          }
         } else {
           localStorage.removeItem('auth_tokens')
           localStorage.removeItem('auth_user')
@@ -128,10 +141,17 @@ export default function App() {
   const fetchServerCapabilities = useCallback(async () => {
     try {
       await grpcClient.fetchServerInfo()
-    } catch (err) {
-      console.error('Failed to fetch server info:', err)
+      if (isOffline) {
+        grpcClient.resetAuthState()
+        setIsOffline(false)
+      }
+    } catch (err: any) {
+      const msg = String(err?.message || err || '')
+      if (msg.includes('502') || msg.includes('503') || msg.includes('unavailable') || msg.includes('fetch')) {
+        setIsOffline(true)
+      }
     }
-  }, [])
+  }, [isOffline])
 
   const checkServerHealth = useCallback(async () => {
     try {
@@ -152,12 +172,15 @@ export default function App() {
   const handleReconnecting = useCallback((reconnecting: boolean) => {
     setIsReconnecting(reconnecting)
     if (reconnecting) {
+      setIsOffline(true)
       const pollHealth = async () => {
         const healthy = await checkServerHealth()
         if (!healthy) {
           setTimeout(pollHealth, 5000)
         } else {
+          grpcClient.resetAuthState()
           setIsReconnecting(false)
+          setIsOffline(false)
           setShowShutdownBanner(false)
           fetchServerCapabilities()
         }
@@ -175,6 +198,7 @@ export default function App() {
           if (!healthy) {
             setTimeout(pollHealth, 5000)
           } else {
+            grpcClient.resetAuthState()
             setIsOffline(false)
           }
         }
@@ -251,6 +275,11 @@ export default function App() {
     setCurrentScreen('chat')
   }, [])
 
+  const handleCompany = useCallback((companyId: string) => {
+    setActiveCompanyId(companyId)
+    setCurrentScreen('company')
+  }, [])
+
   // --- Update Check ---
   useEffect(() => {
     const checkForUpdate = async () => {
@@ -259,11 +288,12 @@ export default function App() {
         if (!res.ok) return
         const data = await res.json()
         const current = localStorage.getItem('app_version')
-        if (current && current !== data.version) {
+        if (!current) {
+          localStorage.setItem('app_version', data.version)
+        } else if (current !== data.version) {
           setLatestVersion(data.version)
           setHasUpdate(true)
         }
-        localStorage.setItem('app_version', data.version)
       } catch {}
     }
     checkForUpdate()
@@ -347,9 +377,12 @@ export default function App() {
             currentScreen === 'admin' ? 'admin' :
             currentScreen === 'archive' ? 'archive' :
             currentScreen === 'search' ? 'search' :
+            currentScreen === 'company' ? 'company' :
             null
           }
           onCloseRightPanel={handleBack}
+          activeCompanyId={currentScreen === 'company' ? activeCompanyId : null}
+          onCompany={handleCompany}
         />
         {currentScreen === 'pinned' && pinnedChatId && (
           <div style={{
@@ -416,7 +449,13 @@ export default function App() {
 
       {currentScreen === 'profile' && (
         <div key="profile" className="screen-enter" style={{ width: '100%', height: '100%' }}>
-          <ProfileScreen onBack={handleBack} onFavorites={handleFavorites} />
+          <ProfileScreen onBack={handleBack} onFavorites={handleFavorites} onCompany={handleCompany} />
+        </div>
+      )}
+
+      {currentScreen === 'company' && activeCompanyId && (
+        <div key="company" className="screen-enter" style={{ width: '100%', height: '100%' }}>
+          <CompanyProfileScreen companyId={activeCompanyId} onBack={handleBack} />
         </div>
       )}
 

@@ -136,6 +136,15 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
     return () => clearTimeout(timer)
   }, [chatId])
 
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      const msgCount = useChatStore.getState().chatMessages[chatId || '']?.length || 0
+      if (msgCount > 0) {
+        virtuosoRef.current?.scrollToIndex({ index: msgCount - 1, align: 'end', behavior: 'smooth' })
+      }
+    }, 100)
+  }, [chatId])
+
   const handleSend = useCallback(() => {
     if (!inputText.trim() || isSendingMessage) return
     if (editingMessageId) editMessage(editingMessageId, inputText)
@@ -143,7 +152,8 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
     setInputText('')
     clearDraft()
     shouldFollowOutput.current = true
-  }, [inputText, isSendingMessage, sendMessage, editingMessageId, editMessage, clearDraft])
+    scrollToBottom()
+  }, [inputText, isSendingMessage, sendMessage, editingMessageId, editMessage, clearDraft, scrollToBottom])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
@@ -155,12 +165,12 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
       const blob = await voiceRecorder.stopRecording()
       if (blob) {
         const file = new File([blob], `voice-${Date.now()}.webm`, { type: blob.type })
-        sendMediaMessage(file, 'voice')
+        sendMediaMessage(file, 'voice').then(scrollToBottom)
       }
     } else {
       await voiceRecorder.startRecording()
     }
-  }, [voiceRecorder, sendMediaMessage])
+  }, [voiceRecorder, sendMediaMessage, scrollToBottom])
 
   const handleVoiceCancel = useCallback(() => {
     voiceRecorder.cancelRecording()
@@ -250,9 +260,9 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
     if (!file) return
     const isImage = file.type.startsWith('image/')
     const isAudio = file.type.startsWith('audio/')
-    sendMediaMessage(file, isImage ? 'image' : isAudio ? 'voice' : 'file')
+    sendMediaMessage(file, isImage ? 'image' : isAudio ? 'voice' : 'file').then(scrollToBottom)
     e.target.value = ''
-  }, [sendMediaMessage])
+  }, [sendMediaMessage, scrollToBottom])
 
   const typingNames = Array.from(typingUsers.keys())
   const otherUsername = activeChat?.type === 'direct' && activeChat?.participants
@@ -717,7 +727,6 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, isSecret, onLo
               </span>
             )}
           </span>
-        </div>
 
         {Object.keys(reactions).length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2, justifyContent: isOwn ? 'flex-end' : 'flex-start' }}>
@@ -734,6 +743,7 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, isSecret, onLo
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   )

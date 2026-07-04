@@ -1,5 +1,101 @@
 # Changelog
 
+## v0.1.10.0 (2026-07-04)
+
+Company System + bug fixes (reactions positioning, server version display).
+
+### Bug Fixes
+
+- **Reactions inside bubble (Critical)**: reactions were rendered outside the message bubble `<div>` as a sibling element in both mobile and desktop `MessageBubble` — moved inside the bubble div so they share the same background and appear visually attached to the message (like Telegram)
+- **Server version in settings**: `fetchServerInfo()` discarded the `version` field from `/info` endpoint, showing chat service version `"2.0"` instead of actual server version `"1.3.1.21"` — now returns full data including version
+- **Auto-scroll after send**: sent messages appeared below visible area — added explicit `scrollToIndex` after text, voice, and file sends in both mobile and desktop chat screens
+
+### Company System (P1)
+
+- **CompanyService proto**: added CompanyService with 20 RPCs to messenger.proto
+- **Company CRUD**: create, update, delete, get, list companies
+- **Positions**: create, update, delete, list positions with levels 0-3 (Employee, Manager, TopManager, Owner)
+- **Members**: add, remove, update position, list members with cursor pagination
+- **Company Chats**: create chats with role-based visibility (member/management/owner_only)
+- **Join/Leave**: join by invite code, leave company
+- **GetUserInfo**: public user info with company fields (company_id, company_name, position_title, position_level)
+- **ChatInfo integration**: company_id, company_chat_access, company_min_position_level fields
+- **GetProfileResponse integration**: company_id, company_name, position_title, position_level fields
+- **Multi-Company Support**: users can belong to multiple companies simultaneously
+- **SetPrimaryCompany**: set which company appears in profile (primary company)
+- **GetUserCompanies**: list all companies with membership and primary flag
+- **Company switcher**: ProfileScreen shows all companies with primary indicator
+
+### Profile Integration
+
+- **ProfileScreen**: company info display with "View Company" button
+- **Create Company**: inline form in ProfileScreen to create a new company
+- **ProfileData**: added companyId, companyName, positionTitle, positionLevel fields
+
+### CompanyProfileScreen
+
+- **InfoTab**: company info, edit name, delete company
+- **PositionsTab**: list positions, create with level/access, delete
+- **MembersTab**: list members, search users, add with position, remove
+- **ChatsTab**: list company chats, create with access level and min position
+
+### Routing
+
+- **App.tsx**: added 'company' screen type, activeCompanyId state, handleCompany callback
+- **ChatListScreen desktop**: company screen in right panel
+- **Mobile**: full-screen CompanyProfileScreen
+
+### Infrastructure
+
+- **Proto codegen**: regenerated with CompanyService definitions
+- **TypeScript types**: Company, CompanyPosition, CompanyMember, CompanyChatInfo interfaces
+- **grpcClient**: 18 company methods + protoTo converters
+- **fetchServerInfo**: now returns version field from /info endpoint
+
+### Files Modified
+
+- `proto/messenger.proto` — CompanyService + company fields in ChatInfo/GetProfileResponse
+- `src/shared/api/grpcClient.ts` — company methods, fetchServerInfo version fix
+- `src/shared/types/index.ts` — Company interfaces, Chat company fields
+- `src/hooks/useProfile.ts` — company fields in ProfileData
+- `src/components/profile/ProfileScreen.tsx` — company info + create form
+- `src/components/company/CompanyProfileScreen.tsx` — new: full company management
+- `src/components/chat/ChatScreen.desktop.tsx` — reactions inside bubble div
+- `src/components/chat/ChatScreen.mobile.tsx` — reactions inside bubble div
+- `src/App.tsx` — company screen routing
+- `src/components/chatList/ChatListScreen.tsx` — company props
+- `src/components/chatList/ChatListScreen.desktop.tsx` — company right panel
+
+## v0.1.9.6 (2026-07-03)
+
+Doc conformance fixes + reaction duplicate fix.
+
+### Reaction Fix (Critical)
+
+- **Duplicate messages on reaction**: when server broadcasts a message with updated reactions via ChatV2 stream, the web client now updates the existing message instead of adding a duplicate
+- **Root cause**: server sends the full message object (with updated reactions) as a regular message payload, not just via REACTION_V2 system message
+- **Fix**: if message ID already exists in store, update reactions/isRead/isEdited instead of adding new message
+
+### Critical Fixes
+
+- **ChatV2 auth format**: first message now sends `Bearer <token>` (was raw token). Also includes `userId`, `clientVersion`, `deviceId`, `deviceName` as server expects
+- **Upload paths**: `/api/upload-*` → `/upload-*` (server endpoints don't have `/api` prefix). Affects: avatar, image, file, audio, background uploads
+- **RegisterToken fields**: sends `userId, token, platform: "web", deviceId` (was `user, token, pushEnabled, userId`)
+
+### Protocol Fixes
+
+- **SearchChats**: added `userId` field to request (server requires it)
+- **DeleteChat**: removed extra `requesterUsername` field (proto only has `chat_id, requester_user_id`)
+- **ONLINE_USERS_UPDATE**: new system message handler in ChatV2 stream — receives online user IDs
+- **StreamEvent type**: added `online_users_update` event type
+- **Message type**: added `mentions` field for @username mentions
+- **protoToMessageV2**: parses `mentions` array from server response
+
+### Deploy
+
+- Full rebuild + deploy to https://13.140.25.249/web/
+- Envoy + nginx reloaded
+
 ## v0.1.9.5 (2026-06-28)
 
 Hotfix: logout hang, auth refresh timeout, SW cache invalidation.

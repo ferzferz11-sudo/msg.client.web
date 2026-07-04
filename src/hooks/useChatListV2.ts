@@ -36,7 +36,11 @@ export function useChatListV2() {
       setChats(result.chats)
       setNextCursor(result.nextCursor)
       setHasMore(result.hasMore)
-    } catch (err) {
+    } catch (err: any) {
+      const msg = String(err?.message || err || '')
+      if (msg.includes('502') || msg.includes('503') || msg.includes('unavailable') || msg.includes('Connection refused')) {
+        return
+      }
       console.error('Failed to load chats:', err)
       addError({ message: 'Не удалось загрузить список чатов', type: 'network' })
     } finally {

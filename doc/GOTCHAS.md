@@ -76,6 +76,16 @@ Cursor-based: `roomId`, `limit`, `cursor` (пустая строка = перв�
 
 ## Known Issues (Fixed)
 
+### Reactions Outside Message Bubble (v0.1.10.0 fixed)
+В mobile и desktop `MessageBubble` реакции рендерились **вне** bubble `<div>` как sibling-элемент — визуально отделены от пузыря сообщения.
+
+**Решение**: реакции перемещены внутрь bubble div (перед timestamp span), теперь делят фон пузыря и отображаются как в Telegram.
+
+### Server Version Display (v0.1.10.0 fixed)
+`fetchServerInfo()` возвращал только `data.services || {}`, теряя поле `version`. В настройках показывалась версия сервиса `"2.0"` вместо версии сервера `"1.3.1.21"`.
+
+**Решение**: `fetchServerInfo()` теперь возвращает `{ ...data.services, version: data.version }`.
+
 ### v1 Typing BiDi Stream (v0.1.4.1 fixed)
 v1 `typing()` RPC — BiDi stream. `@connectrpc/connect-web` использует fetch, который НЕ поддерживает streaming request bodies. Результат: `ConnectError: The fetch API does not support streaming request bodies`.
 

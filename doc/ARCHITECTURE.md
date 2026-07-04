@@ -129,6 +129,7 @@ const request = new SendMessageV2Request({
 | SecretChatScreen | ✅ | ✅ | E2EE ключевой обмен |
 | CallScreen | ✅ | ✅ | WebRTC звонок |
 | AdminPanel | — | ✅ | Панель администратора (только desktop) |
+| CompanyProfileScreen | ✅ | ✅ | Управление компанией (позиции, участники, чаты) |
 
 ## Resilience
 

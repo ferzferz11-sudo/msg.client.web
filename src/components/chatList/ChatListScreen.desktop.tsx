@@ -8,6 +8,7 @@ import AIChatsScreenDesktop from '@/components/aiChats/AIChatsScreen.desktop'
 import { SettingsScreen } from '@/components/settings/SettingsScreen'
 import { AdminPanel } from '@/components/admin/AdminPanel'
 import { ArchiveScreen } from '@/components/archive/ArchiveScreen'
+import { CompanyProfileScreen } from '@/components/company/CompanyProfileScreen'
 
 import { SearchScreen } from '@/components/search/SearchScreen'
 import { SecretChatScreen } from '@/components/secretChats/SecretChatScreen'
@@ -32,11 +33,13 @@ interface ChatListScreenProps {
   onArchive?: () => void
   onSearch?: () => void
   onAdmin?: () => void
-  rightPanel?: 'profile' | 'contacts' | 'favorites' | 'aiChats' | 'settings' | 'archive' | 'search' | 'admin' | null
+  rightPanel?: 'profile' | 'contacts' | 'favorites' | 'aiChats' | 'settings' | 'archive' | 'search' | 'admin' | 'company' | null
   onCloseRightPanel?: () => void
+  activeCompanyId?: string | null
+  onCompany?: (companyId: string) => void
 }
 
-export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, onFavorites, onAIChats, onSettings, onArchive, onSearch, onAdmin, rightPanel, onCloseRightPanel }: ChatListScreenProps) {
+export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, onFavorites, onAIChats, onSettings, onArchive, onSearch, onAdmin, rightPanel, onCloseRightPanel, activeCompanyId, onCompany }: ChatListScreenProps) {
   const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const { chats, isLoadingChats, openChat } = useChats()
   const { pinChat, unpinChat, archiveChat, setMutedChat, deleteChat } = useChatListV2()
@@ -266,7 +269,7 @@ export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, 
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#1a1a2e' }}>
         {rightPanel === 'profile' ? (
-          <ProfileScreen onBack={onCloseRightPanel || (() => {})} onFavorites={onFavorites} />
+          <ProfileScreen onBack={onCloseRightPanel || (() => {})} onFavorites={onFavorites} onCompany={onCompany} />
         ) : rightPanel === 'contacts' ? (
           <ContactsScreen onBack={onCloseRightPanel || (() => {})} />
         ) : rightPanel === 'favorites' ? (
@@ -281,6 +284,8 @@ export function ChatListScreen({ onChatSelect, onLogout, onProfile, onContacts, 
           <ArchiveScreen onBack={onCloseRightPanel || (() => {})} onChatSelect={(chatId) => { onCloseRightPanel?.(); handleChatClick(chatId); }} />
         ) : rightPanel === 'search' ? (
           <SearchScreen onBack={onCloseRightPanel || (() => {})} onChatSelect={(chatId) => { onCloseRightPanel?.(); handleChatClick(chatId); }} />
+        ) : rightPanel === 'company' && activeCompanyId ? (
+          <CompanyProfileScreen companyId={activeCompanyId} onBack={onCloseRightPanel || (() => {})} />
         ) : activeChatId ? (
           activeChatId.startsWith('secret:') ? (
             <SecretChatScreen chatId={activeChatId.slice(7)} onBack={handleBack} />

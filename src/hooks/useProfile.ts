@@ -19,6 +19,10 @@ export interface ProfileData {
   isSuperAdmin: boolean
   createdAt: string
   lastSeenAt: string
+  companyId: string
+  companyName: string
+  positionTitle: string
+  positionLevel: number
 }
 
 export interface UserSettings {
@@ -50,6 +54,10 @@ export function useProfile() {
         isSuperAdmin: p.isSuperAdmin || false,
         createdAt: p.createdAt || '',
         lastSeenAt: p.lastSeenAt || '',
+        companyId: p.companyId || '',
+        companyName: p.companyName || '',
+        positionTitle: p.positionTitle || '',
+        positionLevel: p.positionLevel || 0,
       })
     } catch (err) {
       addError({ message: 'Не удалось загрузить профиль', type: 'network' })

@@ -34,6 +34,10 @@ export function useChats() {
       })
       .catch((err) => {
         if (cancelled) return
+        const msg = String(err?.message || err || '')
+        if (msg.includes('502') || msg.includes('503') || msg.includes('unavailable') || msg.includes('Connection refused')) {
+          return
+        }
         console.error('Failed to load chats:', err)
         addError({
           message: 'Не удалось загрузить список чатов',

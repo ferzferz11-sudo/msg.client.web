@@ -216,6 +216,33 @@
 | `openTypingStream(callback)` | BiDi typing stream (deprecated — use ChatV2) |
 | `callSession(messages)` | BiDi CallSession (WebRTC signaling) |
 
+## Company
+
+| Метод | Описание |
+|-------|----------|
+| `createCompany(name)` | Создать компанию |
+| `getCompany(companyId)` | Информация о компании + позиции |
+| `updateCompany(companyId, name?, avatarUrl?)` | Обновить компанию |
+| `deleteCompany(companyId)` | Удалить компанию |
+| `listCompanies()` | Список компаний пользователя |
+| `createPosition(companyId, title, level, chatAccess)` | Создать позицию |
+| `updatePosition(positionId, title, level, chatAccess)` | Обновить позицию |
+| `deletePosition(positionId)` | Удалить позицию |
+| `listPositions(companyId)` | Список позиций |
+| `addMember(companyId, userId, positionId)` | Добавить участника |
+| `removeMember(companyId, userId)` | Удалить участника |
+| `updateMemberPosition(companyId, userId, positionId)` | Изменить позицию участника |
+| `listMembers(companyId, cursor?, limit?)` | Список участников (cursor pagination) |
+| `createCompanyChat(companyId, name, accessLevel, minPositionLevel, participantIds?)` | Создать корпоративный чат |
+| `setCompanyChatAccess(chatId, accessLevel, minPositionLevel)` | Настроить видимость чата |
+| `getCompanyChats(companyId)` | Корпоративные чаты компании |
+| `joinCompany(companyId, inviteCode)` | Вступить в компанию |
+| `leaveCompany(companyId)` | Покинуть компанию |
+| `getUserInfo(userId)` | Публичная информация о пользователе (включая компанию) |
+| `getCompanyByUser(userId)` | Компания пользователя |
+| `setPrimaryCompany(companyId)` | Установить основную компанию |
+| `getUserCompanies()` | Все компании пользователя |
+
 ## Admin
 
 | Метод | Описание |

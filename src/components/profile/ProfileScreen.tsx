@@ -1,6 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useProfile } from '@/hooks/useProfile'
 import { useAuthStore } from '@/store/authStore'
+import { grpcClient } from '@/shared/api/grpcClient'
+import type { CompanyCompanyMember } from '@/shared/types'
 
 interface ProfileScreenProps {
   onBack: () => void
@@ -8,9 +10,10 @@ interface ProfileScreenProps {
   onContacts?: () => void
   onAIChats?: () => void
   onFavorites?: () => void
+  onCompany?: (companyId: string) => void
 }
 
-export function ProfileScreen({ onBack, onSettings, onContacts, onAIChats, onFavorites }: ProfileScreenProps) {
+export function ProfileScreen({ onBack, onSettings, onContacts, onAIChats, onFavorites, onCompany }: ProfileScreenProps) {
   const { profile, updateProfile, updateAvatar, isLoading } = useProfile()
   const user = useAuthStore((s) => s.user)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -18,6 +21,14 @@ export function ProfileScreen({ onBack, onSettings, onContacts, onAIChats, onFav
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showCreateCompany, setShowCreateCompany] = useState(false)
+  const [companyName, setCompanyName] = useState('')
+  const [creatingCompany, setCreatingCompany] = useState(false)
+  const [userCompanies, setUserCompanies] = useState<CompanyCompanyMember[]>([])
+
+  useEffect(() => {
+    grpcClient.getUserCompanies().then(setUserCompanies).catch(() => {})
+  }, [])
 
   const displayName = profile?.username || user?.username || ''
   const avatarUrl = profile?.fullAvatarUrl || profile?.avatarUrl || user?.avatarUrl || ''
@@ -47,6 +58,27 @@ export function ProfileScreen({ onBack, onSettings, onContacts, onAIChats, onFav
   const cancelEdit = () => {
     setEditingField(null)
     setEditValue('')
+  }
+
+  const handleCreateCompany = async () => {
+    if (!companyName.trim()) return
+    setCreatingCompany(true)
+    try {
+      const company = await grpcClient.createCompany(companyName.trim())
+      if (company.id) {
+        await grpcClient.setPrimaryCompany(company.id).catch(() => {})
+      }
+      setCompanyName('')
+      setShowCreateCompany(false)
+      grpcClient.getUserCompanies().then(setUserCompanies).catch(() => {})
+      if (onCompany && company.id) {
+        onCompany(company.id)
+      }
+    } catch (err) {
+      console.error('Failed to create company:', err)
+    } finally {
+      setCreatingCompany(false)
+    }
   }
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -221,6 +253,95 @@ export function ProfileScreen({ onBack, onSettings, onContacts, onAIChats, onFav
               {renderEditableField('username', 'Имя пользователя', displayName)}
               {renderEditableField('bio', 'О себе', bio, true)}
               {renderEditableField('status', 'Статус', status)}
+            </div>
+
+            {/* Company Section */}
+            <div style={{ marginBottom: 24 }}>
+              {userCompanies.length > 1 && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 6 }}>Ваши компании:</div>
+                  {userCompanies.map((uc) => (
+                    <button key={uc.company.id} onClick={() => onCompany?.(uc.company.id)} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      width: '100%', padding: '10px 12px', borderRadius: 10,
+                      background: uc.isPrimary ? 'rgba(107,92,231,0.15)' : 'rgba(255,255,255,0.04)',
+                      border: uc.isPrimary ? '1px solid rgba(107,92,231,0.3)' : '1px solid rgba(255,255,255,0.06)',
+                      color: '#fff', fontSize: 14, cursor: 'pointer', textAlign: 'left', marginBottom: 4,
+                    }}>
+                      <span style={{ fontSize: 16 }}>{uc.isPrimary ? '⭐' : '🏢'}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 500 }}>{uc.company.name}</div>
+                        <div style={{ fontSize: 11, color: '#888' }}>{uc.member.position?.title || 'Участник'}</div>
+                      </div>
+                      <span style={{ fontSize: 12, color: '#6b5ce7' }}>→</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {profile?.companyId && userCompanies.length <= 1 ? (
+                <button onClick={() => onCompany?.(profile.companyId)} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  width: '100%', padding: '14px 16px', borderRadius: 12,
+                  background: 'rgba(107,92,231,0.15)', border: '1px solid rgba(107,92,231,0.3)',
+                  color: '#fff', fontSize: 15, cursor: 'pointer', textAlign: 'left',
+                }}>
+                  <span style={{ fontSize: 20 }}>🏢</span>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{profile.companyName}</div>
+                    <div style={{ fontSize: 12, color: '#8b7cf7', marginTop: 2 }}>{profile.positionTitle}</div>
+                  </div>
+                  <span style={{ marginLeft: 'auto', fontSize: 14, color: '#6b5ce7' }}>→</span>
+                </button>
+              ) : showCreateCompany ? (
+                <div style={{
+                  padding: '16px', borderRadius: 12,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 12 }}>
+                    🏢 Создать компанию
+                  </div>
+                  <input
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleCreateCompany(); if (e.key === 'Escape') setShowCreateCompany(false) }}
+                    placeholder="Название компании"
+                    style={{
+                      width: '100%', height: 44, borderRadius: 12,
+                      background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(107,92,231,0.5)',
+                      color: '#fff', fontSize: 15, padding: '0 16px', outline: 'none',
+                      marginBottom: 8,
+                    }}
+                    autoFocus
+                  />
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setShowCreateCompany(false)} style={{
+                      flex: 1, height: 36, borderRadius: 8,
+                      background: 'rgba(255,255,255,0.08)', border: 'none',
+                      color: '#888', fontSize: 13, cursor: 'pointer',
+                    }}>
+                      Отмена
+                    </button>
+                    <button onClick={handleCreateCompany} disabled={creatingCompany || !companyName.trim()} style={{
+                      flex: 1, height: 36, borderRadius: 8,
+                      background: creatingCompany ? 'rgba(107,92,231,0.5)' : '#6b5ce7',
+                      border: 'none', color: '#fff', fontSize: 13, cursor: 'pointer',
+                    }}>
+                      {creatingCompany ? '...' : 'Создать'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setShowCreateCompany(true)} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  width: '100%', padding: '14px 16px', borderRadius: 12,
+                  background: 'rgba(255,255,255,0.06)', border: 'none',
+                  color: '#fff', fontSize: 15, cursor: 'pointer', textAlign: 'left',
+                }}>
+                  <span style={{ fontSize: 20 }}>🏢</span>
+                  Создать компанию
+                </button>
+              )}
             </div>
 
             {/* Action Buttons */}
