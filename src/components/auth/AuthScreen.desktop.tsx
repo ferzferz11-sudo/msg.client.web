@@ -72,8 +72,6 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     setIsLoading(true)
     setError(null)
     try {
-      const getTokens = () => useAuthStore.getState().tokens
-      await grpcClient.connect(undefined, getTokens)
       const result = await grpcClient.requestPasswordReset(username.trim())
       if (result.success) {
         setAuthView('resetDone')

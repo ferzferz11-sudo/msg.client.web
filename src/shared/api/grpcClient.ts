@@ -744,15 +744,18 @@ class GrpcClient {
     return result.success ?? false
   }
 
-  async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
-    if (!this.chatClient) throw new Error('Not connected')
-    return withRetry(
-      async () => {
-        const result = await this.chatClient!.requestPasswordReset({ email })
-        return { success: result.success, message: result.message }
-      },
-      { maxRetries: 2, baseDelay: 1000 },
-    )
+  async requestPasswordReset(username: string): Promise<{ success: boolean; message: string }> {
+    const response = await fetch('/api/request-password-reset', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      return { success: false, message: data.message || `Ошибка сервера: ${response.status}` }
+    }
+    const data = await response.json()
+    return { success: data.success ?? true, message: data.message || '' }
   }
 
   async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
