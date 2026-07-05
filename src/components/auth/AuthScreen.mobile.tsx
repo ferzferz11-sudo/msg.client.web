@@ -305,7 +305,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               {/* Forgot password */}
               {authView === 'login' && (
                 <button
-                  onClick={() => { setAuthView('forgot'); setError(null); setResetMessage(null) }}
+                  onClick={() => { setAuthView('forgot'); setError(null) }}
                   style={{
                     width: '100%',
                     height: 44,

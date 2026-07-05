@@ -182,7 +182,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             </button>
             {authView === 'login' && (
               <button
-                onClick={() => { setAuthView('forgot'); setError(null); setResetMessage(null) }}
+                onClick={() => { setAuthView('forgot'); setError(null) }}
                 style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 13 }}
               >
                 {t('forgotPassword', lang)}
