@@ -123,19 +123,16 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
         const scrollTo = Math.max(0, firstUnreadIdx - 3)
         setTimeout(() => {
           virtuosoRef.current?.scrollToIndex({ index: scrollTo, align: 'start' })
-        }, 100)
+        }, 150)
       } else {
-        virtuosoRef.current?.scrollToIndex({ index: messages.length - 1, align: 'end' })
+        setTimeout(() => {
+          virtuosoRef.current?.scrollToIndex({ index: messages.length - 1, align: 'end' })
+        }, 150)
       }
     } else if (shouldFollowOutput.current && messages.length > 0) {
       virtuosoRef.current?.scrollToIndex({ index: messages.length - 1, behavior: 'smooth' })
     }
   }, [messages.length])
-
-  useEffect(() => {
-    const timer = setTimeout(() => inputRef.current?.focus(), 300)
-    return () => clearTimeout(timer)
-  }, [chatId])
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
