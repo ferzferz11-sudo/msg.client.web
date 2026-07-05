@@ -1116,7 +1116,7 @@ class GrpcClient {
       jwtToken: `Bearer ${jwtToken}`,
       roomId,
       userId: this._getTokens?.() ? useAuthStore.getState().user?.id || '' : '',
-      clientVersion: import.meta.env.VITE_APP_VERSION || '0.1.10.0',
+      clientVersion: import.meta.env.VITE_APP_VERSION || '0.1.11.0',
       deviceId: deviceInfo.deviceId,
       deviceName: deviceInfo.deviceName,
     })

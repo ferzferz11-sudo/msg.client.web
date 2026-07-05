@@ -17,7 +17,7 @@ interface AuthScreenProps {
   onAuthSuccess: () => void
 }
 
-type AuthView = 'login' | 'signup' | 'forgot' | 'resetCode' | 'resetDone'
+type AuthView = 'login' | 'signup' | 'forgot' | 'resetDone'
 
 export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [username, setUsername] = useState('')
@@ -28,11 +28,6 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [error, setError] = useState<string | null>(null)
   const [lang, setLang] = useState<Lang>(detectLang())
   const [authView, setAuthView] = useState<AuthView>('login')
-
-  const [resetEmail, setResetEmail] = useState('')
-  const [resetToken, setResetToken] = useState('')
-  const [resetNewPassword, setResetNewPassword] = useState('')
-  const [resetMessage, setResetMessage] = useState<string | null>(null)
 
   const usernameRef = useRef<HTMLInputElement>(null)
   const setTokens = useAuthStore((s) => s.setTokens)
@@ -94,14 +89,12 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         e.preventDefault()
         if (authView === 'forgot') {
           handleRequestReset()
-        } else if (authView === 'resetCode') {
-          handleResetPassword()
         } else {
           handleSubmit()
         }
       }
     },
-    [handleSubmit, authView, resetEmail, resetToken, resetNewPassword, lang],
+    [handleSubmit, authView, username, lang],
   )
 
   const toggleLang = useCallback(() => {
@@ -109,36 +102,12 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   }, [lang])
 
   const handleRequestReset = useCallback(async () => {
-    if (!resetEmail.trim()) { setError(t('emailPlaceholder', lang)); return }
     setIsLoading(true)
     setError(null)
     try {
       const getTokens = () => useAuthStore.getState().tokens
       await grpcClient.connect(undefined, getTokens)
-      const result = await grpcClient.requestPasswordReset(resetEmail.trim())
-      if (result.success) {
-        setResetMessage(result.message || t('resetPasswordSuccess', lang))
-        setAuthView('resetCode')
-      } else {
-        setError(result.message || t('authError', lang))
-      }
-    } catch (err: any) {
-      setError(err.message || t('connectionError', lang))
-    } finally {
-      setIsLoading(false)
-    }
-  }, [resetEmail, lang])
-
-  const handleResetPassword = useCallback(async () => {
-    if (!resetToken.trim()) { setError(t('enterResetCode', lang)); return }
-    if (!resetNewPassword.trim()) { setError(t('passwordPlaceholder', lang)); return }
-    if (resetNewPassword.length < 6) { setError('Минимум 6 символов'); return }
-    setIsLoading(true)
-    setError(null)
-    try {
-      const getTokens = () => useAuthStore.getState().tokens
-      await grpcClient.connect(undefined, getTokens)
-      const result = await grpcClient.resetPassword(resetToken.trim(), resetNewPassword)
+      const result = await grpcClient.requestPasswordReset(username.trim())
       if (result.success) {
         setAuthView('resetDone')
       } else {
@@ -149,7 +118,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [resetToken, resetNewPassword, lang])
+  }, [username, lang])
 
   return (
     <Screen>
@@ -355,7 +324,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           </>
         )}
 
-        {/* Forgot Password - Email Input */}
+        {/* Forgot Password — Send request to admin */}
         {authView === 'forgot' && (
           <>
             <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 40 }}>
@@ -379,24 +348,6 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             )}
 
             <div style={{ width: '100%', maxWidth: 320 }}>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>
-                  {t('emailPlaceholder', lang)}
-                </label>
-                <input
-                  type="email"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="email@example.com"
-                  disabled={isLoading}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  autoFocus
-                  style={inputStyle}
-                />
-              </div>
-
               <button
                 onClick={handleRequestReset}
                 disabled={isLoading}
@@ -435,132 +386,16 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           </>
         )}
 
-        {/* Reset Code + New Password */}
-        {authView === 'resetCode' && (
-          <>
-            {resetMessage && (
-              <div
-                style={{
-                  width: '100%',
-                  maxWidth: 320,
-                  padding: '12px 16px',
-                  background: 'rgba(76, 175, 80, 0.15)',
-                  borderRadius: 12,
-                  border: '1px solid rgba(76, 175, 80, 0.3)',
-                  marginBottom: 20,
-                }}
-              >
-                <span style={{ fontSize: 13, color: '#4caf50' }}>{resetMessage}</span>
-              </div>
-            )}
-
-            <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: 40 }}>
-              {t('enterResetCode', lang)}
-            </div>
-
-            {error && (
-              <div
-                style={{
-                  width: '100%',
-                  maxWidth: 320,
-                  padding: '12px 16px',
-                  background: 'rgba(231, 76, 92, 0.15)',
-                  borderRadius: 12,
-                  border: '1px solid rgba(231, 76, 92, 0.3)',
-                  marginBottom: 20,
-                }}
-              >
-                <span style={{ fontSize: 13, color: '#e74c4c' }}>{error}</span>
-              </div>
-            )}
-
-            <div style={{ width: '100%', maxWidth: 320 }}>
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>
-                  {t('enterResetCode', lang)}
-                </label>
-                <input
-                  type="text"
-                  value={resetToken}
-                  onChange={(e) => setResetToken(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="XXXXXX"
-                  disabled={isLoading}
-                  autoFocus
-                  style={inputStyle}
-                />
-              </div>
-
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6, display: 'block' }}>
-                  {t('newPasswordPlaceholder', lang)}
-                </label>
-                <input
-                  type="password"
-                  value={resetNewPassword}
-                  onChange={(e) => setResetNewPassword(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="••••••••"
-                  disabled={isLoading}
-                  style={inputStyle}
-                />
-              </div>
-
-              <button
-                onClick={handleResetPassword}
-                disabled={isLoading}
-                style={{
-                  width: '100%',
-                  height: 48,
-                  borderRadius: 12,
-                  background: isLoading ? 'rgba(107, 92, 231, 0.5)' : 'linear-gradient(135deg, #6b5ce7, #8b7cf7)',
-                  border: 'none',
-                  color: '#fff',
-                  fontSize: 16,
-                  fontWeight: 600,
-                  cursor: isLoading ? 'default' : 'pointer',
-                  marginBottom: 12,
-                }}
-              >
-                {isLoading ? t('loading', lang) : t('resetPassword', lang)}
-              </button>
-
-              <button
-                onClick={() => { setAuthView('login'); setError(null); setResetMessage(null) }}
-                style={{
-                  width: '100%',
-                  height: 44,
-                  borderRadius: 12,
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#6b5ce7',
-                  fontSize: 14,
-                  cursor: 'pointer',
-                }}
-              >
-                {t('backToLogin', lang)}
-              </button>
-            </div>
-          </>
-        )}
-
         {/* Reset Done */}
         {authView === 'resetDone' && (
           <>
             <div style={{ fontSize: 14, color: '#4caf50', marginBottom: 40 }}>
-              {t('resetPasswordDone', lang)}
+              {t('resetPasswordSentToAdmin', lang)}
             </div>
 
             <div style={{ width: '100%', maxWidth: 320 }}>
               <button
-                onClick={() => {
-                  setAuthView('login')
-                  setResetEmail('')
-                  setResetToken('')
-                  setResetNewPassword('')
-                  setResetMessage(null)
-                  setError(null)
-                }}
+                onClick={() => { setAuthView('login'); setError(null) }}
                 style={{
                   width: '100%',
                   height: 48,

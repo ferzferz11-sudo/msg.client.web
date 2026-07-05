@@ -12,7 +12,7 @@ interface AuthScreenProps {
   onAuthSuccess: () => void
 }
 
-type AuthView = 'login' | 'signup' | 'forgot' | 'resetCode' | 'resetDone'
+type AuthView = 'login' | 'signup' | 'forgot' | 'resetDone'
 
 export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [username, setUsername] = useState('')
@@ -23,11 +23,6 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [error, setError] = useState<string | null>(null)
   const [lang, setLang] = useState<Lang>(detectLang())
   const [authView, setAuthView] = useState<AuthView>('login')
-
-  const [resetEmail, setResetEmail] = useState('')
-  const [resetToken, setResetToken] = useState('')
-  const [resetNewPassword, setResetNewPassword] = useState('')
-  const [resetMessage, setResetMessage] = useState<string | null>(null)
 
   const usernameRef = useRef<HTMLInputElement>(null)
   const setTokens = useAuthStore((s) => s.setTokens)
@@ -74,36 +69,12 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   }, [username, password, email, isSignUp, setTokens, onAuthSuccess, lang])
 
   const handleRequestReset = useCallback(async () => {
-    if (!resetEmail.trim()) { setError(t('emailPlaceholder', lang)); return }
     setIsLoading(true)
     setError(null)
     try {
       const getTokens = () => useAuthStore.getState().tokens
       await grpcClient.connect(undefined, getTokens)
-      const result = await grpcClient.requestPasswordReset(resetEmail.trim())
-      if (result.success) {
-        setResetMessage(result.message || t('resetPasswordSuccess', lang))
-        setAuthView('resetCode')
-      } else {
-        setError(result.message || t('authError', lang))
-      }
-    } catch (err: any) {
-      setError(err.message || t('connectionError', lang))
-    } finally {
-      setIsLoading(false)
-    }
-  }, [resetEmail, lang])
-
-  const handleResetPassword = useCallback(async () => {
-    if (!resetToken.trim()) { setError(t('enterResetCode', lang)); return }
-    if (!resetNewPassword.trim()) { setError(t('passwordPlaceholder', lang)); return }
-    if (resetNewPassword.length < 6) { setError('Минимум 6 символов'); return }
-    setIsLoading(true)
-    setError(null)
-    try {
-      const getTokens = () => useAuthStore.getState().tokens
-      await grpcClient.connect(undefined, getTokens)
-      const result = await grpcClient.resetPassword(resetToken.trim(), resetNewPassword)
+      const result = await grpcClient.requestPasswordReset(username.trim())
       if (result.success) {
         setAuthView('resetDone')
       } else {
@@ -114,7 +85,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [resetToken, resetNewPassword, lang])
+  }, [username, lang])
 
   return (
     <div style={{ padding: 40, textAlign: 'center', maxWidth: 400, margin: '0 auto' }}>
@@ -221,7 +192,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         </>
       )}
 
-      {/* Forgot Password - Email Input */}
+      {/* Forgot Password — Send request to admin */}
       {authView === 'forgot' && (
         <>
           <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 32 }}>
@@ -231,6 +202,43 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           {error && (
             <div style={{ color: '#e74c4c', marginBottom: 16, fontSize: 14 }}>{error}</div>
           )}
+
+          <button
+            onClick={handleRequestReset}
+            disabled={isLoading}
+            style={{
+              width: '100%', padding: 12, borderRadius: 8,
+              background: '#6b5ce7', color: '#fff', border: 'none',
+              cursor: isLoading ? 'default' : 'pointer', marginBottom: 12,
+            }}
+          >
+            {isLoading ? t('loading', lang) : t('resetPassword', lang)}
+          </button>
+
+          <button
+            onClick={() => { setAuthView('login'); setError(null) }}
+            style={{ background: 'none', border: 'none', color: '#6b5ce7', cursor: 'pointer' }}
+          >
+            {t('backToLogin', lang)}
+          </button>
+        </>
+      )}
+
+      {/* Reset Done */}
+      {authView === 'resetDone' && (
+        <>
+          <div style={{ color: '#4caf50', marginBottom: 16, fontSize: 14 }}>
+            {t('resetPasswordSentToAdmin', lang)}
+          </div>
+
+          <button
+            onClick={() => { setAuthView('login'); setError(null) }}
+            style={{ background: 'none', border: 'none', color: '#6b5ce7', cursor: 'pointer' }}
+          >
+            {t('backToLogin', lang)}
+          </button>
+        </>
+      )}
 
           <input
             type="email"
