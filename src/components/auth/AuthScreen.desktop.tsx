@@ -239,53 +239,6 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           </button>
         </>
       )}
-
-          <input
-            type="email"
-            value={resetEmail}
-            onChange={(e) => setResetEmail(e.target.value)}
-            placeholder={t('emailPlaceholder', lang)}
-            disabled={isLoading}
-            autoFocus
-            style={{ width: '100%', padding: 12, marginBottom: 12, borderRadius: 8, border: '1px solid #333', background: '#1a1a2e', color: '#fff' }}
-          />
-
-          <button
-            onClick={handleRequestReset}
-            disabled={isLoading}
-            style={{
-              width: '100%', padding: 12, borderRadius: 8,
-              background: '#6b5ce7', color: '#fff', border: 'none',
-              cursor: isLoading ? 'default' : 'pointer', marginBottom: 12,
-            }}
-          >
-            {isLoading ? t('loading', lang) : t('resetPassword', lang)}
-          </button>
-
-          <button
-            onClick={() => { setAuthView('login'); setError(null) }}
-            style={{ background: 'none', border: 'none', color: '#6b5ce7', cursor: 'pointer' }}
-          >
-            {t('backToLogin', lang)}
-          </button>
-        </>
-      )}
-
-      {/* Reset Done */}
-      {authView === 'resetDone' && (
-        <>
-          <div style={{ color: '#4caf50', marginBottom: 16, fontSize: 14 }}>
-            {t('resetPasswordSentToAdmin', lang)}
-          </div>
-
-          <button
-            onClick={() => { setAuthView('login'); setError(null) }}
-            style={{ background: 'none', border: 'none', color: '#6b5ce7', cursor: 'pointer' }}
-          >
-            {t('backToLogin', lang)}
-          </button>
-        </>
-      )}
     </div>
   )
 }
