@@ -10,7 +10,7 @@ interface AdminUserCardProps {
   isOnline: boolean
   lastMessageText: string
   lastMessageTime: string
-  lastMessageUsername: string
+  lastMessageUsername?: string
   chatCount: number
   onClick: () => void
 }
