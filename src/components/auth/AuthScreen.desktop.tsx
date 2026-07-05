@@ -271,81 +271,16 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         </>
       )}
 
-      {/* Reset Code + New Password */}
-      {authView === 'resetCode' && (
-        <>
-          {resetMessage && (
-            <div style={{ color: '#4caf50', marginBottom: 16, fontSize: 14 }}>{resetMessage}</div>
-          )}
-
-          <p style={{ color: 'rgba(255,255,255,0.6)', marginBottom: 32 }}>
-            {t('enterResetCode', lang)}
-          </p>
-
-          {error && (
-            <div style={{ color: '#e74c4c', marginBottom: 16, fontSize: 14 }}>{error}</div>
-          )}
-
-          <input
-            type="text"
-            value={resetToken}
-            onChange={(e) => setResetToken(e.target.value)}
-            placeholder={t('enterResetCode', lang)}
-            disabled={isLoading}
-            autoFocus
-            style={{ width: '100%', padding: 12, marginBottom: 12, borderRadius: 8, border: '1px solid #333', background: '#1a1a2e', color: '#fff' }}
-          />
-          <input
-            type="password"
-            value={resetNewPassword}
-            onChange={(e) => setResetNewPassword(e.target.value)}
-            placeholder={t('newPasswordPlaceholder', lang)}
-            disabled={isLoading}
-            style={{ width: '100%', padding: 12, marginBottom: 12, borderRadius: 8, border: '1px solid #333', background: '#1a1a2e', color: '#fff' }}
-          />
-
-          <button
-            onClick={handleResetPassword}
-            disabled={isLoading}
-            style={{
-              width: '100%', padding: 12, borderRadius: 8,
-              background: '#6b5ce7', color: '#fff', border: 'none',
-              cursor: isLoading ? 'default' : 'pointer', marginBottom: 12,
-            }}
-          >
-            {isLoading ? t('loading', lang) : t('resetPassword', lang)}
-          </button>
-
-          <button
-            onClick={() => { setAuthView('login'); setError(null); setResetMessage(null) }}
-            style={{ background: 'none', border: 'none', color: '#6b5ce7', cursor: 'pointer' }}
-          >
-            {t('backToLogin', lang)}
-          </button>
-        </>
-      )}
-
       {/* Reset Done */}
       {authView === 'resetDone' && (
         <>
-          <p style={{ color: '#4caf50', marginBottom: 32 }}>
-            {t('resetPasswordDone', lang)}
-          </p>
+          <div style={{ color: '#4caf50', marginBottom: 16, fontSize: 14 }}>
+            {t('resetPasswordSentToAdmin', lang)}
+          </div>
 
           <button
-            onClick={() => {
-              setAuthView('login')
-              setResetEmail('')
-              setResetToken('')
-              setResetNewPassword('')
-              setResetMessage(null)
-              setError(null)
-            }}
-            style={{
-              width: '100%', padding: 12, borderRadius: 8,
-              background: '#6b5ce7', color: '#fff', border: 'none',
-              cursor: 'pointer',
-            }}
+            onClick={() => { setAuthView('login'); setError(null) }}
+            style={{ background: 'none', border: 'none', color: '#6b5ce7', cursor: 'pointer' }}
           >
             {t('backToLogin', lang)}
           </button>
