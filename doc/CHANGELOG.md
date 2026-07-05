@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.1.11.0 (2026-07-05)
+
+Server CLIENT_INTEGRATION.md adaptation + bug fixes.
+
+### Bug Fixes
+
+- **Profile UUID error**: `getUserProfile` sent username as `userId` causing `pq: invalid input syntax for type uuid` — now detects UUID vs username and sends to correct field
+- **getUserAvatar**: same fix — sends `userId` or `username` based on input format
+- **Last message hidden**: Virtuoso chat list last message was hidden behind input bar — added `paddingBottom` to Virtuoso container
+
+### Server API Adaptation (CLIENT_INTEGRATION.md)
+
+- **MessageV2.reply**: moved out of `oneof content` to separate field — reply messages now also carry text/media content
+- **MessageV2.mentions**: new `repeated string mentions` field for @username mentions
+- **SendMessageV2Request.mentions**: client extracts `@username` from text and sends in request
+- **CreateGroupChatRequest.type**: new `string type` field ("group" | "conference")
+- **AdminUserInfo**: renumbered fields + added `full_avatar_url`, `last_message_username`
+- **MarkReadRequest**: changed to use `message_id` instead of `username`/`user_id`
+
+### New Features
+
+- **Mention highlighting**: `@username` in messages highlighted with accent color (#5EB5F7)
+- **Admin panel**: shows last message sender username
+
 ## v0.1.10.0 (2026-07-04)
 
 Company System + bug fixes (reactions positioning, server version display).

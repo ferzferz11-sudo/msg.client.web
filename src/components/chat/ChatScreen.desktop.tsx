@@ -13,6 +13,7 @@ import type { Message } from '@/shared/types'
 import { useChatListV2 } from '@/hooks/useChatListV2'
 import { ImageLightbox } from '@/components/common'
 import { UserProfileModal } from '@/components/common/UserProfileModal'
+import { renderMentionText } from '@/shared/mentionRenderer'
 import { FileDownloadButton } from '@/components/common/FileDownloadButton'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
 
@@ -477,7 +478,7 @@ export function ChatScreen({ chatId, isSecret, onServerShutdown, onReconnecting,
             followOutput="smooth"
             atBottomThreshold={100}
             atBottomStateChange={(atBottom) => { shouldFollowOutput.current = atBottom }}
-            style={{ height: '100%' }}
+            style={{ height: '100%', paddingBottom: 4 }}
             className="scrollable"
           />
         </div>
@@ -915,7 +916,7 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, isSecret, onSe
           )}
 
           {/* Text */}
-          {message.text && !message.fileUrl && <div style={{ display: 'inline' }}>{message.text}</div>}
+          {message.text && !message.fileUrl && <div style={{ display: 'inline' }}>{renderMentionText(message.text, message.mentions)}</div>}
 
           {/* Time + read */}
           <span style={{

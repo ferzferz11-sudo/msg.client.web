@@ -171,6 +171,7 @@ message CreateGroupChatRequest {
   string creator = 3;
   string creator_id = 4;
   repeated string participant_ids = 5;
+  string type = 6;
 }
 
 message CreateGroupChatResponse {
@@ -216,17 +217,19 @@ message AdminUpdatePasswordResponse {
 // ======= Admin User List Messages =======
 
 message AdminUserInfo {
-  string username = 1;
-  string avatar_url = 2;
-  string email = 3;
-  string user_id = 4;
-  bool is_super_admin = 5;
-  string last_client_version = 6;
-  google.protobuf.Timestamp last_seen_at = 7;
-  bool is_online = 8;
-  string last_message_text = 9;
-  google.protobuf.Timestamp last_message_time = 10;
-  int32 chat_count = 11;
+  string user_id = 1;
+  string username = 2;
+  string avatar_url = 3;
+  string full_avatar_url = 4;
+  string email = 5;
+  bool is_super_admin = 6;
+  string last_client_version = 7;
+  google.protobuf.Timestamp last_seen_at = 8;
+  bool is_online = 9;
+  string last_message_text = 10;
+  google.protobuf.Timestamp last_message_time = 11;
+  string last_message_username = 12;
+  int32 chat_count = 13;
 }
 
 message GetAdminUserListRequest {
@@ -265,8 +268,7 @@ message GetAdminUserSessionsResponse {
 
 message MarkReadRequest {
   string room_id = 1;
-  string username = 2;
-  string user_id = 3;
+  string message_id = 2;
 }
 
 message MarkReadResponse {
@@ -1735,8 +1737,9 @@ message MessageV2 {
   oneof content {
     string text = 10;
     MessageMedia media = 11;
-    MessageReply reply = 12;
   }
+
+  MessageReply reply = 12;
 
   bool edited = 20;
   bool is_read = 21;
@@ -1745,6 +1748,8 @@ message MessageV2 {
 
   bool is_e2ee = 30;
   string e2ee_payload = 31;
+
+  repeated string mentions = 40;
 }
 
 message MessageMedia {
@@ -1780,6 +1785,7 @@ message SendMessageV2Request {
   string reply_to_id = 4;
   bool is_e2ee = 5;
   string e2ee_payload = 6;
+  repeated string mentions = 7;
 }
 
 message SendMessageV2Response {

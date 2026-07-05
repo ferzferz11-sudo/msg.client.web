@@ -196,7 +196,8 @@ export function useChatMessages({ chatId, isSecret = false, onServerShutdown, on
         nextCursorRef.current = nextCursor
 
         if (resolved.length > 0 && user?.username && user?.id) {
-          grpcClient.markRead(chatId, user.username, user.id).catch(() => {})
+          const lastMsgId = resolved[resolved.length - 1]?.id || ''
+          grpcClient.markRead(chatId, user.username, user.id, lastMsgId).catch(() => {})
         }
       })
       .catch((err) => {

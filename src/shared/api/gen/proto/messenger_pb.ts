@@ -1414,6 +1414,11 @@ export class CreateGroupChatRequest extends Message$1<CreateGroupChatRequest> {
    */
   participantIds: string[] = [];
 
+  /**
+   * @generated from field: string type = 6;
+   */
+  type = "";
+
   constructor(data?: PartialMessage<CreateGroupChatRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1427,6 +1432,7 @@ export class CreateGroupChatRequest extends Message$1<CreateGroupChatRequest> {
     { no: 3, name: "creator", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "creator_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "participant_ids", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 6, name: "type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateGroupChatRequest {
@@ -1782,57 +1788,67 @@ export class AdminUpdatePasswordResponse extends Message$1<AdminUpdatePasswordRe
  */
 export class AdminUserInfo extends Message$1<AdminUserInfo> {
   /**
-   * @generated from field: string username = 1;
-   */
-  username = "";
-
-  /**
-   * @generated from field: string avatar_url = 2;
-   */
-  avatarUrl = "";
-
-  /**
-   * @generated from field: string email = 3;
-   */
-  email = "";
-
-  /**
-   * @generated from field: string user_id = 4;
+   * @generated from field: string user_id = 1;
    */
   userId = "";
 
   /**
-   * @generated from field: bool is_super_admin = 5;
+   * @generated from field: string username = 2;
+   */
+  username = "";
+
+  /**
+   * @generated from field: string avatar_url = 3;
+   */
+  avatarUrl = "";
+
+  /**
+   * @generated from field: string full_avatar_url = 4;
+   */
+  fullAvatarUrl = "";
+
+  /**
+   * @generated from field: string email = 5;
+   */
+  email = "";
+
+  /**
+   * @generated from field: bool is_super_admin = 6;
    */
   isSuperAdmin = false;
 
   /**
-   * @generated from field: string last_client_version = 6;
+   * @generated from field: string last_client_version = 7;
    */
   lastClientVersion = "";
 
   /**
-   * @generated from field: google.protobuf.Timestamp last_seen_at = 7;
+   * @generated from field: google.protobuf.Timestamp last_seen_at = 8;
    */
   lastSeenAt?: Timestamp;
 
   /**
-   * @generated from field: bool is_online = 8;
+   * @generated from field: bool is_online = 9;
    */
   isOnline = false;
 
   /**
-   * @generated from field: string last_message_text = 9;
+   * @generated from field: string last_message_text = 10;
    */
   lastMessageText = "";
 
   /**
-   * @generated from field: google.protobuf.Timestamp last_message_time = 10;
+   * @generated from field: google.protobuf.Timestamp last_message_time = 11;
    */
   lastMessageTime?: Timestamp;
 
   /**
-   * @generated from field: int32 chat_count = 11;
+   * @generated from field: string last_message_username = 12;
+   */
+  lastMessageUsername = "";
+
+  /**
+   * @generated from field: int32 chat_count = 13;
    */
   chatCount = 0;
 
@@ -1844,17 +1860,19 @@ export class AdminUserInfo extends Message$1<AdminUserInfo> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "messenger.AdminUserInfo";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 5, name: "is_super_admin", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 6, name: "last_client_version", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 7, name: "last_seen_at", kind: "message", T: Timestamp },
-    { no: 8, name: "is_online", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
-    { no: 9, name: "last_message_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 10, name: "last_message_time", kind: "message", T: Timestamp },
-    { no: 11, name: "chat_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "full_avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "is_super_admin", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 7, name: "last_client_version", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "last_seen_at", kind: "message", T: Timestamp },
+    { no: 9, name: "is_online", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "last_message_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "last_message_time", kind: "message", T: Timestamp },
+    { no: 12, name: "last_message_username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 13, name: "chat_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AdminUserInfo {
@@ -2141,14 +2159,9 @@ export class MarkReadRequest extends Message$1<MarkReadRequest> {
   roomId = "";
 
   /**
-   * @generated from field: string username = 2;
+   * @generated from field: string message_id = 2;
    */
-  username = "";
-
-  /**
-   * @generated from field: string user_id = 3;
-   */
-  userId = "";
+  messageId = "";
 
   constructor(data?: PartialMessage<MarkReadRequest>) {
     super();
@@ -2159,8 +2172,7 @@ export class MarkReadRequest extends Message$1<MarkReadRequest> {
   static readonly typeName = "messenger.MarkReadRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "message_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MarkReadRequest {
@@ -12431,13 +12443,12 @@ export class MessageV2 extends Message$1<MessageV2> {
      */
     value: MessageMedia;
     case: "media";
-  } | {
-    /**
-     * @generated from field: messenger.MessageReply reply = 12;
-     */
-    value: MessageReply;
-    case: "reply";
   } | { case: undefined; value?: undefined } = { case: undefined };
+
+  /**
+   * @generated from field: messenger.MessageReply reply = 12;
+   */
+  reply?: MessageReply;
 
   /**
    * @generated from field: bool edited = 20;
@@ -12469,6 +12480,11 @@ export class MessageV2 extends Message$1<MessageV2> {
    */
   e2eePayload = "";
 
+  /**
+   * @generated from field: repeated string mentions = 40;
+   */
+  mentions: string[] = [];
+
   constructor(data?: PartialMessage<MessageV2>) {
     super();
     proto3.util.initPartial(data, this);
@@ -12482,13 +12498,14 @@ export class MessageV2 extends Message$1<MessageV2> {
     { no: 3, name: "sender_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 10, name: "text", kind: "scalar", T: 9 /* ScalarType.STRING */, oneof: "content" },
     { no: 11, name: "media", kind: "message", T: MessageMedia, oneof: "content" },
-    { no: 12, name: "reply", kind: "message", T: MessageReply, oneof: "content" },
+    { no: 12, name: "reply", kind: "message", T: MessageReply },
     { no: 20, name: "edited", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 21, name: "is_read", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 22, name: "created_at", kind: "message", T: Timestamp },
     { no: 23, name: "reactions", kind: "scalar", T: 12 /* ScalarType.BYTES */ },
     { no: 30, name: "is_e2ee", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 31, name: "e2ee_payload", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 40, name: "mentions", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MessageV2 {
@@ -12745,6 +12762,11 @@ export class SendMessageV2Request extends Message$1<SendMessageV2Request> {
    */
   e2eePayload = "";
 
+  /**
+   * @generated from field: repeated string mentions = 7;
+   */
+  mentions: string[] = [];
+
   constructor(data?: PartialMessage<SendMessageV2Request>) {
     super();
     proto3.util.initPartial(data, this);
@@ -12759,6 +12781,7 @@ export class SendMessageV2Request extends Message$1<SendMessageV2Request> {
     { no: 4, name: "reply_to_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 5, name: "is_e2ee", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 6, name: "e2ee_payload", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "mentions", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SendMessageV2Request {

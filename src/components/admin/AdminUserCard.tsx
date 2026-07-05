@@ -10,6 +10,7 @@ interface AdminUserCardProps {
   isOnline: boolean
   lastMessageText: string
   lastMessageTime: string
+  lastMessageUsername: string
   chatCount: number
   onClick: () => void
 }
@@ -32,7 +33,7 @@ function formatLastSeen(dateStr: string): string {
 export function AdminUserCard({
   username, email, avatarUrl, fullAvatarUrl,
   isSuperAdmin, lastSeenAt, isOnline,
-  lastMessageText, chatCount, onClick,
+  lastMessageText, lastMessageUsername, chatCount, onClick,
 }: AdminUserCardProps) {
   return (
     <button
@@ -74,7 +75,7 @@ export function AdminUserCard({
           )}
         </div>
         <div style={{ fontSize: 13, color: '#888', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {lastMessageText || email}
+          {lastMessageText ? (lastMessageUsername ? `${lastMessageUsername}: ${lastMessageText}` : lastMessageText) : email}
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>

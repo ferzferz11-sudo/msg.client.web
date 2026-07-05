@@ -244,6 +244,12 @@ function protoToChat(chat: any): Chat {
   }
 }
 
+function extractMentions(text: string): string[] {
+  const matches = text.match(/@(\w+)/g)
+  if (!matches) return []
+  return [...new Set(matches.map((m) => m.substring(1)))]
+}
+
 function protoToMessageV2(msg: any, outgoing = false, userMap?: Record<string, string>): Message {
   let text = ''
   let imageUrl = ''
@@ -269,9 +275,12 @@ function protoToMessageV2(msg: any, outgoing = false, userMap?: Record<string, s
       fileUrl = media.url || ''
       text = media.url?.split('/').pop() || 'Файл'
     }
-  } else if (contentCase === 'reply') {
-    replyToId = msg.content.value.messageId || ''
-    replyToPreview = msg.content.value.preview || ''
+  }
+
+  const reply = msg.reply
+  if (reply) {
+    replyToId = reply.messageId || reply.message_id || ''
+    replyToPreview = reply.preview || ''
   }
 
   if (!text && !imageUrl && !voiceUrl && !fileUrl) {
@@ -920,9 +929,9 @@ class GrpcClient {
     }
   }
 
-  async createGroupChat(name: string, participants: string[], creator: string, creatorId: string, participantIds: string[]): Promise<Chat> {
+  async createGroupChat(name: string, participants: string[], creator: string, creatorId: string, participantIds: string[], type = 'group'): Promise<Chat> {
     if (!this.chatClient) throw new Error('Not connected')
-    const response = await this.chatClient.createGroupChat({ name, participants, creator, creatorId, participantIds })
+    const response = await this.chatClient.createGroupChat({ name, participants, creator, creatorId, participantIds, type })
     return {
       id: response.chatId || '',
       name,
@@ -942,9 +951,9 @@ class GrpcClient {
     return response.success
   }
 
-  async markRead(roomId: string, username: string, userId: string): Promise<boolean> {
+  async markRead(roomId: string, _username: string, _userId: string, lastMessageId?: string): Promise<boolean> {
     if (!this.chatClient) throw new Error('Not connected')
-    const response = await this.chatClient.markRead({ roomId, username, userId })
+    const response = await this.chatClient.markRead({ roomId, messageId: lastMessageId || '' })
     return response.success
   }
 
@@ -984,11 +993,13 @@ class GrpcClient {
         if (!content || !content.trim()) {
           throw new Error('Cannot send empty message')
         }
+        const mentions = extractMentions(content)
         const request = new SendMessageV2Request({
           roomId,
           content: { case: 'text', value: content },
         })
         if (replyToId) request.replyToId = replyToId
+        if (mentions.length > 0) request.mentions = mentions
         const response = await this.chatClient.sendMessageV2(request)
         if (!response.success) throw new Error(response.error || 'Failed to send')
         return protoToMessageV2(response.message, true)
@@ -1298,7 +1309,10 @@ class GrpcClient {
 
   async getUserProfile(userIdOrUsername: string): Promise<UserProfile> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.getUserProfile({ userId: userIdOrUsername })
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userIdOrUsername)
+    const result = isUuid
+      ? await this.chatClient.getUserProfile({ userId: userIdOrUsername })
+      : await this.chatClient.getUserProfile({ username: userIdOrUsername })
     return {
       username: result.username || '',
       bio: result.bio || '',
@@ -1317,7 +1331,10 @@ class GrpcClient {
 
   async getUserAvatar(userIdOrUsername: string): Promise<{ avatarUrl: string; fullAvatarUrl: string }> {
     if (!this.chatClient) throw new Error('Not connected')
-    const result = await this.chatClient.getUserAvatar({ username: userIdOrUsername, userId: userIdOrUsername })
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userIdOrUsername)
+    const result = isUuid
+      ? await this.chatClient.getUserAvatar({ userId: userIdOrUsername })
+      : await this.chatClient.getUserAvatar({ username: userIdOrUsername })
     return {
       avatarUrl: result.avatarUrl || result.avatar_url || '',
       fullAvatarUrl: result.fullAvatarUrl || result.full_avatar_url || '',
@@ -2000,6 +2017,7 @@ class GrpcClient {
         isOnline: u.isOnline || u.is_online || false,
         lastMessageText: u.lastMessageText || u.last_message_text || '',
         lastMessageTime: u.lastMessageTime?.toDate?.()?.toISOString() || u.last_message_time?.toDate?.()?.toISOString() || '',
+        lastMessageUsername: u.lastMessageUsername || u.last_message_username || '',
         chatCount: u.chatCount || u.chat_count || 0,
       }))
       return {

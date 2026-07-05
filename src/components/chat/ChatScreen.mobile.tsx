@@ -13,6 +13,7 @@ import { useChatStore } from '@/store/chatStore'
 import { useAuthStore } from '@/store/authStore'
 import { grpcClient } from '@/shared/api/grpcClient'
 import { t } from '@/shared/types'
+import { renderMentionText } from '@/shared/mentionRenderer'
 import type { Message } from '@/shared/types'
 import { useChatListV2 } from '@/hooks/useChatListV2'
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder'
@@ -471,7 +472,7 @@ export function ChatScreen({ chatId, isSecret, onBack, onServerShutdown, onRecon
             followOutput="smooth"
             atBottomThreshold={100}
             atBottomStateChange={(atBottom) => { shouldFollowOutput.current = atBottom }}
-            style={{ height: '100%' }}
+            style={{ height: '100%', paddingBottom: 4 }}
             className="scrollable"
           />
         </div>
@@ -703,7 +704,7 @@ function MessageBubble({ message, isOwn, isSelecting, isSelected, isSecret, onLo
           )}
 
           {/* Text */}
-          {message.text && !message.fileUrl && <div style={{ display: 'inline' }}>{message.text}</div>}
+          {message.text && !message.fileUrl && <div style={{ display: 'inline' }}>{renderMentionText(message.text, message.mentions)}</div>}
           <span style={{
             float: 'right', fontSize: 11,
             color: isOwn ? 'rgba(255,255,255,0.45)' : TG.textSecondary,
