@@ -83,7 +83,7 @@ src/
 | Auth V2 (JWT) | ✅ | v0.1.0.0 | signInV2, signUpV2, refresh, signOut |
 | Auth Interceptor | ✅ | v0.1.3.0 | isRefreshing, refreshFailedAt cooldown, stale token |
 | RevokeDevice | ✅ | v0.1.0.0 | revokeDevice |
-| Password Reset | ✅ | v0.1.3.9 | requestPasswordReset, resetPassword |
+| Password Reset | ✅ | v0.1.11.0 | HTTP POST /api/request-password-reset (no email, sends to admin chat) |
 | Capability Negotiation | ✅ | v0.1.1.0 | GET /info |
 | Health Check | ✅ | v0.1.0.0 | GET /health |
 | **Chat** | | | |
@@ -102,7 +102,7 @@ src/
 | **Messages v1** | ❌ | removed | Удалено в v0.1.5.0 (сервер убрал dual-write) |
 | **Messages v2** | | | |
 | GetHistoryV2 | ✅ | v0.1.5.0 | cursor-based pagination, v2 only (v1 fallback removed) |
-| SendMessageV2 | ✅ | v0.1.5.0 | oneof content (text/media), unary RPC |
+| SendMessageV2 | ✅ | v0.1.11.0 | oneof content (text/media), unary RPC, @mentions extraction |
 | EditMessageV2 | ✅ | v0.1.5.0 | messageId, text |
 | DeleteMessageV2 | ✅ | v0.1.5.0 | message_ids[], requester_user_id, hard delete (records removed from DB) |
 | SetReactionV2 | ✅ | v0.1.5.0 | message_id, emoji, inline JSONB |
@@ -112,7 +112,7 @@ src/
 | PinMessage / UnPinMessage | ✅ | v0.1.1.1 | userId required |
 | GetPinnedMessages | ✅ | v0.1.0.0 | chat_id |
 | **Read Receipts** | | | |
-| Automatic MarkRead | ✅ | v0.1.4.2 | on chat open + unreadCount reset |
+| MarkRead | ✅ | v0.1.11.0 | uses message_id, on chat open + unreadCount reset |
 | **Profile** | | | |
 | GetProfile (ProfileService v2 + ChatService fallback) | ✅ | v0.1.4.3 | tries v2, fallback on UNIMPLEMENTED |
 | UpdateProfile (ProfileService v2 + ChatService fallback) | ✅ | v0.1.4.3 | tries v2, fallback on UNIMPLEMENTED |
@@ -196,7 +196,7 @@ src/
 | Desktop Sidebar Nav | ✅ | v0.1.4.0 | AI Chats, Search, Archive, Notifications, Settings |
 | Lazy Avatar | ✅ | v0.1.4.0 | IntersectionObserver-based |
 | Desktop Right Panel | ✅ | v0.1.3.10 | profile, contacts, favorites in right panel |
-| Password Reset UI | ✅ | v0.1.3.9 | 3-step flow: email → code + password → success |
+| Password Reset UI | ✅ | v0.1.11.0 | 1-click flow: forgot password → request to admin chat (no email) |
 | Image Lightbox | ✅ | v0.1.4.4 | fullscreen image preview overlay |
 | Pinned Messages Screen | ✅ | v0.1.4.4 | desktop overlay + mobile full-screen |
 | Voice Recording | ✅ | v0.1.4.4 | MediaRecorder API, send as voice message |
@@ -209,6 +209,7 @@ src/
 | File Download Progress | ✅ | v0.1.5.2 | progress bar during file download |
 | Error Toast System | ✅ | v0.1.7.0 | global ToastContainer, user-friendly error messages |
 | Automated Testing | ✅ | v0.1.9.2 | Vitest + Testing Library, 75 tests, 9 files |
+| Mention Highlighting | ✅ | v0.1.11.0 | @username highlighted in message text (accent color) |
 
 ### ⚠️ Частично реализовано / Known Issues
 

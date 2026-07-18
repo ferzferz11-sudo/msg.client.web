@@ -267,3 +267,33 @@ Message IDs use `Date.now()-random` suffix to prevent React key collisions when 
 - **429** — rate limited, show "Превышен лимит запросов" with retry hint
 - **401** — auth failure, show "Ошибка авторизации AI"
 - **500/502/503** — server down, show "Сервер AI временно недоступен"
+
+---
+
+## v0.1.11.0 Gotchas
+
+### Version management (CRITICAL)
+Version is in THREE places that ALL must be updated:
+1. `package.json` — read by `src/shared/version.ts` → `APP_VERSION` (shown on login screen)
+2. `public/version.json` — used for auto-update check in `App.tsx`
+3. `version.json` (root) — legacy, less important
+
+Additionally, `grpcClient.ts:1119` has a hardcoded fallback version.
+
+### MessageV2 reply field change
+`MessageV2.reply` is now a **separate field** (field 12), NOT inside `oneof content`. This means reply messages can also carry text/media. `protoToMessageV2` reads from `msg.reply` (not from `msg.content.case === 'reply'`).
+
+### MarkReadRequest API change
+`MarkReadRequest` now uses `message_id` (last read message ID) instead of `username`/`user_id`. Callers must pass the last message ID.
+
+### Password reset is HTTP-only
+`requestPasswordReset` uses raw `fetch` POST to `/api/request-password-reset` (not gRPC) because the user is NOT logged in. Server must have this HTTP endpoint (see `PROMPT_REQUEST_PASSWORD_RESET.md` in server doc/).
+
+### Mobile chat auto-focus removed
+Auto-focus on input when entering chat was removed on mobile — it opened the keyboard and pushed the layout up. User must tap input to start typing.
+
+### Mobile chat scroll timing
+Initial scroll to last message requires `setTimeout(150ms)` — Virtuoso needs time to render before `scrollToIndex` works correctly.
+
+### Mention extraction
+When sending messages, `@username` patterns are extracted from text and included in `SendMessageV2Request.mentions`. Server stores them in `messages_v2.mentions` column. Client highlights mentions using `renderMentionText()` from `src/shared/mentionRenderer.tsx`.
