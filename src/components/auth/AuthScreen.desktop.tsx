@@ -127,7 +127,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           </p>
 
           {error && (
-            <div style={{ color: '#e74c4c', marginBottom: 16, fontSize: 14 }}>{error}</div>
+            <div style={{ color: '#e74c4c', marginBottom: 16, fontSize: 14, userSelect: 'text', cursor: 'text' }}>{error}</div>
           )}
 
           <input
@@ -198,7 +198,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           </p>
 
           {error && (
-            <div style={{ color: '#e74c4c', marginBottom: 16, fontSize: 14 }}>{error}</div>
+            <div style={{ color: '#e74c4c', marginBottom: 16, fontSize: 14, userSelect: 'text', cursor: 'text' }}>{error}</div>
           )}
 
           <button

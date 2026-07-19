@@ -196,7 +196,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   marginBottom: 20,
                 }}
               >
-                <span style={{ fontSize: 13, color: '#e74c4c' }}>{error}</span>
+                <span style={{ fontSize: 13, color: '#e74c4c', userSelect: 'text', cursor: 'text' }}>{error}</span>
               </div>
             )}
 
@@ -341,7 +341,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   marginBottom: 20,
                 }}
               >
-                <span style={{ fontSize: 13, color: '#e74c4c' }}>{error}</span>
+                <span style={{ fontSize: 13, color: '#e74c4c', userSelect: 'text', cursor: 'text' }}>{error}</span>
               </div>
             )}
 

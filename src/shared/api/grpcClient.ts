@@ -2145,7 +2145,7 @@ class GrpcClient {
     const result = await this.companyClient.getCompany({ companyId })
     return {
       company: this.protoToCompany(result.company),
-      positions: (result.positions || []).map(this.protoToPosition),
+      positions: (result.positions || []).map((p: any) => this.protoToPosition(p)),
       memberCount: result.memberCount || 0,
     }
   }
@@ -2170,7 +2170,7 @@ class GrpcClient {
     if (!this.companyClient) throw new Error('Not connected')
     const userId = useAuthStore.getState().user?.id || ''
     const result = await this.companyClient.listCompanies({ userId })
-    return (result.companies || []).map(this.protoToCompany)
+    return (result.companies || []).map((c: any) => this.protoToCompany(c))
   }
 
   async createPosition(companyId: string, title: string, level: number, chatAccess: string): Promise<import('@/shared/types').CompanyPosition> {
@@ -2194,7 +2194,7 @@ class GrpcClient {
   async listPositions(companyId: string): Promise<import('@/shared/types').CompanyPosition[]> {
     if (!this.companyClient) throw new Error('Not connected')
     const result = await this.companyClient.listPositions({ companyId })
-    return (result.positions || []).map(this.protoToPosition)
+    return (result.positions || []).map((p: any) => this.protoToPosition(p))
   }
 
   async addMember(companyId: string, userId: string, positionId: string): Promise<boolean> {
@@ -2223,7 +2223,7 @@ class GrpcClient {
     if (!this.companyClient) throw new Error('Not connected')
     const result = await this.companyClient.listMembers({ companyId, cursor, limit })
     return {
-      members: (result.members || []).map(this.protoToMember),
+      members: (result.members || []).map((m: any) => this.protoToMember(m)),
       nextCursor: result.nextCursor || '',
       hasMore: result.hasMore ?? false,
     }
